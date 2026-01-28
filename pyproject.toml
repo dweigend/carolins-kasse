@@ -1,0 +1,17 @@
+[project]
+name = "carolins-kasse"
+version = "0.1.0"
+description = "Eine Kasse mit scanner mit pygame für raspi zero"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pillow>=12.1.0",
+    "pygame>=2.6.1",
+    "python-barcode>=0.16.1",
+    "reportlab>=4.4.9",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.14",
+]
