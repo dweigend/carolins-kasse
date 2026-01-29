@@ -1,52 +1,96 @@
 # Session Handover
 
-**Last Updated:** 2026-01-28
+**Last Updated:** 2026-01-29
 
 ## Current State
 
 ✅ Phase 1 complete — Pygame + Scene Manager working
-✅ Hardware bestellt — Lieferung erwartet
-
-## Hardware (Bestellt ✅)
-
-| Komponente | Modell | Preis |
-|------------|--------|-------|
-| Computer | **Raspberry Pi Zero 2 W** | 23€ |
-| Display | **Elecrow 7" IPS 1024x600 Touch** | 47€ |
-| Stromversorgung | **Anker 20K 87W (A1383)** | 40€ |
-| HDMI-Kabel | CY Mini-HDMI Flachkabel 20cm | 9€ |
-
-**Wichtig:** Display-Auflösung ist jetzt **1024x600** (statt 800x480)!
+✅ Phase 1.5 in progress — Assets organisiert
+⏳ Hardware bestellt — Lieferung erwartet
 
 ## What Was Done (This Session)
 
-- Hardware recherchiert und bestellt
-- Dokumentation aktualisiert:
-  - `dev/ARCHITECTURE.md` — Hardware-Sektion, Admin-System, FastAPI
-  - `dev/concept.md` — Barcode-Management, Admin-System
-  - `dev/PLAN.md` — Phase 1.5 (Data Setup), Phase 5 (Admin) detailliert
-  - `dev/setup-ideas.md` — Komplette Hardware-Specs, Verkabelung
-  - `CLAUDE.md` — Display/Target aktualisiert
+### Asset-Organisation ✅
+- **155 Master-Dateien** in neue Struktur sortiert:
+  ```
+  assets/master/
+  ├── products/   # 87 Lebensmittel, Spielzeug
+  ├── icons/      # 25 UI-Icons
+  ├── buttons/    # 6 Button-Grafiken
+  ├── avatars/    # 6 User-Avatare
+  ├── emojis/     # 6 Smileys
+  ├── digits/     # 18 Zahlen, Euro-Münzen
+  ├── frames/     # 4 Rahmen
+  └── recipes/    # 3 Rezeptbilder
+  ```
+- Alle Dateien **DE → EN** umbenannt
+- Tippfehler korrigiert (crosiont → croissant, etc.)
+- Alte Test-Exports gelöscht
 
-## Key Decisions
+### Dokumentation ✅
+- `dev/ASSETS.md` — Aktualisiert mit Status-Markierungen
+- `dev/ASSET_CATALOG.md` — NEU: LLM-lesbarer Katalog (155 Assets)
+- `dev/UI_SCREENS.md` — NEU: Screen-Dokumentation mit Layouts
 
-1. **Pi Zero 2 W** statt Zero W (5x schneller, gleicher Preis)
-2. **1024x600 Display** statt 800x480 (höhere Auflösung, IPS)
-3. **FastAPI + Jinja2 + HTMX** statt Flask für Admin-UI
-4. **Anker Powerbank** mit Pass-Through (~20h Laufzeit)
+### UI-Mockups ✅
+- 9 Dateien in `ui/` einheitlich umbenannt
+- Alle Screens dokumentiert
 
-## Next Steps
+## Fehlende Assets
 
-**Warte auf Hardware-Lieferung**, dann:
+### 🔴 Hohe Priorität
+| Asset | Beschreibung |
+|-------|--------------|
+| `tile_shopping.png` | Menu-Tile blau (180×180) |
+| `tile_recipe.png` | Menu-Tile rot (180×180) |
+| `tile_math_game.png` | Menu-Tile grün (180×180) |
+| `tile_cashier.png` | Menu-Tile gelb (180×180) |
 
-1. **Phase 1.5: Data & Barcode Setup**
-   - `data/products.yaml` erstellen
-   - `data/users.yaml` erstellen
-   - `tools/seed_database.py` implementieren
-   - `tools/generate_barcodes.py` implementieren
+### 🟡 Mittlere Priorität
+| Asset | Text |
+|-------|------|
+| `btn_pay.png` | "BEZAHLEN" |
+| `btn_add_to_cart.png` | "IN DEN KORB" |
+| `btn_back_to_store.png` | "ZURÜCK ZUM LADEN" |
+| `btn_finish_recipe.png` | "REZEPT FERTIGSTELLEN" |
+| `btn_calculate.png` | "BERECHNEN" |
 
-2. **Display-Auflösung anpassen**
-   - `src/constants.py`: SCREEN_WIDTH=1024, SCREEN_HEIGHT=600
+## Next Session: UI bauen
+
+### Ziel
+Pygame-UI basierend auf Mockups implementieren.
+
+### Reihenfolge
+1. **Asset Loader** — `src/utils/assets.py`
+   - Master-Dateien laden
+   - Auf S/M/L skalieren
+   - Caching
+
+2. **Hauptmenü** — `src/scenes/menu.py`
+   - 4 Tiles (Einkauf, Rezept, Rechenspiel, Kassiererin)
+   - Touch-Navigation
+   - Siehe `ui/05_main_menu.png`
+
+3. **Scan-Screen** — `src/scenes/scan.py`
+   - Produktliste mit Zähler
+   - User-Badge (Rahmenfarbe)
+   - +/- Buttons
+   - Siehe `ui/07_scan_screen_annelie.png`
+
+### Wichtige Dateien
+- `dev/UI_SCREENS.md` — Layout-Dokumentation
+- `dev/ASSETS.md` — Asset-Übersicht
+- `dev/ASSET_CATALOG.md` — Alle Pfade
+
+## Hardware (Bestellt ✅)
+
+| Komponente | Modell |
+|------------|--------|
+| Computer | Raspberry Pi Zero 2 W |
+| Display | Elecrow 7" IPS 1024x600 Touch |
+| Stromversorgung | Anker 20K 87W |
+
+**Display:** 1024×600 px
 
 ## Noch zu kaufen
 
@@ -56,18 +100,7 @@
 - USB-Barcode-Scanner (~15-30€)
 - USB-Nummernpad (~10€)
 
-## Architecture Focus
-
-Working on: **Data Layer** (YAML → SQLite Pipeline)
-
-See `dev/ARCHITECTURE.md` for component diagram.
-
 ## Blockers
 
 - ⏳ Hardware noch nicht da
-
-## Notes
-
-- Verkabelung dokumentiert in `dev/setup-ideas.md`
-- Admin-System: WiFi-Hotspot + FastAPI Web-UI
-- Stromverbrauch: ~700mA gesamt → ~20h Akkulaufzeit
+- ⏳ 4 Menu-Tiles fehlen noch (werden nachgeliefert)
