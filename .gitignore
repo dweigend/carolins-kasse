@@ -29,9 +29,3 @@ design-vorlagen/
 dev/
 ui/
 tools/
-
-# Generated assets (from master/ via /img pipeline)
-assets/nobg/
-assets/S/
-assets/M/
-assets/L/
