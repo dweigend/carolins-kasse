@@ -128,16 +128,20 @@ transactions
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Entry Point | ✅ Stub | `main.py` |
-| Scene Manager | 🔲 | `src/scenes/` |
+| Entry Point | ✅ | `main.py` |
+| Scene Manager | ✅ | `src/scenes/manager.py` |
+| Scene Base | ✅ | `src/scenes/base.py` |
 | Input Manager | 🔲 | `src/utils/input.py` |
-| Database | 🔲 | `src/utils/database.py` |
+| Database | ✅ | `src/utils/database.py` |
 | UI Components | 🔲 | `src/components/` |
 | Scenes | 🔲 | `src/scenes/*.py` |
+| **Assets** | | |
+| Master Assets | ✅ | `assets/master/` (155 Dateien) |
+| Scaled Assets | 🔲 | `assets/S/`, `assets/M/`, `assets/L/` (via `/img`) |
+| Asset Loader | 🔲 | `src/utils/assets.py` |
 | **Data & Tools** | | |
-| YAML Definitions | 🔲 | `data/*.yaml` |
+| DB Seed Script | ✅ | `tools/seed_database.py` |
 | Barcode Generator | 🔲 | `tools/generate_barcodes.py` |
-| DB Seed Script | 🔲 | `tools/seed_database.py` |
 | **Admin System** | | |
 | Admin Scene | 🔲 | `src/scenes/admin.py` |
 | WiFi Hotspot | 🔲 | `src/utils/wifi.py` |
@@ -169,7 +173,28 @@ transactions
 - **Scenes** handle their own input, update, render
 - **Components** are reusable UI pieces (buttons, lists)
 - **Utils** are stateless helpers
-- **Assets** loaded once at startup, cached globally
+- **Assets** vorskaliert in S/M/L, geladen beim Startup, gecached in dict
+
+### Asset Pipeline (Dreischritt)
+
+```
+assets/master/        →  assets/nobg/         →  assets/S/, M/, L/
+(Original, NIEMALS      (Hintergrund           (skaliert: 30/60/120px)
+ verändern!)             entfernt)
+```
+
+**Schritt 1:** Hintergrund entfernen
+**Schritt 2:** Skalieren in drei Größen
+
+**Ausnahmen:**
+- `buttons/` — bereits transparent, direkt skalieren
+- `frames/` — bereits transparent, NICHT skalieren (UI-Rahmen, volle Größe)
+
+**Loader-Aufrufe:**
+```python
+assets.get("products/milk", "M")  →  assets/M/products/milk.png
+assets.get("frames/red")          →  assets/nobg/frames/red.png  # keine Größe
+```
 
 ---
 
@@ -288,7 +313,11 @@ data/
 └── kasse.db               # SQLite (generiert aus YAML)
 
 assets/
-└── products/              # Produkt-Bilder (Upload via Web-UI)
+├── master/                # Original-Assets (NIEMALS verändern!)
+├── nobg/                  # Hintergrund entfernt (via /img)
+├── S/                     # Skaliert 30×30 (via /img)
+├── M/                     # Skaliert 60×60 (via /img)
+└── L/                     # Skaliert 120×120 (via /img)
 
 src/
 ├── admin/                 # Admin-Server

@@ -61,17 +61,36 @@
 Pygame-UI basierend auf Mockups implementieren.
 
 ### Reihenfolge
-1. **Asset Loader** — `src/utils/assets.py`
-   - Master-Dateien laden
-   - Auf S/M/L skalieren
-   - Caching
+1. **Asset-Pipeline** — via `/img` Skill (Dreischritt)
 
-2. **Hauptmenü** — `src/scenes/menu.py`
+   ```
+   assets/master/     →  assets/nobg/      →  assets/S/, M/, L/
+   (Original)            (ohne Hintergrund)   (skaliert)
+   ```
+
+   **Schritt 1:** Hintergrund entfernen → `assets/nobg/`
+   **Schritt 2:** Skalieren → `assets/S/` (30px), `assets/M/` (60px), `assets/L/` (120px)
+
+   **Wichtig:**
+   - `assets/master/` bleibt IMMER unverändert (Source of Truth)
+   - Ermöglicht Neubearbeitung bei Bedarf
+
+   **Ausnahmen (bereits ohne Hintergrund):**
+   - `buttons/` — direkt skalieren
+   - `frames/` — NICHT skalieren (UI-Rahmen, volle Größe)
+
+2. **Asset Loader** — `src/utils/assets.py`
+   - Lädt vorskalierte Bilder (kein Runtime-Scaling)
+   - Simples Caching (dict)
+   - `assets.get("products/milk", "M")` → `assets/M/products/milk.png`
+   - `assets.get("frames/red")` → `assets/nobg/frames/red.png` (keine Größe)
+
+3. **Hauptmenü** — `src/scenes/menu.py`
    - 4 Tiles (Einkauf, Rezept, Rechenspiel, Kassiererin)
    - Touch-Navigation
    - Siehe `ui/05_main_menu.png`
 
-3. **Scan-Screen** — `src/scenes/scan.py`
+4. **Scan-Screen** — `src/scenes/scan.py`
    - Produktliste mit Zähler
    - User-Badge (Rahmenfarbe)
    - +/- Buttons

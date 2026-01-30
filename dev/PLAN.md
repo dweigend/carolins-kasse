@@ -4,8 +4,8 @@
 
 | # | Phase | Status | Goal |
 |---|-------|--------|------|
-| 1 | Foundation | 🔲 | App runs, handles input, basic UI |
-| 1.5 | Data Setup | 🔲 | YAML structure, barcode tools, DB seed |
+| 1 | Foundation | ✅ | App runs, handles input, basic UI |
+| 1.5 | Data Setup | ✅ | Assets organisiert, DB seed |
 | 2 | Core Shopping | 🔲 | Scan → Cart → Checkout flow |
 | 3 | User System | 🔲 | Login, balance, persistence |
 | 4 | Game Modes | 🔲 | Recipe mode, math games |
@@ -14,38 +14,35 @@
 
 ---
 
-## Phase 1: Foundation
+## Phase 1: Foundation ✅
 
 **Goal:** App runs, handles all input types, shows basic UI
 
-- [ ] Pygame window (800x480)
-- [ ] Scene manager
+- [x] Pygame window (1024x600)
+- [x] Scene manager
 - [ ] Input abstraction (barcode, numpad, touch)
 - [ ] Basic UI components
-- [ ] Asset loading
+- [ ] Asset loading (vorskaliert via `/img`, dann simpler Loader)
 
 **Exit:** App starts, scenes switch, all inputs work
 
 ---
 
-## Phase 1.5: Data & Barcode Setup
+## Phase 1.5: Data & Asset Setup ✅
 
-**Goal:** Data infrastructure for products and users
+**Goal:** Data infrastructure and assets prepared
 
-- [ ] YAML-Struktur definieren (`data/products.yaml`, `data/users.yaml`)
+- [x] 155 Master-Assets organisiert (`assets/master/`)
+- [x] DB-Seed Skript (`tools/seed_database.py`)
+- [x] Test-Daten erstellt (26 Produkte, 4 User, 5 Rezepte)
+- [ ] Asset-Pipeline via `/img` Skill (Dreischritt)
+  - `assets/master/` bleibt IMMER unverändert (Source of Truth)
+  - Schritt 1: Hintergrund entfernen → `assets/nobg/`
+  - Schritt 2: Skalieren → `assets/S/` (30px), `assets/M/` (60px), `assets/L/` (120px)
+  - Ausnahmen: `buttons/` bereits transparent, `frames/` nicht skalieren
 - [ ] Barcode-Generator Tool (`tools/generate_barcodes.py`)
-  - python-barcode Library
-  - EAN-13 für Produkte
-  - Custom-Format für Karten
-- [ ] DB-Seed Skript (`tools/seed_database.py`)
-  - YAML → SQLite Import
-  - Idempotent (kann mehrfach ausgeführt werden)
-- [ ] Test-Daten erstellen
-  - 10-15 Produkte
-  - 2-3 User (Carolin, Annelie, Gast)
-  - 1 Admin-Karte
 
-**Exit:** `uv run python tools/seed_database.py` erstellt funktionierende DB
+**Exit:** `uv run python tools/seed_database.py` erstellt funktionierende DB ✅
 
 ---
 
