@@ -1,11 +1,37 @@
-# Python-generated files
+# Python
 __pycache__/
 *.py[oc]
+*.egg-info
 build/
-design-vorlagen/
 dist/
 wheels/
-*.egg-info
 
 # Virtual environments
 .venv
+
+# Linting/Formatting
+.ruff_cache/
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Project-specific
+design-vorlagen/
+dev/
+ui/
+tools/
+
+# Generated assets (from master/ via /img pipeline)
+assets/nobg/
+assets/S/
+assets/M/
+assets/L/
