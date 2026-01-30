@@ -2,6 +2,9 @@
 
 A DIY self-checkout register for kids — because every child deserves their own barcode scanner.
 
+> [!NOTE]
+> 🚧 **Under Active Development** — This project is being built for Carolin's 4th birthday. Core features are still in progress. Star the repo to follow along!
+
 ---
 
 ## 📖 About
