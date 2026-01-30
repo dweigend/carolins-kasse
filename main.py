@@ -3,8 +3,15 @@
 import pygame
 
 from src.constants import FPS, SCREEN_HEIGHT, SCREEN_WIDTH
-from src.scenes import SceneManager
-from src.scenes.test_scene import TestScene
+from src.scenes import (
+    CashierScene,
+    MathGameScene,
+    MenuScene,
+    PickerScene,
+    RecipeScene,
+    ScanScene,
+    SceneManager,
+)
 
 
 def main() -> None:
@@ -17,9 +24,14 @@ def main() -> None:
 
     # Setup scenes
     scenes = {
-        "test": TestScene(),
+        "menu": MenuScene(),
+        "scan": ScanScene(),
+        "recipe": RecipeScene(),
+        "math_game": MathGameScene(),
+        "cashier": CashierScene(),
+        "picker": PickerScene(),
     }
-    manager = SceneManager(scenes, initial="test")
+    manager = SceneManager(scenes, initial="menu")
 
     # Main loop
     running = True
