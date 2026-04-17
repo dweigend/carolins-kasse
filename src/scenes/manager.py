@@ -19,6 +19,16 @@ class SceneManager:
         self.current_name = initial
         self.current_scene = scenes[initial]
 
+    def switch_to(self, scene_name: str) -> None:
+        """Switch to a scene directly (used by main.py for shell actions).
+
+        Args:
+            scene_name: Name of the scene to switch to.
+        """
+        if scene_name in self.scenes:
+            self.current_name = scene_name
+            self.current_scene = self.scenes[scene_name]
+
     def handle_event(self, event: pygame.event.Event) -> None:
         """Pass event to current scene and handle transitions.
 

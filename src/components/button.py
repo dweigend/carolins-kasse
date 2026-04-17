@@ -1,11 +1,13 @@
 """Clickable button component."""
 
-from typing import Callable
+from collections.abc import Callable
 
 import pygame
 
+from src.components.mixins import ClickableMixin
 
-class Button:
+
+class Button(ClickableMixin):
     """A clickable button with image or color fill.
 
     Attributes:
@@ -49,20 +51,7 @@ class Button:
         Returns:
             True if button was clicked, False otherwise
         """
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.rect.collidepoint(event.pos):
-                self._pressed = True
-                return False
-
-        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            if self._pressed and self.rect.collidepoint(event.pos):
-                self._pressed = False
-                if self.on_click:
-                    self.on_click()
-                return True
-            self._pressed = False
-
-        return False
+        return self._handle_click(event, self.rect, self.on_click)
 
     def render(self, surface: pygame.Surface) -> None:
         """Draw the button.

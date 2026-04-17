@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Rezepte{% endblock %}
+
+{% block content %}
+<h1>🍳 Rezepte</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Zutaten</th>
+            <th class="barcode-cell">Barcode</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for recipe in recipes %}
+        <tr>
+            <td><strong>{{ recipe.name }}</strong></td>
+            <td class="ingredients">
+                {% for ing in recipe.ingredients %}
+                {{ ing.quantity }}× {{ ing.name }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </td>
+            <td class="barcode-cell">
+                <img
+                    src="{{ recipe.barcode_path }}"
+                    alt="{{ recipe.barcode }}"
+                    class="barcode-img"
+                    onclick="showBarcode('{{ recipe.barcode_path }}')"
+                    title="Klicken zum Vergrößern"
+                >
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

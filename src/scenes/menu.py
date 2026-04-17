@@ -1,117 +1,94 @@
-"""Main menu scene with 4 game mode tiles."""
+"""Main menu scene with 3 illustrated game mode tiles."""
+
+from pathlib import Path
 
 import pygame
 
 from src.components.button import Button
-from src.constants import LIGHT_PINK, SCREEN_HEIGHT, SCREEN_WIDTH, WHITE
+from src.constants import SCREEN_HEIGHT, SCREEN_WIDTH, TEXT_PRIMARY
 from src.scenes.base import Scene
-from src.utils import assets
+from src.utils import state
+from src.utils.fonts import caption
 
-# Layout constants
-TILE_SIZE = 180
-TILE_GAP = 40
-TITLE_HEIGHT = 100
+_ASSETS_DIR = Path(__file__).parent.parent.parent / "assets"
 
-# Calculate grid position (centered)
-GRID_WIDTH = 2 * TILE_SIZE + TILE_GAP
-GRID_HEIGHT = 2 * TILE_SIZE + TILE_GAP
-START_X = (SCREEN_WIDTH - GRID_WIDTH) // 2
-START_Y = TITLE_HEIGHT + (SCREEN_HEIGHT - TITLE_HEIGHT - GRID_HEIGHT) // 2
+# 3 tiles in a horizontal row: Rezept | Einkauf | Rechnen
+_TILE_DEFS: list[tuple[str, str, str]] = [
+    ("680er/kochbuch.png", "recipe", "Rezept"),
+    ("680er/einkaufskorb.png", "scan", "Einkaufen"),
+    ("680er/taschenrechner.png", "math_game", "Rechnen"),
+]
+
+# Layout
+TILE_SIZE = 200
+TILE_GAP = 60
+LABEL_OFFSET_Y = 8
 
 
 class MenuScene(Scene):
-    """Main menu with 4 clickable tiles for game modes."""
+    """Main menu with 3 clickable illustrated tiles in a row."""
 
     def __init__(self) -> None:
         """Initialize menu scene."""
-        self._next_scene: str | None = None
         self._buttons: list[Button] = []
-        self._font: pygame.font.Font | None = None
-        self._initialized = False
+        self._labels: list[tuple[str, int, int]] = []
 
     def _init_ui(self) -> None:
-        """Initialize UI elements (called after pygame.init)."""
+        """Load tile images and create buttons."""
         if self._initialized:
             return
 
-        # Load tile images
-        tiles = [
-            ("menue/einkauf", "scan", START_X, START_Y),
-            ("menue/rezept", "recipe", START_X + TILE_SIZE + TILE_GAP, START_Y),
-            (
-                "menue/rechenspiel",
-                "math_game",
-                START_X,
-                START_Y + TILE_SIZE + TILE_GAP,
-            ),
-            (
-                "menue/kasse",
-                "cashier",
-                START_X + TILE_SIZE + TILE_GAP,
-                START_Y + TILE_SIZE + TILE_GAP,
-            ),
-        ]
+        # Center 3 tiles horizontally, vertically in content area
+        total_w = len(_TILE_DEFS) * TILE_SIZE + (len(_TILE_DEFS) - 1) * TILE_GAP
+        start_x = (SCREEN_WIDTH - total_w) // 2
+        tile_y = (SCREEN_HEIGHT - TILE_SIZE) // 2 - 20
 
-        for asset_name, target_scene, x, y in tiles:
-            image = assets.get(asset_name)
+        for i, (asset_file, target_scene, label_text) in enumerate(_TILE_DEFS):
+            x = start_x + i * (TILE_SIZE + TILE_GAP)
+            image = self._load_tile(asset_file)
             button = Button(
                 x,
-                y,
+                tile_y,
                 TILE_SIZE,
                 TILE_SIZE,
                 image=image,
                 on_click=lambda s=target_scene: self._go_to(s),
             )
             self._buttons.append(button)
+            self._labels.append(
+                (label_text, x + TILE_SIZE // 2, tile_y + TILE_SIZE + LABEL_OFFSET_Y)
+            )
 
-        # Load font for title
-        self._font = pygame.font.Font(None, 48)
         self._initialized = True
 
-    def _go_to(self, scene: str) -> None:
-        """Set next scene to navigate to."""
-        self._next_scene = scene
+    def _load_tile(self, asset_file: str) -> pygame.Surface:
+        """Load and scale a 680er tile image."""
+        path = _ASSETS_DIR / asset_file
+        img = pygame.image.load(str(path)).convert_alpha()
+        return pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
 
     def handle_event(self, event: pygame.event.Event) -> str | None:
-        """Handle input events.
-
-        Args:
-            event: pygame event
-
-        Returns:
-            Scene name to switch to, or None
-        """
+        """Handle tile clicks."""
         self._init_ui()
 
         for button in self._buttons:
             button.handle_event(event)
 
-        # Return and reset next scene
-        result = self._next_scene
-        self._next_scene = None
-        return result
+        return self._consume_next_scene()
 
     def update(self) -> None:
-        """Update scene state."""
-        pass
+        """Check global time bonus."""
+        state.check_time_bonus()
 
     def render(self, screen: pygame.Surface) -> None:
-        """Draw the menu.
-
-        Args:
-            screen: Surface to draw on
-        """
+        """Draw menu tiles with labels. No background fill (shell handles it)."""
         self._init_ui()
 
-        # Background
-        screen.fill(LIGHT_PINK)
-
-        # Title
-        if self._font:
-            title = self._font.render("Was möchtest du spielen?", True, WHITE)
-            title_rect = title.get_rect(centerx=SCREEN_WIDTH // 2, y=30)
-            screen.blit(title, title_rect)
-
-        # Tiles
         for button in self._buttons:
             button.render(screen)
+
+        label_font = caption()
+        for text, cx, y in self._labels:
+            surface = label_font.render(text, True, TEXT_PRIMARY)
+            rect = surface.get_rect(centerx=cx, y=y)
+            screen.blit(surface, rect)

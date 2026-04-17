@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Benutzer{% endblock %}
+
+{% block content %}
+<h1>👤 Benutzer</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Guthaben</th>
+            <th>Schwierigkeit</th>
+            <th>Rolle</th>
+            <th class="barcode-cell">Karten-Barcode</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td>
+                {% if user.color %}
+                <span class="color-dot" style="background: {{ user.color }}"></span>
+                {% endif %}
+                <strong>{{ user.name }}</strong>
+            </td>
+            <td class="price">{{ user.balance|int }} Taler</td>
+            <td>
+                {% for i in range(user.difficulty) %}⭐{% endfor %}
+            </td>
+            <td>
+                {% if user.is_admin %}
+                <span class="badge badge-admin">Admin</span>
+                {% endif %}
+            </td>
+            <td class="barcode-cell">
+                <img
+                    src="{{ user.barcode_path }}"
+                    alt="{{ user.card_id }}"
+                    class="barcode-img"
+                    onclick="showBarcode('{{ user.barcode_path }}')"
+                    title="Klicken zum Vergrößern"
+                >
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

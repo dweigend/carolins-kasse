@@ -1,73 +1,72 @@
-"""Asset loader with caching for pygame surfaces."""
+"""Asset loader with caching and runtime scaling for pygame surfaces."""
 
 from pathlib import Path
 
 import pygame
 
-# Cache for loaded surfaces
+# Cache for loaded + scaled surfaces
 _cache: dict[str, pygame.Surface] = {}
 
 # Base path for assets
 _ASSETS_DIR = Path(__file__).parent.parent.parent / "assets"
 
-# Categories that don't use size variants (loaded from nobg/)
-_NO_SIZE_CATEGORIES = {"frames", "menue"}
+# Category → source directory mapping
+_CATEGORY_DIR: dict[str, str] = {
+    "products": "340er",
+    "recipes": "680er",
+}
+
+# Size label → target pixels
+_SIZE_PX: dict[str, int] = {"S": 30, "M": 60, "L": 120}
 
 
 def get(name: str, size: str = "M") -> pygame.Surface:
-    """Load asset by name and optional size.
+    """Load asset by category/name and scale to requested size.
 
     Args:
-        name: Asset path without extension (e.g., "products/milk", "menue/einkauf")
-        size: Size variant - "S" (30px), "M" (60px), "L" (120px). Ignored for frames/menue.
+        name: Asset path as "category/filename" (e.g., "products/milk", "recipes/recipe_pancakes")
+        size: Size variant - "S" (30px), "M" (60px), "L" (120px)
 
     Returns:
-        Loaded pygame.Surface
+        Scaled pygame.Surface
 
     Raises:
         FileNotFoundError: If asset doesn't exist
 
     Examples:
-        get("products/milk", "M")  → assets/M/products/milk.png
-        get("frames/frame_red")    → assets/nobg/frames/frame_red.png
-        get("menue/einkauf")       → assets/nobg/menue/einkauf.png
+        get("products/milk", "M")           → assets/340er/milk.png → scaled to 60×60
+        get("recipes/recipe_pancakes", "L")  → assets/680er/recipe_pancakes.png → scaled to 120×120
     """
-    # Determine category from path
-    category = name.split("/")[0] if "/" in name else ""
+    target_px = _SIZE_PX.get(size, 60)
+    cache_key = f"{name}@{target_px}"
 
-    # Build cache key
-    if category in _NO_SIZE_CATEGORIES:
-        cache_key = f"nobg/{name}"
-    else:
-        cache_key = f"{size}/{name}"
-
-    # Return cached surface if available
     if cache_key in _cache:
         return _cache[cache_key]
 
-    # Build file path
-    if category in _NO_SIZE_CATEGORIES:
-        file_path = _ASSETS_DIR / "nobg" / f"{name}.png"
-    else:
-        file_path = _ASSETS_DIR / size / f"{name}.png"
+    # Parse category and filename
+    category, _, filename = name.partition("/")
+    if not filename:
+        raise FileNotFoundError(f"Invalid asset name (need category/filename): {name}")
 
-    # Load and cache
+    source_dir = _CATEGORY_DIR.get(category)
+    if not source_dir:
+        raise FileNotFoundError(f"Unknown asset category: {category}")
+
+    file_path = _ASSETS_DIR / source_dir / f"{filename}.png"
+
     if not file_path.exists():
         raise FileNotFoundError(f"Asset not found: {file_path}")
 
-    surface = pygame.image.load(str(file_path)).convert_alpha()
-    _cache[cache_key] = surface
+    # Load original and scale to target size
+    original = pygame.image.load(str(file_path)).convert_alpha()
+    scaled = pygame.transform.smoothscale(original, (target_px, target_px))
+    _cache[cache_key] = scaled
 
-    return surface
+    return scaled
 
 
 def preload(names: list[str], size: str = "M") -> None:
-    """Preload multiple assets into cache.
-
-    Args:
-        names: List of asset paths
-        size: Size variant for assets that support it
-    """
+    """Preload multiple assets into cache."""
     for name in names:
         get(name, size)
 

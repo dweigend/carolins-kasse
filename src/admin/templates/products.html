@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Produkte{% endblock %}
+
+{% block content %}
+<h1>📦 Produkte</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Preis</th>
+            <th>Kategorie</th>
+            <th class="barcode-cell">Barcode</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for product in products %}
+        <tr>
+            <td>
+                <strong>{{ product.name_de }}</strong>
+                <br>
+                <small style="color: #86868b">{{ product.name }}</small>
+            </td>
+            <td class="price">{{ product.price|int }} Taler</td>
+            <td><span class="category">{{ product.category }}</span></td>
+            <td class="barcode-cell">
+                {% if product.barcode_path %}
+                <img
+                    src="{{ product.barcode_path }}"
+                    alt="{{ product.barcode }}"
+                    class="barcode-img"
+                    onclick="showBarcode('{{ product.barcode_path }}')"
+                    title="Klicken zum Vergrößern"
+                >
+                {% else %}
+                <span class="badge badge-touch">Touch-Auswahl</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
