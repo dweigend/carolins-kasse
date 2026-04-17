@@ -12,7 +12,7 @@ wheels/
 # Linting/Formatting
 .ruff_cache/
 
-# Claude Code
+# Legacy assistant tooling
 .claude/
 CLAUDE.md
 
@@ -26,6 +26,10 @@ CLAUDE.md
 
 # Project-specific
 design-vorlagen/
-dev/
-ui/
+dev/*
+!dev/HANDOVER.md
+!dev/PLAN.md
+!dev/WORKFLOW.md
+!dev/STATUS_REPORT.md
+/ui/
 tools/
