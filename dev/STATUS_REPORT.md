@@ -20,7 +20,7 @@ The local worktree also shows a major UI migration already in progress. That mea
 ### Core Game Loop
 
 - `main.py` boots the pygame app and scene manager.
-- `src/scenes/` contains the active scene set: `start`, `login`, `menu`, `scan`, `recipe`, `math_game`, `picker`.
+- `src/scenes/` contains the active scene set used by the app flow: `start`, `login`, `menu`, `scan`, `recipe`, `math_game`, `picker`.
 - `src/utils/state.py` and `src/utils/database.py` cover user state, sessions, earnings, and transactions.
 
 ### Asset and UI Direction
@@ -28,6 +28,8 @@ The local worktree also shows a major UI migration already in progress. That mea
 - `src/ui/shell.py` introduces a shared shell around scenes.
 - `assets/340er/` and `assets/680er/` reflect the newer asset strategy.
 - `src/utils/assets.py` supports runtime scaling and asset lookup for the new structure.
+- The login flow uses the fullscreen `karte_scannen` artwork, while the app boot still begins with a short `startbildschirm` title sequence.
+- `dev/assets/MATH_GAME_LAYOUT_SPEC.md` now documents a single-asset handoff for the math game redesign.
 
 ### Admin Foundation
 
@@ -60,6 +62,15 @@ Missing capabilities include:
 ### Documentation Consistency
 
 Some developer docs still describe older intermediate states. The codebase and the docs should be aligned before the next larger implementation phase.
+
+### Math Game Asset Delivery
+
+The math game redesign now has reward coin assets wired into the scene:
+
+- transparent `+1` and `+2` coin variants live in `assets/ui/rewards/`
+- `MathGameScene` selects one stable reward coin per problem, places it near the equation, and falls back to a drawn badge if assets are missing
+- correct answers trigger a sequenced non-text success animation: stars/confetti first, then a small coin transfer into the footer account area, then the reward is credited before the next problem loads
+- the main layout still uses dynamic rendering inside the shared `FrameShell`; no separate math-game frame was added
 
 ## Recommended Next Steps
 
