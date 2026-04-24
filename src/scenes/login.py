@@ -4,45 +4,36 @@ from pathlib import Path
 
 import pygame
 
-from src.constants import BLUE, GREY_MEDIUM, SCREEN_HEIGHT, SCREEN_WIDTH, TEXT_PRIMARY
+from src.constants import SCREEN_HEIGHT, SCREEN_WIDTH
 from src.scenes.base import Scene
 from src.scenes.mixins import MessageMixin
 from src.utils import state
 from src.utils.database import get_user
-from src.utils.fonts import bold, body, caption
+from src.utils.fonts import body
 
-_ASSETS_DIR = Path(__file__).parent.parent.parent / "assets"
-
-# Both avatars displayed side by side on login screen
-_AVATAR_PATHS = [
-    _ASSETS_DIR / "680er" / "avata_carolin.png",
-    _ASSETS_DIR / "680er" / "avata_annelie.png",
-]
-_AVATAR_DISPLAY_SIZE = 160
-_AVATAR_GAP = 40
+_LOGIN_IMAGE_PATH = (
+    Path(__file__).parent.parent.parent / "assets" / "680er" / "karte_scannen.png"
+)
 
 
 class LoginScene(MessageMixin, Scene):
-    """User scans their badge to log in. No frame overlay (pre-login)."""
+    """User scans their badge to log in from a fullscreen prompt image."""
 
     def __init__(self) -> None:
         """Initialize login scene."""
         from src.utils.input import InputManager
 
         self._input_manager = InputManager()
-        self._avatars: list[pygame.Surface] = []
+        self._login_image: pygame.Surface | None = None
 
     def _init_ui(self) -> None:
-        """Load avatar images and fonts."""
+        """Load and scale the fullscreen login image."""
         if self._initialized:
             return
-        for path in _AVATAR_PATHS:
-            if path.exists():
-                img = pygame.image.load(str(path)).convert_alpha()
-                scaled = pygame.transform.scale(
-                    img, (_AVATAR_DISPLAY_SIZE, _AVATAR_DISPLAY_SIZE)
-                )
-                self._avatars.append(scaled)
+        image = pygame.image.load(str(_LOGIN_IMAGE_PATH)).convert()
+        self._login_image = pygame.transform.smoothscale(
+            image, (SCREEN_WIDTH, SCREEN_HEIGHT)
+        )
         self._initialized = True
 
     def _handle_barcode(self, barcode: str) -> None:
@@ -77,46 +68,16 @@ class LoginScene(MessageMixin, Scene):
         self._update_message_timer()
 
     def render(self, screen: pygame.Surface) -> None:
-        """Draw login screen on paper background (rendered by shell)."""
+        """Draw fullscreen login image and optional feedback message."""
         self._init_ui()
 
-        cx = SCREEN_WIDTH // 2
-        cy = SCREEN_HEIGHT // 2
+        if self._login_image:
+            screen.blit(self._login_image, (0, 0))
 
-        # Avatars side by side (centered)
-        if self._avatars:
-            total_w = (
-                len(self._avatars) * _AVATAR_DISPLAY_SIZE
-                + (len(self._avatars) - 1) * _AVATAR_GAP
-            )
-            start_x = cx - total_w // 2
-            avatar_y = cy - _AVATAR_DISPLAY_SIZE - 20
-            for i, avatar in enumerate(self._avatars):
-                x = start_x + i * (_AVATAR_DISPLAY_SIZE + _AVATAR_GAP)
-                screen.blit(avatar, (x, avatar_y))
-
-        # Title
-        title_font = bold()
-        title_surface = title_font.render("Willkommen!", True, BLUE)
-        title_rect = title_surface.get_rect(centerx=cx, y=cy + 10)
-        screen.blit(title_surface, title_rect)
-
-        # Subtitle
-        subtitle_font = body()
-        subtitle_surface = subtitle_font.render(
-            "Bitte scanne deine Karte!", True, TEXT_PRIMARY
+        self._render_message(
+            screen,
+            body(),
+            SCREEN_WIDTH // 2,
+            SCREEN_HEIGHT - 72,
+            center_x=True,
         )
-        subtitle_rect = subtitle_surface.get_rect(centerx=cx, y=cy + 65)
-        screen.blit(subtitle_surface, subtitle_rect)
-
-        # Hint
-        hint_font = caption()
-        hint_surface = hint_font.render(
-            "Halte deine Karte vor den Scanner", True, GREY_MEDIUM
-        )
-        hint_rect = hint_surface.get_rect(centerx=cx, y=cy + 110)
-        screen.blit(hint_surface, hint_rect)
-
-        # Feedback message
-        msg_font = body()
-        self._render_message(screen, msg_font, cx, cy + 160, center_x=True)

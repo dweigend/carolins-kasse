@@ -43,6 +43,10 @@ class SceneManager:
     def update(self) -> None:
         """Update the current scene."""
         self.current_scene.update()
+        next_scene = self.current_scene._consume_next_scene()
+        if next_scene and next_scene in self.scenes:
+            self.current_name = next_scene
+            self.current_scene = self.scenes[next_scene]
 
     def render(self, screen: pygame.Surface) -> None:
         """Render the current scene.

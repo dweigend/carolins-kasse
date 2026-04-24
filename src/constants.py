@@ -91,7 +91,8 @@ FRAME_TITLE_COLOR: dict[str, tuple[int, int, int]] = {
 }
 
 # ─── SHELL: Layout Constants ────────────────────────────────
-SHELL_TITLE_POS = (420, 5)  # Title text position in top notch
+SHELL_TITLE_CENTER_X = SCREEN_WIDTH // 2  # Horizontal center of top notch title
+SHELL_TITLE_TOP = 5  # Title top offset inside top notch
 SHELL_CLOSE_POS = (960, 20)  # Close button (X) position
 SHELL_AVATAR_SIZE = 50  # Small avatar in header
 SHELL_AVATAR_POS = (360, 2)  # Avatar position (left of title)

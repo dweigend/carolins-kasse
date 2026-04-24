@@ -14,10 +14,11 @@ _ASSETS_DIR = Path(__file__).parent.parent.parent / "assets"
 _CATEGORY_DIR: dict[str, str] = {
     "products": "340er",
     "recipes": "680er",
+    "ui": "ui",
 }
 
 # Size label → target pixels
-_SIZE_PX: dict[str, int] = {"S": 30, "M": 60, "L": 120}
+_SIZE_PX: dict[str, int] = {"S": 30, "M": 60, "XL": 96, "L": 120}
 
 
 def get(name: str, size: str = "M") -> pygame.Surface:
@@ -25,7 +26,7 @@ def get(name: str, size: str = "M") -> pygame.Surface:
 
     Args:
         name: Asset path as "category/filename" (e.g., "products/milk", "recipes/recipe_pancakes")
-        size: Size variant - "S" (30px), "M" (60px), "L" (120px)
+        size: Size variant - "S" (30px), "M" (60px), "XL" (96px), "L" (120px)
 
     Returns:
         Scaled pygame.Surface
@@ -36,6 +37,7 @@ def get(name: str, size: str = "M") -> pygame.Surface:
     Examples:
         get("products/milk", "M")           → assets/340er/milk.png → scaled to 60×60
         get("recipes/recipe_pancakes", "L")  → assets/680er/recipe_pancakes.png → scaled to 120×120
+        get("ui/rewards/coin_2_a", "XL")     → assets/ui/rewards/coin_2_a.png → scaled to 96×96
     """
     target_px = _SIZE_PX.get(size, 60)
     cache_key = f"{name}@{target_px}"

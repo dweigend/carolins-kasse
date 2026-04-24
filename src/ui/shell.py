@@ -29,7 +29,8 @@ from src.constants import (
     SHELL_PROGRESS_W,
     SHELL_PROGRESS_X,
     SHELL_PROGRESS_Y,
-    SHELL_TITLE_POS,
+    SHELL_TITLE_CENTER_X,
+    SHELL_TITLE_TOP,
 )
 from src.ui.progress_bar import draw_progress_bar
 from src.ui.texture import generate_paper_texture
@@ -82,7 +83,10 @@ class FrameShell:
         # Title in top notch
         title_color = FRAME_TITLE_COLOR.get(frame_key, DANGER)
         title_surface = self._title_font.render(user.name.upper(), True, title_color)
-        screen.blit(title_surface, SHELL_TITLE_POS)
+        title_rect = title_surface.get_rect(
+            midtop=(SHELL_TITLE_CENTER_X, SHELL_TITLE_TOP)
+        )
+        screen.blit(title_surface, title_rect)
 
         # Close button (X) — top right
         close_surface = self._close_font.render("X", True, DANGER)
