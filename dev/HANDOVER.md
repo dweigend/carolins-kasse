@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-25 11:01 CEST
+**Last Updated:** 2026-04-25 13:48 CEST
 
 ## Current State
 
@@ -16,7 +16,7 @@
 |------|--------|-------|
 | Gameplay core | ✅ | Login, Menu, Scan, Recipe, Math, Picker vorhanden |
 | Session economy | ✅ | Balance, Earnings, Transactions, Session tracking vorhanden |
-| UI overhaul | 🟡 | Neue Shell, Math-Assets und asset-basierte Kassen-UI im Worktree; Hardware-Test offen |
+| UI overhaul | 🟡 | Neue Shell sowie asset-basierte Kassen- und Rezept-UI; Hardware-Test offen |
 | Admin area | 🟡 | Listenansichten für Products, Users, Recipes vorhanden, noch keine CRUD-Flows |
 | Codex workflow | ✅ | `AGENTS.md` ist jetzt die führende Assistenz-Doku |
 
@@ -250,6 +250,55 @@
   - `uv run ruff check src/`
   - `uv run python -m compileall src`
 
+### Recipe UI Analysis, Mockups, Assets, and Implementation
+
+- Aktueller Kassenstand vor der Rezeptarbeit als eigener Commit gesichert:
+  - `a5e4b63 feat: redesign cashier UI`
+  - `data/kasse.db` blieb ungestaged.
+- Rezept-Ist-Screenshots erstellt:
+  - `/tmp/carolins_kasse_recipe_verification/recipe_waiting.png`
+  - `/tmp/carolins_kasse_recipe_verification/recipe_loaded_none.png`
+  - `/tmp/carolins_kasse_recipe_verification/recipe_partial.png`
+  - `/tmp/carolins_kasse_recipe_verification/recipe_complete.png`
+  - `/tmp/carolins_kasse_recipe_verification/recipe_checkout_badge.png`
+  - `/tmp/carolins_kasse_recipe_verification/recipe_checkout_success.png`
+- Analyse-Ergebnis: Rezeptbereich war noch text-/checkboxlastig, Rezeptbild zu klein, Fortschritt und Kosten zu abstrakt, und der alte Bezahlbutton saß optisch zu nah am Shell-Footer.
+- Neue Mockup-Referenzen:
+  - `/tmp/carolins_kasse_recipe_mockups/mockup_recipe_idle.png`
+  - `/tmp/carolins_kasse_recipe_mockups/mockup_recipe_active.png`
+- Neue Rezept-Assets in `assets/ui/recipe/`:
+  - `recipe_panel_bg.png`
+  - `ingredient_list_bg.png`
+  - `ingredient_row_pending_bg.png`
+  - `ingredient_row_done_bg.png`
+  - `recipe_scan_hint.png`
+  - `recipe_complete_badge.png`
+  - `recipe_pay_button_bg.png`
+- Umsetzung:
+  - `RecipeScene` bleibt im bestehenden Flow: Rezeptkarte scannen → Zutaten scannen → bezahlen.
+  - Keine neue Rezeptlogik, keine neue Belohnungslogik, keine zweite Shell.
+  - Linkes Panel zeigt großes Rezeptbild, Rezeptname, Fortschritt und Coin+Kosten.
+  - Rechtes Panel zeigt Zutaten als bildgeführte Zeilen mit Produktbild, sekundärem Namen und großem Status-Kreis/Check-Badge.
+  - Pay-Button erscheint erst, wenn alle Zutaten gesammelt sind.
+  - `ChecklistItem` wurde zur visuellen Zutatenzeile erweitert.
+- Finaler Screenshot-Satz:
+  - `/tmp/carolins_kasse_recipe_implementation/recipe_waiting.png`
+  - `/tmp/carolins_kasse_recipe_implementation/recipe_loaded_none.png`
+  - `/tmp/carolins_kasse_recipe_implementation/recipe_partial.png`
+  - `/tmp/carolins_kasse_recipe_implementation/recipe_complete.png`
+  - `/tmp/carolins_kasse_recipe_implementation/recipe_checkout_badge.png`
+  - `/tmp/carolins_kasse_recipe_implementation/recipe_checkout_success.png`
+  - `/tmp/carolins_kasse_recipe_implementation/scan_regression_one_product.png`
+- Verifikation:
+  - `uv run ruff format src/`
+  - `uv run ruff check src/`
+  - `uv run python -m compileall src`
+  - Rezept-Smoke-Test für Rezept-Scan, falsche Zutat, richtige Zutat, doppelte Zutat, vollständiges Rezept, Pay-Button und Checkout-Mode
+  - Kassen-Regressionstest für Cart-Plus-Button
+  - PNG-RGBA-/transparente-Ecken-/Größenprüfung für `assets/ui/recipe/*.png`
+  - Screenshot-Dimensions-/Nonblank-Prüfung
+  - `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /opt/homebrew/bin/timeout 3 uv run python main.py` initialisiert den Entry Point; Exit `124` ist erwarteter Timeout nach 3 Sekunden.
+
 ### Context Verified
 
 - Bestehende App-Struktur, Plan-Dokumente und Admin-Backend geprüft
@@ -259,15 +308,15 @@
 
 ## Current Risks / Open Questions
 
-1. Die neue Kassen-UI wurde lokal per Screenshots und synthetischem Smoke-Test geprüft; ein echter Durchklick-Test auf App/Hardware bleibt offen.
+1. Die neue Kassen- und Rezept-UI wurde lokal per Screenshots und synthetischem Smoke-Test geprüft; ein echter Durchklick-Test auf App/Hardware bleibt offen.
 2. Der Admin-Bereich ist weiterhin nur lesend; Phase 7 braucht noch eine klare Entscheidung zum Scope.
 3. Hardware-Tests auf dem Raspberry Pi fehlen weiterhin für Touch, Scanner und Performance.
 4. Das neue Rechenspiel inklusive Coin-Assets ist im Code verdrahtet, aber noch nicht auf dem Raspberry-Pi-Display mit echter USB-Numpad-Eingabe getestet.
-5. Kassen-UI ist implementiert, aber noch nicht mit echter Scanner-/Touch-Hardware und Kindern validiert. Wichtig: `FrameShell` bleibt weiterhin die einzige Shell-/Footer-Wahrheit.
+5. Kassen- und Rezept-UI sind implementiert, aber noch nicht mit echter Scanner-/Touch-Hardware und Kindern validiert. Wichtig: `FrameShell` bleibt weiterhin die einzige Shell-/Footer-Wahrheit.
 
 ## Recommended Next Session
 
-1. `uv run python main.py` am echten Display starten und Scan, Picker, Plus/Minus, Checkout-Badge, Erfolg und zu-wenig-Geld durchklicken.
+1. `uv run python main.py` am echten Display starten und Scan, Picker, Rezeptkarte, Zutaten-Scan, Plus/Minus, Checkout-Badge, Erfolg und zu-wenig-Geld durchklicken.
 2. Issue #1 mit Kinder-/Touch-Testdaten füllen: was verstehen die Kinder ohne Text, wo tippen sie falsch, welche Buttons sind noch zu klein?
 3. Falls der Hardware-Test passt, Kassen-UI-Änderungen als eigenen Commit bündeln. `data/kasse.db` vorher bewusst entscheiden, nicht versehentlich mitnehmen.
 4. Rechenspiel mit richtiger Eingabe, erster falscher Eingabe, zweiter falscher Eingabe und Session-Ende am Gerät durchtesten.
