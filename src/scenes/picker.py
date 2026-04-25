@@ -12,19 +12,19 @@ from src.constants import (
 from src.scenes.base import Scene
 from src.utils import assets
 from src.utils.database import Product, get_picker_products
-from src.utils.fonts import caption
+from src.utils.fonts import caption, custom
 from src.utils.state import set_selected_product
 
 # Layout (inside shell content area)
 CONTENT_TOP = 80
 TAB_HEIGHT = 50
 TAB_Y = CONTENT_TOP
-GRID_Y = TAB_Y + TAB_HEIGHT + 15
+GRID_Y = TAB_Y + TAB_HEIGHT + 18
 GRID_COLS = 3
 GRID_ROWS = 2
-TILE_WIDTH = 140
-TILE_HEIGHT = 150
-TILE_GAP = 15
+TILE_WIDTH = 170
+TILE_HEIGHT = 168
+TILE_GAP = 24
 
 # Category display names
 CATEGORY_NAMES = {
@@ -32,6 +32,13 @@ CATEGORY_NAMES = {
     "gemuese": "Gemüse",
     "backwaren": "Backwaren",
     "suesses": "Süßes",
+}
+
+CATEGORY_ICONS = {
+    "backwaren": "croissant",
+    "gemuese": "carrot",
+    "obst": "apple",
+    "suesses": "muffin",
 }
 
 
@@ -68,7 +75,7 @@ class PickerScene(Scene):
         if num_tabs == 0:
             return
 
-        tab_width = min(150, (SCREEN_WIDTH - 60) // num_tabs - 10)
+        tab_width = min(170, (SCREEN_WIDTH - 60) // num_tabs - 10)
         total_width = num_tabs * tab_width + (num_tabs - 1) * 10
         start_x = (SCREEN_WIDTH - total_width) // 2
 
@@ -162,15 +169,68 @@ class PickerScene(Scene):
 
     def _render_tabs(self, screen: pygame.Surface) -> None:
         """Render category tabs."""
-        tab_font = caption()
-
         for rect, category in self._tab_rects:
             is_active = category == self._active_category
-            bg_color = PRIMARY if is_active else (220, 220, 225)
-            pygame.draw.rect(screen, bg_color, rect, border_radius=8)
+            bg_color = PRIMARY if is_active else (255, 252, 244)
+            border_color = PRIMARY if is_active else (231, 219, 198)
+            pygame.draw.rect(screen, bg_color, rect, border_radius=14)
+            pygame.draw.rect(screen, border_color, rect, width=2, border_radius=14)
+
+            icon_name = CATEGORY_ICONS.get(category)
+            icon = None
+            if icon_name:
+                try:
+                    icon = assets.get(f"products/{icon_name}", "S")
+                except FileNotFoundError:
+                    icon = None
 
             display_name = CATEGORY_NAMES.get(category, category.capitalize())
             text_color = WHITE if is_active else TEXT_PRIMARY
-            text = tab_font.render(display_name, True, text_color)
-            text_rect = text.get_rect(center=rect.center)
-            screen.blit(text, text_rect)
+            self._render_tab_content(screen, rect, display_name, text_color, icon)
+
+    def _render_tab_content(
+        self,
+        screen: pygame.Surface,
+        rect: pygame.Rect,
+        text: str,
+        text_color: tuple[int, int, int],
+        icon: pygame.Surface | None,
+    ) -> None:
+        """Render tab icon and label as one centered group."""
+        max_text_width = rect.width - 22
+        icon_gap = 8 if icon else 0
+        if icon:
+            max_text_width -= icon.get_width() + icon_gap
+
+        text_surface = self._fit_tab_text(text, text_color, max_text_width)
+        icon_width = icon.get_width() if icon else 0
+        group_width = icon_width + icon_gap + text_surface.get_width()
+        start_x = rect.centerx - group_width // 2
+
+        if icon:
+            icon_y = rect.centery - icon.get_height() // 2
+            screen.blit(icon, (start_x, icon_y))
+            start_x += icon_width + icon_gap
+
+        text_rect = text_surface.get_rect(midleft=(start_x, rect.centery))
+        screen.blit(text_surface, text_rect)
+
+    def _fit_tab_text(
+        self, text: str, color: tuple[int, int, int], max_width: int
+    ) -> pygame.Surface:
+        """Render tab text at the largest size that fits."""
+        for size in (28, 25, 22, 20, 18):
+            text_surface = custom(size).render(text, True, color)
+            if text_surface.get_width() <= max_width:
+                return text_surface
+
+        clipped_text = text
+        font = custom(18)
+        while len(clipped_text) > 4:
+            candidate = f"{clipped_text[:-1]}…"
+            text_surface = font.render(candidate, True, color)
+            if text_surface.get_width() <= max_width:
+                return text_surface
+            clipped_text = clipped_text[:-1]
+
+        return font.render(clipped_text[:4], True, color)

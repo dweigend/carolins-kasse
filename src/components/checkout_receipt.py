@@ -1,39 +1,21 @@
-"""Checkout receipt overlay showing purchase confirmation and new balance.
+"""Checkout receipt overlay showing purchase confirmation.
 
 Shows after successful checkout:
-- Customer name
-- Purchase total
-- New balance with visual bar
+- Customer/payment row
+- Cashier/earning row
 - Auto-hides after timeout
 """
 
 import pygame
 
-from src.components.balance_bar import BalanceBar
 from src.constants import BG_CARD, SCREEN_HEIGHT, SCREEN_WIDTH, SUCCESS, TEXT_PRIMARY
-from src.utils.fonts import heading, body, caption
+from src.utils.assets import get as get_asset
+from src.utils.assets import get_raw as get_raw_asset
+from src.utils.fonts import bold_custom, custom
 
 
 class CheckoutReceipt:
-    """Overlay showing successful checkout with balance update.
-
-    Visual design:
-    ┌─────────────────────────────────────────────┐
-    │                                             │
-    │            ✅ Bezahlt!                      │
-    │                                             │
-    │     ┌─────────────────────────────────┐     │
-    │     │  👤 Annelie                     │     │
-    │     │                                 │     │
-    │     │  Einkauf:        -8 Taler       │     │
-    │     │  ───────────────────────        │     │
-    │     │  Neuer Stand:    32 Taler       │     │
-    │     │                                 │     │
-    │     │  ████████████░░░░░░░░░░░        │     │
-    │     └─────────────────────────────────┘     │
-    │                                             │
-    └─────────────────────────────────────────────┘
-    """
+    """Overlay showing who paid and who earned money."""
 
     DISPLAY_DURATION_MS = 3000  # 3 seconds
 
@@ -47,20 +29,10 @@ class CheckoutReceipt:
         self._cashier_name: str | None = None
         self._cashier_salary: int = 0
 
-        # Card dimensions
-        self._card_width = 400
-        self._card_height = 320
+        self._card_width = 500
+        self._card_height = 328
         self._card_x = (SCREEN_WIDTH - self._card_width) // 2
         self._card_y = (SCREEN_HEIGHT - self._card_height) // 2
-
-        # Balance bar
-        self._balance_bar = BalanceBar(
-            self._card_x + 50,
-            self._card_y + 200,
-            width=300,
-            height=24,
-            show_text=False,
-        )
 
     def show(
         self,
@@ -86,7 +58,6 @@ class CheckoutReceipt:
         self._new_balance = new_balance
         self._cashier_name = cashier_name
         self._cashier_salary = cashier_salary
-        self._balance_bar.set_balance(new_balance)
 
     def hide(self) -> None:
         """Hide the receipt overlay."""
@@ -117,84 +88,144 @@ class CheckoutReceipt:
         overlay.fill((0, 0, 0, 128))
         surface.blit(overlay, (0, 0))
 
-        # White card
         card_rect = pygame.Rect(
             self._card_x, self._card_y, self._card_width, self._card_height
         )
-        pygame.draw.rect(surface, BG_CARD, card_rect, border_radius=16)
+        try:
+            card_bg = get_raw_asset("ui/cashier/checkout_card_bg")
+            surface.blit(card_bg, card_rect.topleft)
+        except FileNotFoundError:
+            pygame.draw.rect(surface, BG_CARD, card_rect, border_radius=22)
+            pygame.draw.rect(surface, SUCCESS, card_rect, width=4, border_radius=22)
 
-        # Header: ✅ Bezahlt!
-        header_font = heading()
-        header_text = header_font.render("Bezahlt!", True, SUCCESS)
-        header_x = self._card_x + (self._card_width - header_text.get_width()) // 2
-        surface.blit(header_text, (header_x, self._card_y + 20))
+        try:
+            success_icon = get_asset("ui/cashier/checkout_success", "XL")
+            success_rect = success_icon.get_rect(
+                center=(SCREEN_WIDTH // 2, self._card_y + 64)
+            )
+            surface.blit(success_icon, success_rect)
+        except FileNotFoundError:
+            pygame.draw.circle(
+                surface, SUCCESS, (SCREEN_WIDTH // 2, self._card_y + 64), 42
+            )
 
-        body_font = body()
-
-        # Customer name
-        name_text = body_font.render(
-            f"Kunde: {self._customer_name}", True, TEXT_PRIMARY
-        )
-        surface.blit(name_text, (self._card_x + 50, self._card_y + 70))
-
-        # Purchase total
-        total_label = body_font.render("Einkauf:", True, TEXT_PRIMARY)
-        total_value = body_font.render(f"-{self._total} Taler", True, (220, 38, 38))
-        surface.blit(total_label, (self._card_x + 50, self._card_y + 110))
-        surface.blit(
-            total_value,
-            (
-                self._card_x + self._card_width - 50 - total_value.get_width(),
-                self._card_y + 110,
-            ),
-        )
-
-        # Divider line
-        pygame.draw.line(
+        self._render_transfer_row(
             surface,
-            (200, 200, 200),
-            (self._card_x + 50, self._card_y + 145),
-            (self._card_x + self._card_width - 50, self._card_y + 145),
-            2,
+            self._card_y + 124,
+            "checkout_payment_row_bg",
+            self._customer_name,
+            f"-{self._total}",
+            (220, 38, 38),
         )
 
-        # New balance
-        balance_label = body_font.render("Neuer Stand:", True, TEXT_PRIMARY)
-        balance_value = body_font.render(
-            f"{self._new_balance} Taler", True, TEXT_PRIMARY
-        )
-        surface.blit(balance_label, (self._card_x + 50, self._card_y + 160))
-        surface.blit(
-            balance_value,
-            (
-                self._card_x + self._card_width - 50 - balance_value.get_width(),
-                self._card_y + 160,
-            ),
-        )
-
-        # Balance bar
-        self._balance_bar.render(surface)
-
-        # Cashier salary info (if applicable)
         if self._cashier_name and self._cashier_salary > 0:
-            small_font = caption()
-            salary_text = small_font.render(
-                f"★ +{self._cashier_salary} Taler für {self._cashier_name}",
-                True,
+            self._render_transfer_row(
+                surface,
+                self._card_y + 202,
+                "checkout_earning_row_bg",
+                self._cashier_name,
+                f"+{self._cashier_salary}",
                 SUCCESS,
             )
-            salary_x = self._card_x + (self._card_width - salary_text.get_width()) // 2
-            surface.blit(salary_text, (salary_x, self._card_y + 240))
 
-        # Auto-hide countdown hint
-        small_font = caption()
-        remaining = max(
-            0,
-            self.DISPLAY_DURATION_MS - (pygame.time.get_ticks() - self._show_time),
+    def _render_transfer_row(
+        self,
+        surface: pygame.Surface,
+        y: int,
+        row_asset_name: str,
+        child_name: str,
+        value: str,
+        color: tuple[int, int, int],
+    ) -> None:
+        """Render one checkout booking row: child icon, name, and signed amount."""
+        row_x = self._card_x + 55
+        row_rect = pygame.Rect(row_x, y, 390, 64)
+
+        try:
+            row_bg = get_raw_asset(f"ui/cashier/{row_asset_name}")
+            surface.blit(row_bg, row_rect.topleft)
+        except FileNotFoundError:
+            pygame.draw.rect(surface, BG_CARD, row_rect, border_radius=16)
+
+        self._render_child_icon(surface, child_name, (row_x + 38, y + 32))
+        self._render_child_name(surface, child_name, row_x + 74, y + 32)
+        self._render_signed_amount(surface, value, color, row_rect.right - 22, y + 32)
+
+    def _render_child_icon(
+        self, surface: pygame.Surface, child_name: str, center: tuple[int, int]
+    ) -> None:
+        """Render the best known avatar for a child name."""
+        avatar_name = self._avatar_asset_name(child_name)
+        try:
+            avatar = get_asset(f"recipes/{avatar_name}", "M")
+            avatar = pygame.transform.smoothscale(avatar, (48, 48))
+            avatar_rect = avatar.get_rect(center=center)
+            surface.blit(avatar, avatar_rect)
+        except FileNotFoundError:
+            pygame.draw.circle(surface, (219, 234, 254), center, 24)
+
+    def _render_child_name(
+        self, surface: pygame.Surface, child_name: str, x: int, center_y: int
+    ) -> None:
+        """Render child name inside the transfer row."""
+        name_text = self._fit_text(child_name, max_width=170, color=TEXT_PRIMARY)
+        name_rect = name_text.get_rect(midleft=(x, center_y))
+        surface.blit(name_text, name_rect)
+
+    def _render_signed_amount(
+        self,
+        surface: pygame.Surface,
+        value: str,
+        color: tuple[int, int, int],
+        right: int,
+        center_y: int,
+    ) -> None:
+        """Render signed amount with coin icon aligned to the right."""
+        coin_size = 34
+        value_font = bold_custom(42)
+        value_text = value_font.render(value, True, color)
+        gap = 8
+        total_width = coin_size + gap + value_text.get_width()
+        start_x = right - total_width
+
+        try:
+            coin = get_asset("products/taler", "M")
+            coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
+            surface.blit(coin, (start_x, center_y - coin_size // 2))
+        except FileNotFoundError:
+            pygame.draw.circle(
+                surface, (245, 158, 11), (start_x + coin_size // 2, center_y), 16
+            )
+
+        value_rect = value_text.get_rect(
+            midleft=(start_x + coin_size + gap, center_y - 2)
         )
-        remaining_sec = remaining // 1000 + 1
-        hint = small_font.render(
-            f"(schließt in {remaining_sec}s)", True, (150, 150, 150)
-        )
-        hint_x = self._card_x + (self._card_width - hint.get_width()) // 2
-        surface.blit(hint, (hint_x, self._card_y + self._card_height - 30))
+        surface.blit(value_text, value_rect)
+
+    def _fit_text(
+        self, text: str, *, max_width: int, color: tuple[int, int, int]
+    ) -> pygame.Surface:
+        """Render text at the largest size that fits."""
+        for size in (32, 29, 26, 23):
+            text_surface = custom(size).render(text, True, color)
+            if text_surface.get_width() <= max_width:
+                return text_surface
+
+        clipped_text = text
+        font = custom(22)
+        while len(clipped_text) > 4:
+            candidate = f"{clipped_text[:-1]}…"
+            text_surface = font.render(candidate, True, color)
+            if text_surface.get_width() <= max_width:
+                return text_surface
+            clipped_text = clipped_text[:-1]
+        return font.render(clipped_text[:4], True, color)
+
+    def _avatar_asset_name(self, child_name: str) -> str:
+        """Map known child names to existing avatar artwork."""
+        normalized_name = child_name.strip().lower()
+        if normalized_name == "carolin":
+            return "avata_carolin"
+        if normalized_name == "annelie":
+            return "avata_annelie"
+        return "avata_kind_klein"

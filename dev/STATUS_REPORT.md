@@ -1,6 +1,6 @@
 # Project Status Report
 
-**Date:** 2026-04-17
+**Date:** 2026-04-25
 
 ## Where The Project Stands
 
@@ -30,6 +30,7 @@ The local worktree also shows a major UI migration already in progress. That mea
 - `src/utils/assets.py` supports runtime scaling and asset lookup for the new structure.
 - The login flow uses the fullscreen `karte_scannen` artwork, while the app boot still begins with a short `startbildschirm` title sequence.
 - `dev/assets/MATH_GAME_LAYOUT_SPEC.md` now documents a single-asset handoff for the math game redesign.
+- The Kassen-UI now has an asset-based scan/cart/checkout implementation in the worktree.
 
 ### Admin Foundation
 
@@ -46,6 +47,7 @@ The biggest missing step is a full visual pass through the app after the UI migr
 - product and recipe image rendering
 - footer and shell behavior
 - touch and barcode interaction in the new layouts
+- scan/cart readability for children who cannot read yet
 
 ### Admin Area
 
@@ -72,12 +74,25 @@ The math game redesign now has reward coin assets wired into the scene:
 - correct answers trigger a sequenced non-text success animation: stars/confetti first, then a small coin transfer into the footer account area, then the reward is credited before the next problem loads
 - the main layout still uses dynamic rendering inside the shared `FrameShell`; no separate math-game frame was added
 
+### Cashier UI Asset Prep
+
+The cashier UI has a screenshot-based baseline, a preferred visual direction, and a first implementation:
+
+- reference screenshots live in `/tmp/carolins_kasse_cashier_verification/`
+- reference-style mockups live in `/tmp/carolins_kasse_cashier_mockups/`
+- implemented screenshots live in `/tmp/carolins_kasse_cashier_implementation/`
+- cashier assets live in `assets/ui/cashier/`
+- implementation stays inside the existing `ScanScene`/component boundaries and keeps `FrameShell` as the only shell, footer, and balance display
+- the first visual-feedback pass fixed footer collisions, overflowing/truncated text behavior, checkout modal spacing, picker tab overlap, and receipt countdown placement
+- the second visual-feedback pass added PNG-based panel, row, button, and checkout backgrounds; the empty cart hides the inactive pay button; the checkout receipt now uses two clear booking rows for payer and earner
+
 ## Recommended Next Steps
 
-1. Run a manual UI smoke test in the pygame app and note any layout or navigation regressions.
-2. Verify the FastAPI admin locally and decide whether Phase 7 should continue there.
-3. Clean up stale planning and architecture docs so the current state is obvious to future sessions.
-4. Split the next implementation cycle into one of these paths:
+1. Run a manual UI smoke test in the pygame app on the real display and note any touch, scanner, or readability regressions.
+2. Validate the new cashier UI on the 1024x600 touch display with scanner and kid-testing feedback.
+3. Verify the FastAPI admin locally and decide whether Phase 7 should continue there.
+4. Clean up stale planning and architecture docs so the current state is obvious to future sessions.
+5. Split the next implementation cycle into one of these paths:
 
 Path A: Finish UI polish and hardware validation first.
 Path B: Expand the FastAPI admin into a true parent-facing management area.

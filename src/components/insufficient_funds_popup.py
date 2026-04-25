@@ -12,12 +12,11 @@ from src.constants import (
     DANGER,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
-    TEXT_MUTED,
-    TEXT_PRIMARY,
     WARNING,
     WHITE,
 )
-from src.utils.fonts import body, caption
+from src.utils.assets import get as get_asset
+from src.utils.fonts import bold_custom, body, caption
 
 
 class InsufficientFundsPopup:
@@ -109,64 +108,83 @@ class InsufficientFundsPopup:
         overlay.fill((0, 0, 0, 180))
         surface.blit(overlay, (0, 0))
 
-        # Dialog card
         card_x = (SCREEN_WIDTH - self.WIDTH) // 2
         card_y = (SCREEN_HEIGHT - self.HEIGHT) // 2 - 20
 
         card_rect = pygame.Rect(card_x, card_y, self.WIDTH, self.HEIGHT)
-        pygame.draw.rect(surface, BG_CARD, card_rect, border_radius=16)
-        pygame.draw.rect(surface, DANGER, card_rect, width=3, border_radius=16)
+        pygame.draw.rect(surface, BG_CARD, card_rect, border_radius=22)
+        pygame.draw.rect(surface, DANGER, card_rect, width=4, border_radius=22)
 
         if self._font and self._small_font:
-            # Title with icon
-            title = self._font.render("❌ Nicht genug Taler!", True, DANGER)
-            title_rect = title.get_rect(centerx=SCREEN_WIDTH // 2, y=card_y + 30)
-            surface.blit(title, title_rect)
+            try:
+                icon = get_asset("ui/cashier/insufficient_funds", "L")
+                icon_rect = icon.get_rect(center=(SCREEN_WIDTH // 2, card_y + 76))
+                surface.blit(icon, icon_rect)
+            except FileNotFoundError:
+                pygame.draw.circle(
+                    surface, DANGER, (SCREEN_WIDTH // 2, card_y + 76), 42
+                )
 
-            # Balance comparison section
             bar_x = (SCREEN_WIDTH - self.BAR_WIDTH) // 2
-            section_y = card_y + 80
+            section_y = card_y + 130
 
-            # "Du brauchst" bar (needed - red)
-            needed_label = self._small_font.render("Du brauchst:", True, TEXT_PRIMARY)
-            surface.blit(needed_label, (bar_x, section_y))
-
-            needed_value = self._font.render(f"{self._needed} Taler", True, DANGER)
-            value_x = bar_x + self.BAR_WIDTH - needed_value.get_width()
-            surface.blit(needed_value, (value_x, section_y - 5))
+            self._render_coin_value(
+                surface, bar_x, section_y - 12, self._needed, DANGER
+            )
 
             bar_y = section_y + 25
             self._render_bar(surface, bar_x, bar_y, self._needed, BALANCE_COLOR_LOW)
 
-            # "Du hast" bar (available - green/yellow)
             available_y = bar_y + 50
-            available_label = self._small_font.render("Du hast:", True, TEXT_PRIMARY)
-            surface.blit(available_label, (bar_x, available_y))
-
-            available_value = self._font.render(
-                f"{self._available} Taler", True, BALANCE_COLOR_HIGH
+            self._render_coin_value(
+                surface, bar_x, available_y - 12, self._available, BALANCE_COLOR_HIGH
             )
-            value_x = bar_x + self.BAR_WIDTH - available_value.get_width()
-            surface.blit(available_value, (value_x, available_y - 5))
 
             bar_y = available_y + 25
             self._render_bar(surface, bar_x, bar_y, self._available, BALANCE_COLOR_HIGH)
 
-            # Missing amount
-            missing = self._needed - self._available
-            missing_y = bar_y + 45
-            missing_text = self._small_font.render(
-                f"Es fehlen: {missing} Taler", True, TEXT_MUTED
-            )
-            missing_rect = missing_text.get_rect(centerx=SCREEN_WIDTH // 2, y=missing_y)
-            surface.blit(missing_text, missing_rect)
-
         # Close button
         if self._close_button and self._font:
             pygame.draw.rect(surface, WARNING, self._close_button.rect, border_radius=8)
-            btn_text = self._font.render("VERSTANDEN", True, WHITE)
-            btn_rect = btn_text.get_rect(center=self._close_button.rect.center)
-            surface.blit(btn_text, btn_rect)
+            self._draw_check(surface, self._close_button.rect.center)
+
+    def _draw_check(self, surface: pygame.Surface, center: tuple[int, int]) -> None:
+        """Draw a check mark without depending on font glyph support."""
+        pygame.draw.line(
+            surface,
+            WHITE,
+            (center[0] - 18, center[1]),
+            (center[0] - 6, center[1] + 13),
+            8,
+        )
+        pygame.draw.line(
+            surface,
+            WHITE,
+            (center[0] - 6, center[1] + 13),
+            (center[0] + 22, center[1] - 16),
+            8,
+        )
+
+    def _render_coin_value(
+        self,
+        surface: pygame.Surface,
+        x: int,
+        y: int,
+        value: int,
+        color: tuple[int, int, int],
+    ) -> None:
+        """Render a compact coin plus number value."""
+        coin_size = 34
+        try:
+            coin = get_asset("products/taler", "M")
+            coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
+            surface.blit(coin, (x, y))
+        except FileNotFoundError:
+            pygame.draw.circle(surface, WARNING, (x + 17, y + 17), 16)
+
+        font = bold_custom(32)
+        value_text = font.render(str(value), True, color)
+        surface.blit(value_text, (x + coin_size + 8, y - 2))
 
     def _render_bar(
         self, surface: pygame.Surface, x: int, y: int, value: int, color: tuple

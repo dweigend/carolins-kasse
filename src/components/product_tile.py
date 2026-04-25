@@ -71,18 +71,18 @@ class ProductTile(ClickableMixin):
         """
         # Background with hover/press effect
         bg_color = BG_CARD
-        border_color = PRIMARY if (self._hovered or self._pressed) else (220, 220, 220)
+        border_color = PRIMARY if (self._hovered or self._pressed) else (231, 219, 198)
         border_width = 3 if self._pressed else 2
 
-        pygame.draw.rect(surface, bg_color, self.rect, border_radius=12)
+        pygame.draw.rect(surface, bg_color, self.rect, border_radius=16)
         pygame.draw.rect(
-            surface, border_color, self.rect, width=border_width, border_radius=12
+            surface, border_color, self.rect, width=border_width, border_radius=16
         )
 
         # Product image (centered in upper portion)
         if self.image:
             img_x = self.rect.x + (self.rect.width - self.image.get_width()) // 2
-            img_y = self.rect.y + 15
+            img_y = self.rect.y + 12
             surface.blit(self.image, (img_x, img_y))
 
         # Product name (centered at bottom)

@@ -11,12 +11,13 @@ from src.constants import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
     SUCCESS,
-    TEXT_MUTED,
     TEXT_PRIMARY,
 )
+from src.utils.assets import get as get_asset
+from src.utils.assets import get_raw as get_raw_asset
 from src.utils.database import get_user, process_checkout
 from src.utils.earnings import award_cashier_salary
-from src.utils.fonts import body, caption
+from src.utils.fonts import bold_custom, body, caption
 
 
 class CheckoutMixin:
@@ -95,7 +96,7 @@ class CheckoutMixin:
             return False
 
         self._checkout_mode = True
-        self._show_message("💳 Kunde: Bitte Badge scannen!")
+        self._show_message("Karte scannen")
         return True
 
     def _exit_checkout_mode(self) -> None:
@@ -146,7 +147,7 @@ class CheckoutMixin:
         process_checkout(customer.card_id, new_balance, total, items_data)
 
         # Pay cashier salary
-        salary, cashier_name = award_cashier_salary(customer.name)
+        salary, cashier_name = award_cashier_salary(customer.name, customer.card_id)
 
         # Show receipt (with cashier salary info)
         if self._checkout_receipt:
@@ -207,42 +208,54 @@ class CheckoutMixin:
         overlay.fill((0, 0, 0, 150))
         screen.blit(overlay, (0, 0))
 
-        # Dialog card
-        card_width = 450
-        card_height = 250
+        card_width = 420
+        card_height = 264
         card_x = (SCREEN_WIDTH - card_width) // 2
-        card_y = (SCREEN_HEIGHT - card_height) // 2 - 30
+        card_y = (SCREEN_HEIGHT - card_height) // 2 - 4
 
         card_rect = pygame.Rect(card_x, card_y, card_width, card_height)
-        pygame.draw.rect(screen, BG_CARD, card_rect, border_radius=16)
-        pygame.draw.rect(screen, SUCCESS, card_rect, width=3, border_radius=16)
+        try:
+            card_bg = get_raw_asset("ui/cashier/checkout_wait_card_bg")
+            screen.blit(card_bg, card_rect.topleft)
+        except FileNotFoundError:
+            pygame.draw.rect(screen, BG_CARD, card_rect, border_radius=22)
+            pygame.draw.rect(screen, SUCCESS, card_rect, width=4, border_radius=22)
 
-        if self._checkout_font:
-            # Title
-            title = self._checkout_font.render("BEZAHLEN", True, SUCCESS)
-            title_rect = title.get_rect(centerx=SCREEN_WIDTH // 2, y=card_y + 30)
-            screen.blit(title, title_rect)
-
-            # Total
-            total = self._get_checkout_total()
-            total_str = f"Gesamt: {total} Taler"
-            total_text = self._checkout_font.render(total_str, True, TEXT_PRIMARY)
-            total_rect = total_text.get_rect(centerx=SCREEN_WIDTH // 2, y=card_y + 80)
-            screen.blit(total_text, total_rect)
-
-            # Icon
-            icon_font = pygame.font.Font(None, 72)
-            icon = icon_font.render("💳", True, SUCCESS)
-            icon_rect = icon.get_rect(centerx=SCREEN_WIDTH // 2, y=card_y + 130)
+        try:
+            badge_hint = get_asset("ui/cashier/badge_scan_hint", "L")
+            hint_rect = badge_hint.get_rect(center=(SCREEN_WIDTH // 2, card_y + 92))
+            screen.blit(badge_hint, hint_rect)
+        except FileNotFoundError:
+            icon_font = pygame.font.Font(None, 96)
+            icon = icon_font.render("▣", True, SUCCESS)
+            icon_rect = icon.get_rect(center=(SCREEN_WIDTH // 2, card_y + 92))
             screen.blit(icon, icon_rect)
 
-        if self._checkout_small_font:
-            # Instruction
-            hint = self._checkout_small_font.render(
-                "Kunde: Bitte Badge vor Scanner halten!", True, TEXT_MUTED
+        self._render_checkout_total(screen, card_y + 190)
+
+    def _render_checkout_total(self, screen: pygame.Surface, center_y: int) -> None:
+        """Render checkout total as coin plus number."""
+        total = self._get_checkout_total()
+        coin_size = 58
+        total_font = bold_custom(58)
+        total_text = total_font.render(str(total), True, TEXT_PRIMARY)
+        gap = 12
+        total_width = coin_size + gap + total_text.get_width()
+        start_x = SCREEN_WIDTH // 2 - total_width // 2
+
+        try:
+            coin = get_asset("products/taler", "M")
+            coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
+            screen.blit(coin, (start_x, center_y - coin_size // 2))
+        except FileNotFoundError:
+            pygame.draw.circle(
+                screen,
+                (245, 158, 11),
+                (start_x + coin_size // 2, center_y),
+                coin_size // 2,
             )
-            hint_rect = hint.get_rect(centerx=SCREEN_WIDTH // 2, y=card_y + 190)
-            screen.blit(hint, hint_rect)
+
+        screen.blit(total_text, (start_x + coin_size + gap, center_y - 34))
 
     def _render_checkout_overlays(self, screen: pygame.Surface) -> None:
         """Render all checkout-related overlays."""

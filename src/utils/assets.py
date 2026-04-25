@@ -18,7 +18,16 @@ _CATEGORY_DIR: dict[str, str] = {
 }
 
 # Size label → target pixels
-_SIZE_PX: dict[str, int] = {"S": 30, "M": 60, "XL": 96, "L": 120}
+_SIZE_PX: dict[str, int] = {
+    "S": 30,
+    "CART": 54,
+    "M": 60,
+    "BUTTON": 72,
+    "XL": 96,
+    "L": 120,
+    "HERO": 180,
+    "PANEL": 220,
+}
 
 
 def get(name: str, size: str = "M") -> pygame.Surface:
@@ -45,7 +54,30 @@ def get(name: str, size: str = "M") -> pygame.Surface:
     if cache_key in _cache:
         return _cache[cache_key]
 
-    # Parse category and filename
+    file_path = _resolve_asset_path(name)
+
+    # Load original and scale to target size
+    original = pygame.image.load(str(file_path)).convert_alpha()
+    scaled = pygame.transform.smoothscale(original, (target_px, target_px))
+    _cache[cache_key] = scaled
+
+    return scaled
+
+
+def get_raw(name: str) -> pygame.Surface:
+    """Load asset by category/name without resizing."""
+    cache_key = f"{name}@raw"
+    if cache_key in _cache:
+        return _cache[cache_key]
+
+    file_path = _resolve_asset_path(name)
+    original = pygame.image.load(str(file_path)).convert_alpha()
+    _cache[cache_key] = original
+    return original
+
+
+def _resolve_asset_path(name: str) -> Path:
+    """Resolve an asset name to an existing PNG path."""
     category, _, filename = name.partition("/")
     if not filename:
         raise FileNotFoundError(f"Invalid asset name (need category/filename): {name}")
@@ -55,16 +87,9 @@ def get(name: str, size: str = "M") -> pygame.Surface:
         raise FileNotFoundError(f"Unknown asset category: {category}")
 
     file_path = _ASSETS_DIR / source_dir / f"{filename}.png"
-
     if not file_path.exists():
         raise FileNotFoundError(f"Asset not found: {file_path}")
-
-    # Load original and scale to target size
-    original = pygame.image.load(str(file_path)).convert_alpha()
-    scaled = pygame.transform.smoothscale(original, (target_px, target_px))
-    _cache[cache_key] = scaled
-
-    return scaled
+    return file_path
 
 
 def preload(names: list[str], size: str = "M") -> None:

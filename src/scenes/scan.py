@@ -6,7 +6,6 @@ from src.components.button import Button
 from src.components.product_display import ProductDisplay
 from src.components.scrollable_cart import ScrollableCart
 from src.constants import (
-    GREY_MEDIUM,
     SCREEN_HEIGHT,
     SUCCESS,
     WHITE,
@@ -16,20 +15,23 @@ from src.scenes.checkout_mixin import CheckoutMixin
 from src.scenes.mixins import MessageMixin
 from src.utils import state
 from src.utils.cart import Cart
+from src.utils.assets import get as get_asset
+from src.utils.assets import get_raw as get_raw_asset
 from src.utils.database import get_product
-from src.utils.fonts import body, caption
+from src.utils.fonts import body
 from src.utils.input import InputManager, InputType
 from src.utils.state import get_and_clear_selected_product
 
 # Layout constants (inside shell content area)
-CONTENT_TOP = 80
-CONTENT_BOTTOM = 540
-LEFT_PANEL_WIDTH = 350
-RIGHT_PANEL_X = LEFT_PANEL_WIDTH + 40
+CONTENT_TOP = 82
+CONTENT_BOTTOM = 520
+LEFT_PANEL_WIDTH = 360
+RIGHT_PANEL_X = LEFT_PANEL_WIDTH + 18
 CONTENT_RIGHT = 994
-
-# Colors
-PAY_BUTTON_DISABLED = (150, 150, 150)
+PAY_BUTTON_WIDTH = 210
+PAY_BUTTON_HEIGHT = 68
+PAY_BUTTON_RIGHT_PADDING = 26
+PAY_BUTTON_BOTTOM_PADDING = 16
 
 
 class ScanScene(CheckoutMixin, MessageMixin, Scene):
@@ -51,14 +53,11 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
         self._init_checkout_ui()
 
         # Pay button
-        pay_btn_width = 200
-        pay_btn_height = 50
-        panel_center_x = RIGHT_PANEL_X + (CONTENT_RIGHT - RIGHT_PANEL_X) // 2
         self._pay_button = Button(
-            panel_center_x - pay_btn_width // 2,
-            CONTENT_BOTTOM - pay_btn_height - 10,
-            pay_btn_width,
-            pay_btn_height,
+            CONTENT_RIGHT - PAY_BUTTON_WIDTH - PAY_BUTTON_RIGHT_PADDING,
+            CONTENT_BOTTOM - PAY_BUTTON_HEIGHT - PAY_BUTTON_BOTTOM_PADDING,
+            PAY_BUTTON_WIDTH,
+            PAY_BUTTON_HEIGHT,
             color=SUCCESS,
             on_click=self._handle_pay,
         )
@@ -66,16 +65,16 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
         # Product display (left side)
         self._product_display = ProductDisplay(
             (LEFT_PANEL_WIDTH - ProductDisplay.WIDTH) // 2,
-            CONTENT_TOP + 20,
+            CONTENT_TOP,
         )
 
         # Scrollable cart (right side)
         cart_width = CONTENT_RIGHT - RIGHT_PANEL_X
-        cart_height = CONTENT_BOTTOM - CONTENT_TOP - 20
+        cart_height = CONTENT_BOTTOM - CONTENT_TOP
         self._scrollable_cart = ScrollableCart(
-            RIGHT_PANEL_X - 10,
+            RIGHT_PANEL_X,
             CONTENT_TOP,
-            cart_width + 10,
+            cart_width,
             cart_height,
             self._cart,
             self._change_qty,
@@ -125,7 +124,6 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
                 self._product_display.set_product(product)
             if self._scrollable_cart:
                 self._scrollable_cart.rebuild_rows()
-            self._show_message(f"✓ {product.name_de} hinzugefügt")
         else:
             if barcode.startswith("200"):
                 self._show_message("Das ist eine Benutzerkarte!")
@@ -190,7 +188,6 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
                 self._product_display.set_product(selected)
             if self._scrollable_cart:
                 self._scrollable_cart.rebuild_rows()
-            self._show_message(f"✓ {selected.name_de} hinzugefügt")
 
         self._update_message_timer()
 
@@ -201,19 +198,6 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
         # Left panel: Product display
         if self._product_display:
             self._product_display.render(screen)
-
-        # Hint text under product display
-        if self._product_display:
-            hint_y = self._product_display.rect.bottom + 20
-            hint = (
-                "Produkt gescannt!"
-                if self._product_display.product
-                else "Halte ein Produkt vor den Scanner"
-            )
-            hint_font = caption()
-            hint_text = hint_font.render(hint, True, GREY_MEDIUM)
-            hint_x = (LEFT_PANEL_WIDTH - hint_text.get_width()) // 2
-            screen.blit(hint_text, (hint_x, hint_y))
 
         # Right panel: Scrollable cart
         if self._scrollable_cart:
@@ -235,11 +219,50 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
         """Render the pay button."""
         if not self._pay_button:
             return
+        if self._cart.is_empty:
+            return
 
-        color = PAY_BUTTON_DISABLED if self._cart.is_empty else SUCCESS
-        pygame.draw.rect(screen, color, self._pay_button.rect, border_radius=8)
+        try:
+            button_bg = get_raw_asset("ui/cashier/pay_button_enabled_bg")
+            screen.blit(button_bg, self._pay_button.rect.topleft)
+        except FileNotFoundError:
+            pygame.draw.rect(screen, SUCCESS, self._pay_button.rect, border_radius=18)
 
-        font = body()
-        pay_text = font.render("BEZAHLEN", True, WHITE)
-        pay_rect = pay_text.get_rect(center=self._pay_button.rect.center)
-        screen.blit(pay_text, pay_rect)
+        icon_center_x = self._pay_button.rect.x + 70
+        try:
+            register = get_asset("recipes/kasse", "M")
+            register_rect = register.get_rect(
+                center=(icon_center_x, self._pay_button.rect.centery)
+            )
+            screen.blit(register, register_rect)
+        except FileNotFoundError:
+            fallback_rect = pygame.Rect(0, 0, 54, 38)
+            fallback_rect.center = (icon_center_x, self._pay_button.rect.centery)
+            pygame.draw.rect(screen, WHITE, fallback_rect, width=4, border_radius=8)
+
+        self._draw_pay_arrow(
+            screen,
+            self._pay_button.rect.right - 54,
+            self._pay_button.rect.centery,
+        )
+
+    def _draw_pay_arrow(
+        self, screen: pygame.Surface, center_x: int, center_y: int
+    ) -> None:
+        """Draw the checkout arrow without relying on font glyph support."""
+        pygame.draw.line(
+            screen,
+            WHITE,
+            (center_x - 24, center_y),
+            (center_x + 18, center_y),
+            9,
+        )
+        pygame.draw.polygon(
+            screen,
+            WHITE,
+            [
+                (center_x + 26, center_y),
+                (center_x + 6, center_y - 18),
+                (center_x + 6, center_y + 18),
+            ],
+        )
