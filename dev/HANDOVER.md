@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-25 13:48 CEST
+**Last Updated:** 2026-04-25 18:24 CEST
 
 ## Current State
 
@@ -299,6 +299,30 @@
   - Screenshot-Dimensions-/Nonblank-Prüfung
   - `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /opt/homebrew/bin/timeout 3 uv run python main.py` initialisiert den Entry Point; Exit `124` ist erwarteter Timeout nach 3 Sekunden.
 
+### Recipe UI Visual Feedback Polish
+
+- Visuelles Feedback aus den 18:00-Screenshots umgesetzt:
+  - Startzustand nutzt jetzt eine größere eigene Rezeptkarten-Scan-Grafik auf Basis der bestehenden `kochbuch_gelb`-, Barcode- und Scanner-Assets.
+  - Rezept- und Zutatencontainer wurden symmetrischer im Shell-Innenraum ausgerichtet; Außenabstände sind nun ruhiger und näher an der Kassen-UI.
+  - Die Kostenanzeige im linken Rezeptpanel ist jetzt ein eigener Coin-Badge statt losem Coin+Zahl-Block.
+  - `recipe_complete_badge.png` wurde ohne gelbe Artefakte neu erstellt.
+  - Doppelte Pay-Button-Renderlogik aus `ScanScene` und `RecipeScene` wurde in `src/components/icon_pay_button.py` zusammengeführt.
+- Aktualisierte Screenshot-Prüfung:
+  - `/tmp/carolins_kasse_recipe_feedback/recipe_waiting.png`
+  - `/tmp/carolins_kasse_recipe_feedback/recipe_loaded_none.png`
+  - `/tmp/carolins_kasse_recipe_feedback/recipe_partial.png`
+  - `/tmp/carolins_kasse_recipe_feedback/recipe_complete.png`
+  - `/tmp/carolins_kasse_recipe_feedback/recipe_checkout_badge.png`
+  - `/tmp/carolins_kasse_recipe_feedback/scan_regression_one_product.png`
+- Verifikation:
+  - `uv run ruff format src/`
+  - `uv run ruff check src/`
+  - `uv run python -m compileall src`
+  - Rezept-Smoke-Test für falsche Zutat, richtige Zutat, doppelte Zutat, vollständiges Rezept und Pay-Button-Platzierung
+  - Kassen-Regressionstest für den extrahierten gemeinsamen Pay-Button
+  - PNG-RGBA-/transparente-Ecken-/sichtbares-Motiv-Prüfung für die erneuerten Rezept-Assets
+- Follow-up-Issue für Hardware-/Kinder-Test erstellt: https://github.com/dweigend/carolins-kasse/issues/2
+
 ### Context Verified
 
 - Bestehende App-Struktur, Plan-Dokumente und Admin-Backend geprüft
@@ -312,13 +336,13 @@
 2. Der Admin-Bereich ist weiterhin nur lesend; Phase 7 braucht noch eine klare Entscheidung zum Scope.
 3. Hardware-Tests auf dem Raspberry Pi fehlen weiterhin für Touch, Scanner und Performance.
 4. Das neue Rechenspiel inklusive Coin-Assets ist im Code verdrahtet, aber noch nicht auf dem Raspberry-Pi-Display mit echter USB-Numpad-Eingabe getestet.
-5. Kassen- und Rezept-UI sind implementiert, aber noch nicht mit echter Scanner-/Touch-Hardware und Kindern validiert. Wichtig: `FrameShell` bleibt weiterhin die einzige Shell-/Footer-Wahrheit.
+5. Kassen- und Rezept-UI sind implementiert und visuell nachpoliert, aber noch nicht mit echter Scanner-/Touch-Hardware und Kindern validiert. Wichtig: `FrameShell` bleibt weiterhin die einzige Shell-/Footer-Wahrheit.
 
 ## Recommended Next Session
 
 1. `uv run python main.py` am echten Display starten und Scan, Picker, Rezeptkarte, Zutaten-Scan, Plus/Minus, Checkout-Badge, Erfolg und zu-wenig-Geld durchklicken.
-2. Issue #1 mit Kinder-/Touch-Testdaten füllen: was verstehen die Kinder ohne Text, wo tippen sie falsch, welche Buttons sind noch zu klein?
-3. Falls der Hardware-Test passt, Kassen-UI-Änderungen als eigenen Commit bündeln. `data/kasse.db` vorher bewusst entscheiden, nicht versehentlich mitnehmen.
+2. Issues #1 und #2 mit Kinder-/Touch-Testdaten füllen: was verstehen die Kinder ohne Text, wo tippen sie falsch, welche Buttons sind noch zu klein?
+3. `data/kasse.db` weiterhin bewusst behandeln und nicht versehentlich mit UI-Änderungen committen.
 4. Rechenspiel mit richtiger Eingabe, erster falscher Eingabe, zweiter falscher Eingabe und Session-Ende am Gerät durchtesten.
 5. `uv run uvicorn src.admin.server:app --reload --port 8080` prüfen und entscheiden, ob Phase 7 bei FastAPI bleibt.
 

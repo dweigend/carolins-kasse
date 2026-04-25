@@ -3,20 +3,15 @@
 import pygame
 
 from src.components.button import Button
+from src.components.icon_pay_button import render_icon_pay_button
 from src.components.product_display import ProductDisplay
 from src.components.scrollable_cart import ScrollableCart
-from src.constants import (
-    SCREEN_HEIGHT,
-    SUCCESS,
-    WHITE,
-)
+from src.constants import SCREEN_HEIGHT, SUCCESS
 from src.scenes.base import Scene
 from src.scenes.checkout_mixin import CheckoutMixin
 from src.scenes.mixins import MessageMixin
 from src.utils import state
 from src.utils.cart import Cart
-from src.utils.assets import get as get_asset
-from src.utils.assets import get_raw as get_raw_asset
 from src.utils.database import get_product
 from src.utils.fonts import body
 from src.utils.input import InputManager, InputType
@@ -222,47 +217,9 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
         if self._cart.is_empty:
             return
 
-        try:
-            button_bg = get_raw_asset("ui/cashier/pay_button_enabled_bg")
-            screen.blit(button_bg, self._pay_button.rect.topleft)
-        except FileNotFoundError:
-            pygame.draw.rect(screen, SUCCESS, self._pay_button.rect, border_radius=18)
-
-        icon_center_x = self._pay_button.rect.x + 70
-        try:
-            register = get_asset("recipes/kasse", "M")
-            register_rect = register.get_rect(
-                center=(icon_center_x, self._pay_button.rect.centery)
-            )
-            screen.blit(register, register_rect)
-        except FileNotFoundError:
-            fallback_rect = pygame.Rect(0, 0, 54, 38)
-            fallback_rect.center = (icon_center_x, self._pay_button.rect.centery)
-            pygame.draw.rect(screen, WHITE, fallback_rect, width=4, border_radius=8)
-
-        self._draw_pay_arrow(
+        render_icon_pay_button(
             screen,
-            self._pay_button.rect.right - 54,
-            self._pay_button.rect.centery,
-        )
-
-    def _draw_pay_arrow(
-        self, screen: pygame.Surface, center_x: int, center_y: int
-    ) -> None:
-        """Draw the checkout arrow without relying on font glyph support."""
-        pygame.draw.line(
-            screen,
-            WHITE,
-            (center_x - 24, center_y),
-            (center_x + 18, center_y),
-            9,
-        )
-        pygame.draw.polygon(
-            screen,
-            WHITE,
-            [
-                (center_x + 26, center_y),
-                (center_x + 6, center_y - 18),
-                (center_x + 6, center_y + 18),
-            ],
+            self._pay_button.rect,
+            background_asset="ui/cashier/pay_button_enabled_bg",
+            fallback_color=SUCCESS,
         )

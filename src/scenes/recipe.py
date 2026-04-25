@@ -1,16 +1,18 @@
 """Recipe mode scene - scan recipe card, collect ingredients, and checkout."""
 
+from dataclasses import dataclass
+
 import pygame
 
 from src.components.button import Button
 from src.components.checklist_item import ChecklistItem
+from src.components.icon_pay_button import render_icon_pay_button
 from src.constants import (
     BG_CARD,
     SCREEN_WIDTH,
     SUCCESS,
     TEXT_MUTED,
     TEXT_PRIMARY,
-    WHITE,
 )
 from src.scenes.base import Scene
 from src.scenes.checkout_mixin import CheckoutMixin
@@ -27,29 +29,67 @@ from src.utils.fonts import body, bold_custom, custom
 from src.utils.input import InputManager, InputType
 from src.utils.text_utils import render_multiline, wrap_text
 
-# Layout constants (inside shell content area)
-CONTENT_TOP = 82
-CONTENT_BOTTOM = 520
-CONTENT_RIGHT = 994
-LEFT_PANEL_WIDTH = 360
-RIGHT_PANEL_X = LEFT_PANEL_WIDTH + 18
 
-PANEL_LEFT_X = (LEFT_PANEL_WIDTH - 330) // 2
-PANEL_WIDTH = 330
-PANEL_HEIGHT = 420
+@dataclass(frozen=True)
+class RecipeLayout:
+    """Fixed recipe content geometry inside the shared shell."""
 
-LIST_WIDTH = CONTENT_RIGHT - RIGHT_PANEL_X
-LIST_HEIGHT = CONTENT_BOTTOM - CONTENT_TOP
-LIST_SIDE_PADDING = 18
-CHECKLIST_X = RIGHT_PANEL_X + LIST_SIDE_PADDING
-CHECKLIST_Y = CONTENT_TOP + 40
-CHECKLIST_WIDTH = LIST_WIDTH - LIST_SIDE_PADDING * 2
-CHECKLIST_GAP = 8
+    top: int = 84
+    bottom: int = 520
+    left: int = 28
+    right: int = 996
+    panel_width: int = 330
+    panel_height: int = 420
+    panel_gap: int = 26
+    list_padding_x: int = 20
+    checklist_top_padding: int = 40
+    checklist_gap: int = 8
+    pay_button_width: int = 210
+    pay_button_height: int = 68
+    pay_button_right_padding: int = 26
+    pay_button_bottom_padding: int = 16
 
-PAY_BUTTON_WIDTH = 210
-PAY_BUTTON_HEIGHT = 68
-PAY_BUTTON_RIGHT_PADDING = 26
-PAY_BUTTON_BOTTOM_PADDING = 16
+    @property
+    def panel_rect(self) -> pygame.Rect:
+        """Return the left recipe summary panel."""
+        return pygame.Rect(self.left, self.top, self.panel_width, self.panel_height)
+
+    @property
+    def list_rect(self) -> pygame.Rect:
+        """Return the right ingredient panel."""
+        list_x = self.left + self.panel_width + self.panel_gap
+        return pygame.Rect(
+            list_x, self.top, self.right - list_x, self.bottom - self.top
+        )
+
+    @property
+    def checklist_x(self) -> int:
+        """Return the ingredient row x-position."""
+        return self.list_rect.x + self.list_padding_x
+
+    @property
+    def checklist_y(self) -> int:
+        """Return the first ingredient row y-position."""
+        return self.top + self.checklist_top_padding
+
+    @property
+    def checklist_width(self) -> int:
+        """Return the ingredient row width."""
+        return self.list_rect.width - self.list_padding_x * 2
+
+    @property
+    def pay_button_rect(self) -> pygame.Rect:
+        """Return the checkout button rect."""
+        return pygame.Rect(
+            self.right - self.pay_button_width - self.pay_button_right_padding,
+            self.bottom - self.pay_button_height - self.pay_button_bottom_padding,
+            self.pay_button_width,
+            self.pay_button_height,
+        )
+
+
+LAYOUT = RecipeLayout()
+SCAN_HINT_SIZE = (420, 320)
 
 
 class RecipeScene(CheckoutMixin, MessageMixin, Scene):
@@ -74,10 +114,10 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         self._init_checkout_ui()
 
         self._pay_button = Button(
-            CONTENT_RIGHT - PAY_BUTTON_WIDTH - PAY_BUTTON_RIGHT_PADDING,
-            CONTENT_BOTTOM - PAY_BUTTON_HEIGHT - PAY_BUTTON_BOTTOM_PADDING,
-            PAY_BUTTON_WIDTH,
-            PAY_BUTTON_HEIGHT,
+            LAYOUT.pay_button_rect.x,
+            LAYOUT.pay_button_rect.y,
+            LAYOUT.pay_button_rect.width,
+            LAYOUT.pay_button_rect.height,
             color=SUCCESS,
             on_click=self._handle_pay,
         )
@@ -139,12 +179,14 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         """Rebuild checklist items from current ingredients."""
         self._checklist_items.clear()
         for index, (product, quantity) in enumerate(self._ingredients):
-            y = CHECKLIST_Y + index * (ChecklistItem.HEIGHT + CHECKLIST_GAP)
+            y = LAYOUT.checklist_y + index * (
+                ChecklistItem.HEIGHT + LAYOUT.checklist_gap
+            )
             checked = product.barcode in self._checked_barcodes
             item = ChecklistItem(
-                CHECKLIST_X,
+                LAYOUT.checklist_x,
                 y,
-                CHECKLIST_WIDTH,
+                LAYOUT.checklist_width,
                 name=product.name_de,
                 quantity=quantity,
                 image_path=product.image_path,
@@ -242,7 +284,7 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
             screen,
             msg_font,
             SCREEN_WIDTH // 2,
-            CONTENT_BOTTOM - 10,
+            LAYOUT.bottom - 10,
             TEXT_PRIMARY,
             center_x=True,
         )
@@ -250,8 +292,10 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
     def _render_waiting_state(self, screen: pygame.Surface) -> None:
         """Render the waiting for recipe state."""
         try:
-            scan_hint = assets.get("ui/recipe/recipe_scan_hint", "PANEL")
-            hint_rect = scan_hint.get_rect(center=(SCREEN_WIDTH // 2, 284))
+            scan_hint = assets.get_raw("ui/recipe/recipe_scan_hint")
+            if scan_hint.get_size() != SCAN_HINT_SIZE:
+                scan_hint = pygame.transform.smoothscale(scan_hint, SCAN_HINT_SIZE)
+            hint_rect = scan_hint.get_rect(center=(SCREEN_WIDTH // 2, 292))
             screen.blit(scan_hint, hint_rect)
         except FileNotFoundError:
             font = body()
@@ -264,7 +308,7 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         if not self._recipe:
             return
 
-        panel_rect = pygame.Rect(PANEL_LEFT_X, CONTENT_TOP, PANEL_WIDTH, PANEL_HEIGHT)
+        panel_rect = LAYOUT.panel_rect
         self._render_recipe_panel_bg(screen, panel_rect)
 
         if self._recipe_image:
@@ -295,24 +339,22 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         )
 
         if self._ingredients:
-            progress_y = name_y + name_height + 16
             checked = len(self._checked_barcodes)
             total = len(self._ingredients)
-            color = SUCCESS if self._complete else TEXT_MUTED
-            progress_text = bold_custom(30).render(f"{checked} / {total}", True, color)
-            progress_x = (
-                panel_rect.x + (panel_rect.width - progress_text.get_width()) // 2
+            progress_center_y = max(name_y + name_height + 30, panel_rect.y + 332)
+            self._render_progress_value(
+                screen, panel_rect.centerx, progress_center_y, checked, total
             )
-            screen.blit(progress_text, (progress_x, progress_y))
-
-            total_cost = self._get_checkout_total()
-            self._render_coin_value(
-                screen, panel_rect.centerx, progress_y + 46, total_cost
+            self._render_cost_badge(
+                screen,
+                panel_rect.centerx,
+                min(progress_center_y + 54, panel_rect.bottom - 36),
+                self._get_checkout_total(),
             )
 
     def _render_checklist(self, screen: pygame.Surface) -> None:
         """Render the ingredient checklist."""
-        list_rect = pygame.Rect(RIGHT_PANEL_X, CONTENT_TOP, LIST_WIDTH, LIST_HEIGHT)
+        list_rect = LAYOUT.list_rect
         self._render_ingredient_list_bg(screen, list_rect)
 
         for item in self._checklist_items:
@@ -341,12 +383,31 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         except FileNotFoundError:
             pygame.draw.rect(screen, BG_CARD, list_rect, border_radius=18)
 
-    def _render_coin_value(
+    def _render_progress_value(
+        self,
+        screen: pygame.Surface,
+        center_x: int,
+        center_y: int,
+        checked: int,
+        total: int,
+    ) -> None:
+        """Render gathered ingredient progress."""
+        color = SUCCESS if self._complete else TEXT_MUTED
+        progress_text = bold_custom(34).render(f"{checked}/{total}", True, color)
+        progress_rect = progress_text.get_rect(center=(center_x, center_y))
+        screen.blit(progress_text, progress_rect)
+
+    def _render_cost_badge(
         self, screen: pygame.Surface, center_x: int, center_y: int, value: int
     ) -> None:
-        """Render recipe total as coin plus number."""
-        coin_size = 38
-        gap = 8
+        """Render recipe total as a compact coin badge."""
+        badge_rect = pygame.Rect(0, 0, 132, 54)
+        badge_rect.center = (center_x, center_y)
+        pygame.draw.rect(screen, (248, 252, 255), badge_rect, border_radius=22)
+        pygame.draw.rect(screen, (219, 234, 254), badge_rect, 2, border_radius=22)
+
+        coin_size = 34
+        gap = 10
         value_font = bold_custom(34)
         value_text = value_font.render(str(value), True, (33, 99, 210))
         total_width = coin_size + gap + value_text.get_width()
@@ -367,47 +428,9 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         if not self._pay_button:
             return
 
-        try:
-            button_bg = assets.get_raw("ui/recipe/recipe_pay_button_bg")
-            screen.blit(button_bg, self._pay_button.rect.topleft)
-        except FileNotFoundError:
-            pygame.draw.rect(screen, SUCCESS, self._pay_button.rect, border_radius=18)
-
-        icon_center_x = self._pay_button.rect.x + 70
-        try:
-            register = assets.get("recipes/kasse", "M")
-            register_rect = register.get_rect(
-                center=(icon_center_x, self._pay_button.rect.centery)
-            )
-            screen.blit(register, register_rect)
-        except FileNotFoundError:
-            fallback_rect = pygame.Rect(0, 0, 54, 38)
-            fallback_rect.center = (icon_center_x, self._pay_button.rect.centery)
-            pygame.draw.rect(screen, WHITE, fallback_rect, width=4, border_radius=8)
-
-        self._draw_pay_arrow(
+        render_icon_pay_button(
             screen,
-            self._pay_button.rect.right - 54,
-            self._pay_button.rect.centery,
-        )
-
-    def _draw_pay_arrow(
-        self, screen: pygame.Surface, center_x: int, center_y: int
-    ) -> None:
-        """Draw the checkout arrow without relying on font glyph support."""
-        pygame.draw.line(
-            screen,
-            WHITE,
-            (center_x - 24, center_y),
-            (center_x + 18, center_y),
-            9,
-        )
-        pygame.draw.polygon(
-            screen,
-            WHITE,
-            [
-                (center_x + 26, center_y),
-                (center_x + 6, center_y - 18),
-                (center_x + 6, center_y + 18),
-            ],
+            self._pay_button.rect,
+            background_asset="ui/recipe/recipe_pay_button_bg",
+            fallback_color=SUCCESS,
         )
