@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-26 10:41 CEST
+**Last Updated:** 2026-04-26 10:57 CEST
 
 ## Current State
 
@@ -79,6 +79,18 @@
   - Login-Smoke gegen temporäre DB: Admin-Barcode → `admin`, Kinderkarte → `menu`
   - AdminScene-Smoke gegen temporäre DB: Render nicht leer, Guthabenänderung schreibt `balance_adjustments`
   - Remote-Smoke: Server startet, `/users` antwortet mit 200, Stop beendet den verwalteten Prozess
+
+### AdminScene Refactor Pass
+
+- `src/scenes/admin.py` wurde ohne UI-Verhaltensänderung auf kleinere Rendering-Helfer geschnitten.
+- Status-Tab trennt jetzt Panel-Layout, Statuszeilen, Server-Controls und QR-Rendering.
+- User-&-Konten-Tab trennt User-Zeile, Zusammenfassung, Guthabenbuttons und Admin-/Schwierigkeitsbuttons.
+- Das Klick-Register nutzt jetzt eine kleine `AdminButton`-Dataclass statt eines unbenannten Tuples.
+- Verifikation:
+  - `uv run ruff format src/ tools/`
+  - `uv run ruff check src/ tools/`
+  - `uv run python -m compileall src tools`
+  - AdminScene-Smoke gegen temporäre DB: Tabs rendern, Button-Registration vorhanden, `+1`-Klick ändert Guthaben korrekt
 
 ### Project State + Backend Foundation
 

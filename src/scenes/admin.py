@@ -1,6 +1,7 @@
 """On-device admin scene for quick parent tasks at the register."""
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import pygame
 import qrcode
@@ -46,6 +47,19 @@ BUTTON_RADIUS = 10
 QR_SIZE = 170
 USER_ROW_HEIGHT = 56
 USER_ROW_GAP = 10
+PANEL_GAP = 18
+PANEL_INSET = 18
+STATUS_PANEL_WIDTH = 444
+STATUS_VALUE_X = 126
+STATUS_VALUE_MAX_WIDTH = 324
+ACTION_BUTTON_Y_OFFSET = 72
+BALANCE_BUTTON_WIDTH = 58
+BALANCE_BUTTON_HEIGHT = 38
+BALANCE_BUTTON_GAP = 66
+USER_ACTIONS_WIDTH = 520
+TOGGLE_BUTTON_WIDTH = 88
+DIFFICULTY_BUTTON_WIDTH = 58
+ADJUSTMENT_SUMMARY_WIDTH = 370
 
 TABS = (
     ("status", "Status"),
@@ -62,13 +76,21 @@ HELP_LINES = [
 ]
 
 
+@dataclass(frozen=True)
+class AdminButton:
+    """Clickable rectangle registered during one admin render pass."""
+
+    rect: pygame.Rect
+    callback: Callable[[], None]
+
+
 class AdminScene(MessageMixin, Scene):
     """Admin screen shown after scanning the existing Admin card."""
 
     def __init__(self) -> None:
         """Initialize the on-device admin scene."""
         self._active_tab = "status"
-        self._buttons: list[tuple[pygame.Rect, Callable[[], None], str]] = []
+        self._buttons: list[AdminButton] = []
         self._users: list[User] = []
         self._adjustments: list[BalanceAdjustment] = []
         self._status: AdminServerStatus = get_admin_server_status()
@@ -83,9 +105,9 @@ class AdminScene(MessageMixin, Scene):
     def handle_event(self, event: pygame.event.Event) -> str | None:
         """Handle touch events."""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for rect, callback, _label in reversed(self._buttons):
-                if rect.collidepoint(event.pos):
-                    callback()
+            for button in reversed(self._buttons):
+                if button.rect.collidepoint(event.pos):
+                    button.callback()
                     return self._consume_next_scene()
         return self._consume_next_scene()
 
@@ -163,13 +185,20 @@ class AdminScene(MessageMixin, Scene):
             x += tab_w + gap
 
     def _draw_status_tab(self, screen: pygame.Surface) -> None:
-        left = pygame.Rect(CONTENT_RECT.x, PANEL_Y, 444, PANEL_H)
+        left = pygame.Rect(CONTENT_RECT.x, PANEL_Y, STATUS_PANEL_WIDTH, PANEL_H)
         right = pygame.Rect(
-            left.right + 18, PANEL_Y, CONTENT_RECT.right - left.right - 18, PANEL_H
+            left.right + PANEL_GAP,
+            PANEL_Y,
+            CONTENT_RECT.right - left.right - PANEL_GAP,
+            PANEL_H,
         )
         self._draw_panel(screen, left, "Remote Admin")
         self._draw_panel(screen, right, "QR-Code")
+        self._draw_status_rows(screen, left)
+        self._draw_server_controls(screen, left)
+        self._draw_qr_area(screen, right)
 
+    def _draw_status_rows(self, screen: pygame.Surface, panel: pygame.Rect) -> None:
         ip_address = get_local_ip() or "Keine IP"
         url = self._status.url or "Nicht erreichbar"
         status_color = SUCCESS if self._status.running else DANGER
@@ -178,22 +207,28 @@ class AdminScene(MessageMixin, Scene):
             ("Server", self._status.message),
             ("URL", url),
         ]
-        y = left.y + 58
+        y = panel.y + 58
         for label, value in rows:
             self._draw_text(
-                screen, label, left.x + 18, y, self._font_small, TEXT_SECONDARY
+                screen,
+                label,
+                panel.x + PANEL_INSET,
+                y,
+                self._font_small,
+                TEXT_SECONDARY,
             )
             value_color = status_color if label == "Server" else TEXT_PRIMARY
             self._draw_text(
                 screen,
-                truncate_text(value, self._font_small, left.width - 120),
-                left.x + 126,
+                truncate_text(value, self._font_small, STATUS_VALUE_MAX_WIDTH),
+                panel.x + STATUS_VALUE_X,
                 y,
                 self._font_small,
                 value_color,
             )
             y += 38
 
+    def _draw_server_controls(self, screen: pygame.Surface, panel: pygame.Rect) -> None:
         button_text = (
             "Server stoppen"
             if self._status.running and self._status.managed
@@ -206,7 +241,9 @@ class AdminScene(MessageMixin, Scene):
         )
         self._draw_button(
             screen,
-            pygame.Rect(left.x + 18, left.bottom - 72, 190, 48),
+            pygame.Rect(
+                panel.x + PANEL_INSET, panel.bottom - ACTION_BUTTON_Y_OFFSET, 190, 48
+            ),
             button_text,
             button_color,
             WHITE,
@@ -215,20 +252,21 @@ class AdminScene(MessageMixin, Scene):
         )
         self._draw_button(
             screen,
-            pygame.Rect(left.x + 222, left.bottom - 72, 130, 48),
+            pygame.Rect(panel.x + 222, panel.bottom - ACTION_BUTTON_Y_OFFSET, 130, 48),
             "Aktualisieren",
             BLUE,
             WHITE,
             self._refresh_data,
         )
 
+    def _draw_qr_area(self, screen: pygame.Surface, panel: pygame.Rect) -> None:
         if self._qr_surface:
-            screen.blit(self._qr_surface, (right.centerx - QR_SIZE // 2, right.y + 58))
+            screen.blit(self._qr_surface, (panel.centerx - QR_SIZE // 2, panel.y + 58))
             self._draw_text(
                 screen,
                 self._qr_url or "",
-                right.centerx,
-                right.y + 244,
+                panel.centerx,
+                panel.y + 244,
                 self._font_tiny,
                 TEXT_PRIMARY,
                 center=True,
@@ -237,9 +275,9 @@ class AdminScene(MessageMixin, Scene):
             self._draw_wrapped(
                 screen,
                 "Keine Netzwerkadresse gefunden. Pi mit dem Heim-WLAN verbinden.",
-                right.x + 22,
-                right.y + 76,
-                right.width - 44,
+                panel.x + 22,
+                panel.y + 76,
+                panel.width - 44,
                 DANGER,
             )
 
@@ -256,59 +294,84 @@ class AdminScene(MessageMixin, Scene):
                 panel.width - 32,
                 USER_ROW_HEIGHT,
             )
-            pygame.draw.rect(screen, GREY_LIGHT, row, border_radius=10)
-            status = "aktiv" if user.active else "inaktiv"
-            role = "Admin" if user.is_admin else f"Stufe {user.difficulty}"
-            self._draw_text(
-                screen, user.name, row.x + 14, row.y + 6, self._font_body, TEXT_PRIMARY
-            )
-            self._draw_text(
-                screen,
-                f"{int(user.balance)} Taler · {role} · {status}",
-                row.x + 14,
-                row.y + 32,
-                self._font_tiny,
-                TEXT_SECONDARY,
-            )
-            x = row.right - 520
-            for delta in (-1, 1, 5, 10):
-                label = f"{delta:+d}"
-                self._draw_button(
-                    screen,
-                    pygame.Rect(x, row.y + 9, 58, 38),
-                    label,
-                    DANGER if delta < 0 else SUCCESS,
-                    WHITE,
-                    lambda u=user, d=delta: self._adjust_balance(u, d),
-                )
-                x += 66
-
-            self._draw_button(
-                screen,
-                pygame.Rect(row.right - 242, row.y + 9, 88, 38),
-                "Admin" if user.is_admin else "An/Aus",
-                ORANGE,
-                WHITE,
-                lambda u=user: self._toggle_user_active(u),
-                enabled=not user.is_admin,
-            )
-            self._draw_button(
-                screen,
-                pygame.Rect(row.right - 144, row.y + 9, 58, 38),
-                "S-",
-                BLUE,
-                WHITE,
-                lambda u=user: self._change_difficulty(u, -1),
-            )
-            self._draw_button(
-                screen,
-                pygame.Rect(row.right - 78, row.y + 9, 58, 38),
-                "S+",
-                BLUE,
-                WHITE,
-                lambda u=user: self._change_difficulty(u, 1),
-            )
+            self._draw_user_row(screen, row, user)
             y += USER_ROW_HEIGHT + USER_ROW_GAP
+
+    def _draw_user_row(
+        self, screen: pygame.Surface, row: pygame.Rect, user: User
+    ) -> None:
+        pygame.draw.rect(screen, GREY_LIGHT, row, border_radius=10)
+        self._draw_user_summary(screen, row, user)
+        self._draw_balance_buttons(screen, row, user)
+        self._draw_user_admin_buttons(screen, row, user)
+
+    def _draw_user_summary(
+        self, screen: pygame.Surface, row: pygame.Rect, user: User
+    ) -> None:
+        status = "aktiv" if user.active else "inaktiv"
+        role = "Admin" if user.is_admin else f"Stufe {user.difficulty}"
+        self._draw_text(
+            screen, user.name, row.x + 14, row.y + 6, self._font_body, TEXT_PRIMARY
+        )
+        self._draw_text(
+            screen,
+            f"{int(user.balance)} Taler · {role} · {status}",
+            row.x + 14,
+            row.y + 32,
+            self._font_tiny,
+            TEXT_SECONDARY,
+        )
+
+    def _draw_balance_buttons(
+        self, screen: pygame.Surface, row: pygame.Rect, user: User
+    ) -> None:
+        x = row.right - USER_ACTIONS_WIDTH
+        for delta in (-1, 1, 5, 10):
+            self._draw_button(
+                screen,
+                pygame.Rect(x, row.y + 9, BALANCE_BUTTON_WIDTH, BALANCE_BUTTON_HEIGHT),
+                f"{delta:+d}",
+                DANGER if delta < 0 else SUCCESS,
+                WHITE,
+                lambda u=user, d=delta: self._adjust_balance(u, d),
+            )
+            x += BALANCE_BUTTON_GAP
+
+    def _draw_user_admin_buttons(
+        self, screen: pygame.Surface, row: pygame.Rect, user: User
+    ) -> None:
+        button_y = row.y + 9
+        self._draw_button(
+            screen,
+            pygame.Rect(
+                row.right - 242, button_y, TOGGLE_BUTTON_WIDTH, BALANCE_BUTTON_HEIGHT
+            ),
+            "Admin" if user.is_admin else "An/Aus",
+            ORANGE,
+            WHITE,
+            lambda u=user: self._toggle_user_active(u),
+            enabled=not user.is_admin,
+        )
+        self._draw_difficulty_button(screen, row.right - 144, button_y, "S-", user, -1)
+        self._draw_difficulty_button(screen, row.right - 78, button_y, "S+", user, 1)
+
+    def _draw_difficulty_button(
+        self,
+        screen: pygame.Surface,
+        x: int,
+        y: int,
+        label: str,
+        user: User,
+        delta: int,
+    ) -> None:
+        self._draw_button(
+            screen,
+            pygame.Rect(x, y, DIFFICULTY_BUTTON_WIDTH, BALANCE_BUTTON_HEIGHT),
+            label,
+            BLUE,
+            WHITE,
+            lambda u=user, d=delta: self._change_difficulty(u, d),
+        )
 
     def _draw_latest_adjustment_summary(
         self, screen: pygame.Surface, panel: pygame.Rect
@@ -322,8 +385,8 @@ class AdminScene(MessageMixin, Scene):
 
         self._draw_text(
             screen,
-            truncate_text(text, self._font_tiny, 370),
-            panel.right - 390,
+            truncate_text(text, self._font_tiny, ADJUSTMENT_SUMMARY_WIDTH),
+            panel.right - ADJUSTMENT_SUMMARY_WIDTH - 20,
             panel.y + 24,
             self._font_tiny,
             TEXT_SECONDARY,
@@ -397,7 +460,7 @@ class AdminScene(MessageMixin, Scene):
         text = self._font_small.render(label, True, text_color)
         screen.blit(text, text.get_rect(center=rect.center))
         if enabled:
-            self._buttons.append((rect, callback, label))
+            self._buttons.append(AdminButton(rect, callback))
 
     def _draw_text(
         self,
