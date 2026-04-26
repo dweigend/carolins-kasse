@@ -37,18 +37,19 @@ from src.utils.fonts import bold_custom, custom
 from src.utils.network import admin_url, get_local_ip
 from src.utils.text_utils import truncate_text, wrap_text
 
-CONTENT_RECT = pygame.Rect(34, 82, SCREEN_WIDTH - 68, SCREEN_HEIGHT - 154)
+CONTENT_RECT = pygame.Rect(42, 82, SCREEN_WIDTH - 84, SCREEN_HEIGHT - 212)
 TAB_Y = CONTENT_RECT.y
 TAB_H = 42
 PANEL_Y = TAB_Y + TAB_H + 12
 PANEL_H = CONTENT_RECT.bottom - PANEL_Y
 BUTTON_RADIUS = 10
 QR_SIZE = 170
+USER_ROW_HEIGHT = 56
+USER_ROW_GAP = 10
 
 TABS = (
     ("status", "Status"),
-    ("users", "User"),
-    ("accounts", "Konten"),
+    ("users", "User & Konten"),
     ("notes", "Hinweise"),
 )
 
@@ -101,8 +102,6 @@ class AdminScene(MessageMixin, Scene):
             self._draw_status_tab(screen)
         elif self._active_tab == "users":
             self._draw_users_tab(screen)
-        elif self._active_tab == "accounts":
-            self._draw_accounts_tab(screen)
         else:
             self._draw_notes_tab(screen)
 
@@ -145,7 +144,7 @@ class AdminScene(MessageMixin, Scene):
         self._qr_url = url
 
     def _draw_tabs(self, screen: pygame.Surface) -> None:
-        tab_w = 138
+        tab_w = 176
         gap = 10
         x = CONTENT_RECT.x
         for key, label in TABS:
@@ -246,22 +245,28 @@ class AdminScene(MessageMixin, Scene):
 
     def _draw_users_tab(self, screen: pygame.Surface) -> None:
         panel = pygame.Rect(CONTENT_RECT.x, PANEL_Y, CONTENT_RECT.width, PANEL_H)
-        self._draw_panel(screen, panel, "User Management")
+        self._draw_panel(screen, panel, "User & Konten")
+        self._draw_latest_adjustment_summary(screen, panel)
 
-        y = panel.y + 54
+        y = panel.y + 56
         for user in self._users:
-            row = pygame.Rect(panel.x + 14, y, panel.width - 28, 64)
+            row = pygame.Rect(
+                panel.x + 16,
+                y,
+                panel.width - 32,
+                USER_ROW_HEIGHT,
+            )
             pygame.draw.rect(screen, GREY_LIGHT, row, border_radius=10)
             status = "aktiv" if user.active else "inaktiv"
             role = "Admin" if user.is_admin else f"Stufe {user.difficulty}"
             self._draw_text(
-                screen, user.name, row.x + 14, row.y + 10, self._font_body, TEXT_PRIMARY
+                screen, user.name, row.x + 14, row.y + 6, self._font_body, TEXT_PRIMARY
             )
             self._draw_text(
                 screen,
                 f"{int(user.balance)} Taler · {role} · {status}",
                 row.x + 14,
-                row.y + 36,
+                row.y + 32,
                 self._font_tiny,
                 TEXT_SECONDARY,
             )
@@ -270,7 +275,7 @@ class AdminScene(MessageMixin, Scene):
                 label = f"{delta:+d}"
                 self._draw_button(
                     screen,
-                    pygame.Rect(x, row.y + 13, 58, 38),
+                    pygame.Rect(x, row.y + 9, 58, 38),
                     label,
                     DANGER if delta < 0 else SUCCESS,
                     WHITE,
@@ -280,7 +285,7 @@ class AdminScene(MessageMixin, Scene):
 
             self._draw_button(
                 screen,
-                pygame.Rect(row.right - 242, row.y + 13, 88, 38),
+                pygame.Rect(row.right - 242, row.y + 9, 88, 38),
                 "Admin" if user.is_admin else "An/Aus",
                 ORANGE,
                 WHITE,
@@ -289,7 +294,7 @@ class AdminScene(MessageMixin, Scene):
             )
             self._draw_button(
                 screen,
-                pygame.Rect(row.right - 144, row.y + 13, 58, 38),
+                pygame.Rect(row.right - 144, row.y + 9, 58, 38),
                 "S-",
                 BLUE,
                 WHITE,
@@ -297,67 +302,32 @@ class AdminScene(MessageMixin, Scene):
             )
             self._draw_button(
                 screen,
-                pygame.Rect(row.right - 78, row.y + 13, 58, 38),
+                pygame.Rect(row.right - 78, row.y + 9, 58, 38),
                 "S+",
                 BLUE,
                 WHITE,
                 lambda u=user: self._change_difficulty(u, 1),
             )
-            y += 74
+            y += USER_ROW_HEIGHT + USER_ROW_GAP
 
-    def _draw_accounts_tab(self, screen: pygame.Surface) -> None:
-        left = pygame.Rect(CONTENT_RECT.x, PANEL_Y, 430, PANEL_H)
-        right = pygame.Rect(
-            left.right + 18, PANEL_Y, CONTENT_RECT.right - left.right - 18, PANEL_H
-        )
-        self._draw_panel(screen, left, "Konto Übersicht")
-        self._draw_panel(screen, right, "Letzte Änderungen")
-
-        y = left.y + 58
-        for user in self._users:
-            color = TEXT_SECONDARY if not user.active else TEXT_PRIMARY
-            self._draw_text(screen, user.name, left.x + 22, y, self._font_small, color)
-            self._draw_text(
-                screen,
-                f"{int(user.balance)} Taler",
-                left.right - 120,
-                y,
-                self._font_small,
-                color,
-            )
-            y += 38
-
-        y = right.y + 56
-        for adjustment in self._adjustments:
-            delta = f"{adjustment.delta:+.0f}"
-            line = f"{adjustment.user_name}: {delta} -> {adjustment.new_balance:.0f}"
-            self._draw_text(
-                screen,
-                truncate_text(line, self._font_small, right.width - 40),
-                right.x + 20,
-                y,
-                self._font_small,
-                TEXT_PRIMARY,
-            )
-            note = adjustment.note or "Manuelle Änderung"
-            self._draw_text(
-                screen,
-                truncate_text(note, self._font_tiny, right.width - 40),
-                right.x + 20,
-                y + 24,
-                self._font_tiny,
-                TEXT_SECONDARY,
-            )
-            y += 54
+    def _draw_latest_adjustment_summary(
+        self, screen: pygame.Surface, panel: pygame.Rect
+    ) -> None:
         if not self._adjustments:
-            self._draw_text(
-                screen,
-                "Noch keine Änderungen",
-                right.x + 20,
-                y,
-                self._font_small,
-                TEXT_SECONDARY,
-            )
+            text = "Keine letzten Änderungen"
+        else:
+            adjustment = self._adjustments[0]
+            delta = f"{adjustment.delta:+.0f}"
+            text = f"Letzte Änderung: {adjustment.user_name} {delta} -> {adjustment.new_balance:.0f}"
+
+        self._draw_text(
+            screen,
+            truncate_text(text, self._font_tiny, 370),
+            panel.right - 390,
+            panel.y + 24,
+            self._font_tiny,
+            TEXT_SECONDARY,
+        )
 
     def _draw_notes_tab(self, screen: pygame.Surface) -> None:
         panel = pygame.Rect(CONTENT_RECT.x, PANEL_Y, CONTENT_RECT.width, PANEL_H)

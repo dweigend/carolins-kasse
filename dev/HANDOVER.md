@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-26 10:23 CEST
+**Last Updated:** 2026-04-26 10:41 CEST
 
 ## Current State
 
@@ -64,10 +64,9 @@
 
 - Bestehender Admin-Barcode bleibt unverändert: `2000000000046`.
 - `LoginScene` startet für Admin-User eine Session und wechselt direkt in `AdminScene`; Kinder-Logins gehen weiter ins Menü.
-- `AdminScene` hat vier Touch-Tabs:
+- `AdminScene` hat drei Touch-Tabs:
   - Status/QR: lokale IP, Serverstatus, Admin-URL und QR-Code
-  - User Management: Guthaben `-1`, `+1`, `+5`, `+10`, aktiv/inaktiv und Schwierigkeit
-  - Kontoübersicht: Saldo je User plus letzte manuelle Guthabenänderungen
+  - User & Konten: Saldo, Guthaben `-1`, `+1`, `+5`, `+10`, aktiv/inaktiv, Schwierigkeit und letzte Änderung
   - Hinweise: kurze Eltern-Hinweise zum Heim-WLAN und Remote-Admin
 - Der Admin-User kann im Pygame-Admin nicht deaktiviert werden.
 - `src/utils/admin_runtime.py` startet/stoppt den FastAPI-Server als verwalteten Hintergrundprozess.

@@ -580,9 +580,9 @@ the KISS version.
 **Guthaben aufladen an der Kasse (Quick-Flow):**
 ```
 [Admin-Karte scannen] → Admin-Modus aktiv
-[User-Tab öffnen] → Carolin/Annelie/Gast sehen
+[User & Konten öffnen] → Carolin/Annelie/Gast sehen
 [+1/+5/+10 tippen] → Guthaben wird gespeichert
-[Konten-Tab öffnen] → letzte manuelle Änderungen prüfen
+[Kopfzeile prüfen] → letzte manuelle Änderung sehen
 ```
 
 ---
