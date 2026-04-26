@@ -3,24 +3,40 @@
 {% block title %}Rezepte{% endblock %}
 
 {% block content %}
-<h1>🍳 Rezepte</h1>
+<h1>Rezepte</h1>
 
 <table>
     <thead>
         <tr>
             <th>Name</th>
             <th>Zutaten</th>
+            <th>Bearbeiten</th>
             <th class="barcode-cell">Barcode</th>
         </tr>
     </thead>
     <tbody>
         {% for recipe in recipes %}
         <tr>
-            <td><strong>{{ recipe.name }}</strong></td>
+            <td>
+                <strong>{{ recipe.name }}</strong>
+                {% if not recipe.active %}
+                <span class="badge badge-inactive">Inaktiv</span>
+                {% endif %}
+            </td>
             <td class="ingredients">
                 {% for ing in recipe.ingredients %}
                 {{ ing.quantity }}× {{ ing.name }}{% if not loop.last %}, {% endif %}
                 {% endfor %}
+            </td>
+            <td class="table-actions">
+                <form class="compact-form" method="post" action="/recipes/{{ recipe.barcode }}/settings">
+                    <input class="field-medium" name="name" value="{{ recipe.name }}" aria-label="Name">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="active" {% if recipe.active %}checked{% endif %}>
+                        Aktiv
+                    </label>
+                    <button type="submit" class="small">Speichern</button>
+                </form>
             </td>
             <td class="barcode-cell">
                 <img
@@ -30,6 +46,7 @@
                     onclick="showBarcode('{{ recipe.barcode_path }}')"
                     title="Klicken zum Vergrößern"
                 >
+                <a class="button-link small secondary" href="{{ recipe.barcode_path }}" download>SVG</a>
             </td>
         </tr>
         {% endfor %}

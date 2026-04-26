@@ -131,13 +131,16 @@ src/utils/database.py      # persistence boundary
 src/utils/barcodes.py      # EAN-13 conventions, SVG paths, barcode files
 ```
 
-Current admin scope is read-only:
+Current remote admin scope:
 
 - product list with barcode SVG links
 - user list with card barcode SVG links
 - recipe list with ingredients and recipe barcode SVG links
+- balance changes with a small manual adjustment history
+- minimal product, user, and recipe edits
+- A4 PDF print sheets for cards, recipes, and product labels
 
-CRUD should be added in small slices. View/form orchestration belongs in
+Further CRUD should be added in small slices. View/form orchestration belongs in
 `src/admin/`, persistence belongs in `src/utils/database.py` or future smaller
 database modules, and barcode file naming/generation belongs in
 `src/utils/barcodes.py`.

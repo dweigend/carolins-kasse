@@ -3,7 +3,7 @@
 {% block title %}Produkte{% endblock %}
 
 {% block content %}
-<h1>📦 Produkte</h1>
+<h1>Produkte</h1>
 
 <table>
     <thead>
@@ -11,6 +11,7 @@
             <th>Name</th>
             <th>Preis</th>
             <th>Kategorie</th>
+            <th>Bearbeiten</th>
             <th class="barcode-cell">Barcode</th>
         </tr>
     </thead>
@@ -19,11 +20,24 @@
         <tr>
             <td>
                 <strong>{{ product.name_de }}</strong>
-                <br>
-                <small style="color: #86868b">{{ product.name }}</small>
+                {% if not product.active %}
+                <span class="badge badge-inactive">Inaktiv</span>
+                {% endif %}
+                <div class="muted">{{ product.name }}</div>
             </td>
             <td class="price">{{ product.price|int }} Taler</td>
             <td><span class="category">{{ product.category }}</span></td>
+            <td class="table-actions">
+                <form class="compact-form" method="post" action="/products/{{ product.barcode }}/settings">
+                    <input class="field-medium" name="name_de" value="{{ product.name_de }}" aria-label="Name">
+                    <input class="field-small" name="price" type="number" min="0" step="1" value="{{ product.price|int }}" aria-label="Preis">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="active" {% if product.active %}checked{% endif %}>
+                        Aktiv
+                    </label>
+                    <button type="submit" class="small">Speichern</button>
+                </form>
+            </td>
             <td class="barcode-cell">
                 {% if product.barcode_path %}
                 <img
@@ -33,6 +47,7 @@
                     onclick="showBarcode('{{ product.barcode_path }}')"
                     title="Klicken zum Vergrößern"
                 >
+                <a class="button-link small secondary" href="{{ product.barcode_path }}" download>SVG</a>
                 {% else %}
                 <span class="badge badge-touch">Touch-Auswahl</span>
                 {% endif %}

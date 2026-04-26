@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Drucken{% endblock %}
+
+{% block content %}
+<h1>Drucken</h1>
+
+<div class="admin-card">
+    <h2>A4-Druckbögen</h2>
+    <p class="muted">
+        Erzeugt Karten und Labels aus der aktuellen Datenbank. Karten sind 70×45 mm,
+        Produktlabels 55×30 mm.
+    </p>
+    <form method="post" action="/printables/generate">
+        <button type="submit">PDFs neu erzeugen</button>
+    </form>
+</div>
+
+<div class="card-grid print-grid">
+    {% for file in files %}
+    <section class="admin-card">
+        <h2>{{ file.title }}</h2>
+        {% if file.exists %}
+        <p class="muted">{{ file.filename }} · {{ file.size_kb }} KB · {{ file.modified_at }}</p>
+        <a class="button-link" href="{{ file.url }}" download>PDF herunterladen</a>
+        {% else %}
+        <p class="muted">Noch nicht erzeugt.</p>
+        {% endif %}
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}

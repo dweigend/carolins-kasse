@@ -9,9 +9,10 @@
 ✅ Produkt- und Rezept-Assets wurden bereits auf das neue Schema umgestellt
 🟡 Codex-Portierung der Projektdoku ist jetzt angelegt
 🟡 Git-Historie wurde lokal in sinnvolle Blöcke überführt und sollte als Nächstes gepusht werden
-🟡 Phase 7 Admin-Bereich ist nur als read-only FastAPI-Ansicht vorhanden
+🟡 Phase 7 Admin-Bereich hat erste Schreibflows für Eltern
 🟡 Barcode-Erzeugung ist jetzt als eigene Backend-Verantwortung vorbereitet
 ✅ DB-Initialsetup ist entschieden: eine lokale DB, festes Carolin/Annelie-Setup, normales Setup nicht-destruktiv
+🟡 Remote-Admin ist in Arbeit: Guthaben, minimale Edits und Druck-PDFs sind der aktuelle Fokus
 🔲 Phase 8 Polish und Hardware-Validierung offen
 
 | Area | Status | Notes |
@@ -19,7 +20,7 @@
 | Gameplay core | ✅ | Login, Menu, Scan, Recipe, Math, Picker vorhanden |
 | Session economy | ✅ | Balance, Earnings, Transactions, Session tracking vorhanden |
 | UI overhaul | 🟡 | Neue Shell sowie asset-basierte Kassen- und Rezept-UI; Hardware-Test offen |
-| Admin area | 🟡 | Listenansichten für Products, Users, Recipes vorhanden, noch keine CRUD-Flows |
+| Admin area | 🟡 | Guthaben, minimale Edits, Barcode-Downloads und Druck-PDFs vorhanden |
 | Codex workflow | ✅ | `AGENTS.md` ist jetzt die führende Assistenz-Doku |
 
 ## What Was Done In This Session
@@ -44,6 +45,21 @@
   - `uv run python -m compileall src tools`
   - `uv run python tools/seed_database.py` verweigert erwartungsgemäß das Überschreiben der vorhandenen DB
   - `uv run python tools/seed_database.py --help`
+
+### Remote Admin Implementation Pass
+
+- FastAPI bleibt der Remote-Admin für Eltern im Heimnetz.
+- Pygame-Adminmodus direkt an der Kasse bleibt ein separates Folgepaket: https://github.com/dweigend/carolins-kasse/issues/6
+- Umgesetzt in diesem Pass:
+  - Guthaben setzen und per `+1`, `+5`, `+10` aufladen
+  - einfache `balance_adjustments`-Historie
+  - minimale Edits für User, Produkte und Rezepte
+  - `active`-Flags für User, Produkte und Rezepte
+  - Admin-CSS aus dem Template in `src/admin/static/admin.css`
+  - A4-PDF-Druckbögen für Karten, Rezepte, Produktlabels und alles zusammen
+- Follow-up-Issues:
+  - #5 printable barcode workflow wurde geschlossen
+  - #6 für den separaten Pygame-Adminmodus wurde angelegt
 
 ### Project State + Backend Foundation
 
@@ -402,7 +418,9 @@
 ```bash
 uv run python main.py
 uv run uvicorn src.admin.server:app --reload --port 8080
+uv run uvicorn src.admin.server:app --host 0.0.0.0 --port 8080
 uv run python tools/seed_database.py
+uv run python tools/generate_printables.py
 uv run ruff check src/
 uv run ruff format src/
 ```

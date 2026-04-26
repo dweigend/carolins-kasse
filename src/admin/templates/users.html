@@ -3,14 +3,15 @@
 {% block title %}Benutzer{% endblock %}
 
 {% block content %}
-<h1>👤 Benutzer</h1>
+<h1>Benutzer</h1>
 
 <table>
     <thead>
         <tr>
             <th>Name</th>
             <th>Guthaben</th>
-            <th>Schwierigkeit</th>
+            <th>Bearbeiten</th>
+            <th>Aufladen</th>
             <th>Rolle</th>
             <th class="barcode-cell">Karten-Barcode</th>
         </tr>
@@ -19,14 +20,44 @@
         {% for user in users %}
         <tr>
             <td>
-                {% if user.color %}
-                <span class="color-dot" style="background: {{ user.color }}"></span>
-                {% endif %}
+                <span class="color-dot {{ user.color_class }}"></span>
                 <strong>{{ user.name }}</strong>
+                {% if not user.active %}
+                <span class="badge badge-inactive">Inaktiv</span>
+                {% endif %}
+                <div class="muted">Stufe {{ user.difficulty }}</div>
             </td>
             <td class="price">{{ user.balance|int }} Taler</td>
-            <td>
-                {% for i in range(user.difficulty) %}⭐{% endfor %}
+            <td class="table-actions">
+                <form class="stack-form" method="post" action="/users/{{ user.card_id }}/settings">
+                    <input name="name" value="{{ user.name }}" aria-label="Name">
+                    <select name="difficulty" aria-label="Schwierigkeit">
+                        <option value="1" {% if user.difficulty == 1 %}selected{% endif %}>Stufe 1</option>
+                        <option value="2" {% if user.difficulty == 2 %}selected{% endif %}>Stufe 2</option>
+                        <option value="3" {% if user.difficulty == 3 %}selected{% endif %}>Stufe 3</option>
+                    </select>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="active" {% if user.active %}checked{% endif %}>
+                        Aktiv
+                    </label>
+                    <button type="submit" class="small">Speichern</button>
+                </form>
+            </td>
+            <td class="table-actions">
+                <form class="compact-form" method="post" action="/users/{{ user.card_id }}/balance/set">
+                    <input class="field-small" name="balance" type="number" min="0" step="1" value="{{ user.balance|int }}" aria-label="Guthaben">
+                    <input class="field-medium" name="note" placeholder="Notiz" aria-label="Notiz">
+                    <button type="submit" class="small">Setzen</button>
+                </form>
+                <div class="quick-actions">
+                    {% for delta in [1, 5, 10] %}
+                    <form method="post" action="/users/{{ user.card_id }}/balance/adjust">
+                        <input type="hidden" name="delta" value="{{ delta }}">
+                        <input type="hidden" name="note" value="+{{ delta }} Schnellaufladung">
+                        <button type="submit" class="small secondary">+{{ delta }}</button>
+                    </form>
+                    {% endfor %}
+                </div>
             </td>
             <td>
                 {% if user.is_admin %}
@@ -41,7 +72,39 @@
                     onclick="showBarcode('{{ user.barcode_path }}')"
                     title="Klicken zum Vergrößern"
                 >
+                <a class="button-link small secondary" href="{{ user.barcode_path }}" download>SVG</a>
             </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>Letzte Guthabenänderungen</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Zeit</th>
+            <th>Name</th>
+            <th>Alt</th>
+            <th>Neu</th>
+            <th>Änderung</th>
+            <th>Notiz</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for adjustment in adjustments %}
+        <tr>
+            <td>{{ adjustment.created_at.strftime("%d.%m.%Y %H:%M") }}</td>
+            <td>{{ adjustment.user_name }}</td>
+            <td>{{ adjustment.old_balance|int }}</td>
+            <td>{{ adjustment.new_balance|int }}</td>
+            <td>{{ "%+d"|format(adjustment.delta|int) }}</td>
+            <td class="muted">{{ adjustment.note or "" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6" class="muted">Noch keine manuellen Änderungen.</td>
         </tr>
         {% endfor %}
     </tbody>

@@ -84,9 +84,15 @@ uv run python main.py
 # View local admin pages
 uv run uvicorn src.admin.server:app --reload --port 8080
 
+# Remote admin on the home network
+uv run uvicorn src.admin.server:app --host 0.0.0.0 --port 8080
+
 # Initialize a missing or empty database and generate barcode SVGs
 uv run python tools/seed_database.py
 uv run python tools/generate_barcodes.py
+
+# Generate A4 printable PDFs
+uv run python tools/generate_printables.py
 ```
 
 The setup script is non-destructive by default. It keeps the current

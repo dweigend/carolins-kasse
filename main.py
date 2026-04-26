@@ -15,10 +15,12 @@ from src.scenes import (
 )
 from src.ui.shell import NO_FRAME_SCENES, FrameShell
 from src.utils import state
+from src.utils.database import init_database
 
 
 def main() -> None:
     """Initialize pygame and run the main game loop."""
+    init_database()
     pygame.init()
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))

@@ -238,20 +238,23 @@
 
 ### 7.1 User-Verwaltung
 - [ ] User-Liste anzeigen
+- [x] Guthaben setzen und per Schnellbuttons aufladen
+- [x] Einfache Guthaben-Historie
+- [x] User bearbeiten (Name, Schwierigkeit, aktiv/inaktiv)
 - [ ] Neuen User anlegen
-- [ ] User bearbeiten (Name, Farbe, Schwierigkeit)
 - [ ] User-Karte (Barcode) zuweisen
 
 ### 7.2 Produkt-Verwaltung
 - [ ] Produkt-Liste mit Bildern
+- [x] Minimale Produkt-Edits (deutscher Name, Preis, aktiv/inaktiv)
 - [ ] Neues Produkt anlegen
 - [ ] Bild-Upload für Produkte
 - [ ] Barcode zuweisen/generieren
-- [ ] Barcode drucken
+- [x] Barcode nachdrucken/downloaden
 
 ### 7.3 Guthaben-System
-- [ ] Guthaben einsehen (alle User)
-- [ ] Einzeln aufladen
+- [x] Guthaben einsehen (alle User)
+- [x] Einzeln aufladen
 - [ ] Batch-Aufladung
 
 ### 7.4 Transaktionen & Statistiken
@@ -264,6 +267,12 @@
 - [ ] Admin-Karte Erkennung
 - [ ] Schnelles Guthaben-Aufladen
 - [ ] Letzte Transaktion stornieren
+
+### 7.6 Druckworkflow
+- [x] A4-PDFs für Kinder-/Admin-Karten
+- [x] A4-PDFs für Rezeptkarten
+- [x] A4-PDFs für Produktlabels
+- [x] Kombinierter Druckbogen
 
 ### Recommended Implementation Order
 

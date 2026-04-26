@@ -49,6 +49,7 @@ SEEDED_TABLES = (
     "sessions",
     "earnings",
     "transactions",
+    "balance_adjustments",
 )
 
 

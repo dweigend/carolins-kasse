@@ -33,6 +33,7 @@ class Product:
     category: str
     image_path: str | None = None
     has_barcode: bool = True
+    active: bool = True
 
     @classmethod
     def from_row(cls, row: tuple) -> Self:
@@ -45,6 +46,7 @@ class Product:
             category=row[4],
             image_path=row[5],
             has_barcode=bool(row[6]),
+            active=bool(row[7]),
         )
 
 
@@ -58,6 +60,7 @@ class User:
     color: str | None = None
     difficulty: int = 1
     is_admin: bool = False
+    active: bool = True
 
     @classmethod
     def from_row(cls, row: tuple) -> Self:
@@ -69,6 +72,7 @@ class User:
             color=row[3],
             difficulty=row[4],
             is_admin=bool(row[5]),
+            active=bool(row[6]),
         )
 
 
@@ -79,6 +83,7 @@ class Recipe:
     barcode: str
     name: str
     image_path: str | None = None
+    active: bool = True
 
     @classmethod
     def from_row(cls, row: tuple) -> Self:
@@ -87,6 +92,7 @@ class Recipe:
             barcode=row[0],
             name=row[1],
             image_path=row[2],
+            active=bool(row[3]),
         )
 
 
@@ -167,6 +173,41 @@ class Transaction:
         )
 
 
+@dataclass
+class BalanceAdjustment:
+    """A manual admin balance change."""
+
+    id: int
+    user_card_id: str
+    user_name: str
+    old_balance: float
+    new_balance: float
+    delta: float
+    note: str | None
+    created_at: datetime
+
+    @classmethod
+    def from_row(cls, row: tuple) -> Self:
+        """Create BalanceAdjustment from database row."""
+        return cls(
+            id=row[0],
+            user_card_id=row[1],
+            user_name=row[2],
+            old_balance=row[3],
+            new_balance=row[4],
+            delta=row[5],
+            note=row[6],
+            created_at=datetime.fromisoformat(row[7]),
+        )
+
+
+PRODUCT_COLUMNS = (
+    "barcode, name, name_de, price, category, image_path, has_barcode, active"
+)
+USER_COLUMNS = "card_id, name, balance, color, difficulty, is_admin, active"
+RECIPE_COLUMNS = "barcode, name, image_path, active"
+
+
 def get_connection() -> sqlite3.Connection:
     """Get a database connection."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -202,7 +243,8 @@ def init_database() -> None:
                 price REAL NOT NULL,
                 category TEXT NOT NULL,
                 image_path TEXT,
-                has_barcode BOOLEAN DEFAULT 1
+                has_barcode BOOLEAN DEFAULT 1,
+                active BOOLEAN DEFAULT 1
             )
         """)
 
@@ -214,7 +256,8 @@ def init_database() -> None:
                 balance REAL DEFAULT 10.0,
                 color TEXT,
                 difficulty INTEGER DEFAULT 1,
-                is_admin BOOLEAN DEFAULT 0
+                is_admin BOOLEAN DEFAULT 0,
+                active BOOLEAN DEFAULT 1
             )
         """)
 
@@ -223,7 +266,8 @@ def init_database() -> None:
             CREATE TABLE IF NOT EXISTS recipes (
                 barcode TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                image_path TEXT
+                image_path TEXT,
+                active BOOLEAN DEFAULT 1
             )
         """)
 
@@ -277,33 +321,77 @@ def init_database() -> None:
             )
         """)
 
+        # Manual admin balance changes
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS balance_adjustments (
+                id INTEGER PRIMARY KEY,
+                user_card_id TEXT NOT NULL,
+                old_balance REAL NOT NULL,
+                new_balance REAL NOT NULL,
+                delta REAL NOT NULL,
+                note TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_card_id) REFERENCES users(card_id)
+            )
+        """)
+
+        _ensure_column(conn, "products", "active", "BOOLEAN DEFAULT 1")
+        _ensure_column(conn, "users", "active", "BOOLEAN DEFAULT 1")
+        _ensure_column(conn, "recipes", "active", "BOOLEAN DEFAULT 1")
+
         conn.commit()
+
+
+def _ensure_column(
+    conn: sqlite3.Connection, table_name: str, column_name: str, column_spec: str
+) -> None:
+    existing_columns = {
+        row[1] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name in existing_columns:
+        return
+    conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_spec}")
 
 
 # --- Product CRUD ---
 
 
 def get_product(barcode: str) -> Product | None:
-    """Get a product by barcode."""
+    """Get an active product by barcode."""
     with get_db() as conn:
         row = conn.execute(
-            "SELECT * FROM products WHERE barcode = ?", (barcode,)
+            f"SELECT {PRODUCT_COLUMNS} FROM products WHERE barcode = ? AND active = 1",
+            (barcode,),
         ).fetchone()
         return Product.from_row(row) if row else None
 
 
-def get_all_products() -> list[Product]:
+def get_all_products(include_inactive: bool = False) -> list[Product]:
     """Get all products."""
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM products ORDER BY category, name").fetchall()
+        where_clause = "" if include_inactive else "WHERE active = 1"
+        rows = conn.execute(
+            f"""
+            SELECT {PRODUCT_COLUMNS}
+            FROM products
+            {where_clause}
+            ORDER BY category, name
+            """
+        ).fetchall()
         return [Product.from_row(row) for row in rows]
 
 
 def get_products_by_category(category: str) -> list[Product]:
-    """Get products by category."""
+    """Get active products by category."""
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT * FROM products WHERE category = ? ORDER BY name", (category,)
+            f"""
+            SELECT {PRODUCT_COLUMNS}
+            FROM products
+            WHERE category = ? AND active = 1
+            ORDER BY name
+            """,
+            (category,),
         ).fetchall()
         return [Product.from_row(row) for row in rows]
 
@@ -312,7 +400,12 @@ def get_picker_products() -> dict[str, list[Product]]:
     """Get products without barcodes, grouped by category for picker."""
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT * FROM products WHERE has_barcode = 0 ORDER BY category, name_de"
+            f"""
+            SELECT {PRODUCT_COLUMNS}
+            FROM products
+            WHERE has_barcode = 0 AND active = 1
+            ORDER BY category, name_de
+            """
         ).fetchall()
 
     products = [Product.from_row(row) for row in rows]
@@ -329,8 +422,10 @@ def add_product(product: Product) -> None:
     with get_db() as conn:
         conn.execute(
             """
-            INSERT INTO products (barcode, name, name_de, price, category, image_path, has_barcode)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO products (
+                barcode, name, name_de, price, category, image_path, has_barcode, active
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 product.barcode,
@@ -340,6 +435,7 @@ def add_product(product: Product) -> None:
                 product.category,
                 product.image_path,
                 product.has_barcode,
+                product.active,
             ),
         )
         conn.commit()
@@ -351,7 +447,8 @@ def update_product(product: Product) -> None:
         conn.execute(
             """
             UPDATE products
-            SET name = ?, name_de = ?, price = ?, category = ?, image_path = ?, has_barcode = ?
+            SET name = ?, name_de = ?, price = ?, category = ?, image_path = ?,
+                has_barcode = ?, active = ?
             WHERE barcode = ?
             """,
             (
@@ -361,8 +458,25 @@ def update_product(product: Product) -> None:
                 product.category,
                 product.image_path,
                 product.has_barcode,
+                product.active,
                 product.barcode,
             ),
+        )
+        conn.commit()
+
+
+def update_product_admin_fields(
+    barcode: str, name_de: str, price: float, active: bool
+) -> None:
+    """Update parent-facing product fields."""
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE products
+            SET name_de = ?, price = ?, active = ?
+            WHERE barcode = ?
+            """,
+            (name_de, price, active, barcode),
         )
         conn.commit()
 
@@ -377,19 +491,33 @@ def delete_product(barcode: str) -> None:
 # --- User CRUD ---
 
 
-def get_user(card_id: str) -> User | None:
+def get_user(card_id: str, include_inactive: bool = False) -> User | None:
     """Get a user by card ID."""
     with get_db() as conn:
+        active_clause = "" if include_inactive else "AND active = 1"
         row = conn.execute(
-            "SELECT * FROM users WHERE card_id = ?", (card_id,)
+            f"""
+            SELECT {USER_COLUMNS}
+            FROM users
+            WHERE card_id = ? {active_clause}
+            """,
+            (card_id,),
         ).fetchone()
         return User.from_row(row) if row else None
 
 
-def get_all_users() -> list[User]:
+def get_all_users(include_inactive: bool = False) -> list[User]:
     """Get all users."""
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM users ORDER BY name").fetchall()
+        where_clause = "" if include_inactive else "WHERE active = 1"
+        rows = conn.execute(
+            f"""
+            SELECT {USER_COLUMNS}
+            FROM users
+            {where_clause}
+            ORDER BY name
+            """
+        ).fetchall()
         return [User.from_row(row) for row in rows]
 
 
@@ -398,8 +526,10 @@ def add_user(user: User) -> None:
     with get_db() as conn:
         conn.execute(
             """
-            INSERT INTO users (card_id, name, balance, color, difficulty, is_admin)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO users (
+                card_id, name, balance, color, difficulty, is_admin, active
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user.card_id,
@@ -408,18 +538,78 @@ def add_user(user: User) -> None:
                 user.color,
                 user.difficulty,
                 user.is_admin,
+                user.active,
             ),
         )
         conn.commit()
 
 
-def update_user_balance(card_id: str, new_balance: float) -> None:
-    """Update a user's balance."""
+def update_user_balance(
+    card_id: str, new_balance: float, note: str | None = None
+) -> None:
+    """Update a user's balance and record the manual adjustment."""
     with get_db() as conn:
+        row = conn.execute(
+            "SELECT balance FROM users WHERE card_id = ?", (card_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Unknown user card ID: {card_id}")
+
+        old_balance = float(row[0])
+        delta = new_balance - old_balance
         conn.execute(
             "UPDATE users SET balance = ? WHERE card_id = ?", (new_balance, card_id)
         )
+        conn.execute(
+            """
+            INSERT INTO balance_adjustments (
+                user_card_id, old_balance, new_balance, delta, note
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (card_id, old_balance, new_balance, delta, note),
+        )
         conn.commit()
+
+
+def update_user_admin_fields(
+    card_id: str, name: str, difficulty: int, active: bool
+) -> None:
+    """Update parent-facing user fields."""
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET name = ?, difficulty = ?, active = ?
+            WHERE card_id = ?
+            """,
+            (name, difficulty, active, card_id),
+        )
+        conn.commit()
+
+
+def get_recent_balance_adjustments(limit: int = 20) -> list[BalanceAdjustment]:
+    """Get recent manual admin balance changes."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                ba.id,
+                ba.user_card_id,
+                u.name,
+                ba.old_balance,
+                ba.new_balance,
+                ba.delta,
+                ba.note,
+                ba.created_at
+            FROM balance_adjustments ba
+            JOIN users u ON ba.user_card_id = u.card_id
+            ORDER BY ba.created_at DESC, ba.id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return [BalanceAdjustment.from_row(row) for row in rows]
 
 
 def delete_user(card_id: str) -> None:
@@ -433,18 +623,27 @@ def delete_user(card_id: str) -> None:
 
 
 def get_recipe(barcode: str) -> Recipe | None:
-    """Get a recipe by barcode."""
+    """Get an active recipe by barcode."""
     with get_db() as conn:
         row = conn.execute(
-            "SELECT * FROM recipes WHERE barcode = ?", (barcode,)
+            f"SELECT {RECIPE_COLUMNS} FROM recipes WHERE barcode = ? AND active = 1",
+            (barcode,),
         ).fetchone()
         return Recipe.from_row(row) if row else None
 
 
-def get_all_recipes() -> list[Recipe]:
+def get_all_recipes(include_inactive: bool = False) -> list[Recipe]:
     """Get all recipes."""
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM recipes ORDER BY name").fetchall()
+        where_clause = "" if include_inactive else "WHERE active = 1"
+        rows = conn.execute(
+            f"""
+            SELECT {RECIPE_COLUMNS}
+            FROM recipes
+            {where_clause}
+            ORDER BY name
+            """
+        ).fetchall()
         return [Recipe.from_row(row) for row in rows]
 
 
@@ -453,10 +652,24 @@ def add_recipe(recipe: Recipe) -> None:
     with get_db() as conn:
         conn.execute(
             """
-            INSERT INTO recipes (barcode, name, image_path)
-            VALUES (?, ?, ?)
+            INSERT INTO recipes (barcode, name, image_path, active)
+            VALUES (?, ?, ?, ?)
             """,
-            (recipe.barcode, recipe.name, recipe.image_path),
+            (recipe.barcode, recipe.name, recipe.image_path, recipe.active),
+        )
+        conn.commit()
+
+
+def update_recipe_admin_fields(barcode: str, name: str, active: bool) -> None:
+    """Update parent-facing recipe fields."""
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE recipes
+            SET name = ?, active = ?
+            WHERE barcode = ?
+            """,
+            (name, active, barcode),
         )
         conn.commit()
 
@@ -478,8 +691,8 @@ def get_recipe_ingredients(recipe_barcode: str) -> list[tuple[Product, int]]:
     """Get all ingredients for a recipe with quantities."""
     with get_db() as conn:
         rows = conn.execute(
-            """
-            SELECT p.*, ri.quantity
+            f"""
+            SELECT {PRODUCT_COLUMNS}, ri.quantity
             FROM recipe_ingredients ri
             JOIN products p ON ri.product_barcode = p.barcode
             WHERE ri.recipe_barcode = ?
@@ -487,7 +700,7 @@ def get_recipe_ingredients(recipe_barcode: str) -> list[tuple[Product, int]]:
             """,
             (recipe_barcode,),
         ).fetchall()
-        return [(Product.from_row(row[:7]), row[7]) for row in rows]
+        return [(Product.from_row(row[:8]), row[8]) for row in rows]
 
 
 def add_recipe_ingredient(ingredient: RecipeIngredient) -> None:

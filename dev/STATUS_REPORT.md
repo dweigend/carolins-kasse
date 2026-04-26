@@ -39,6 +39,7 @@ The local worktree also shows a major UI migration already in progress. That mea
 - Barcode conventions now have a single utility module in `src/utils/barcodes.py`.
 - The initial setup and barcode scripts in `tools/` are part of the backend foundation and should be pushed with the next GitHub update.
 - `tools/seed_database.py` now treats the Carolin/Annelie setup as the current fixed installation data and refuses to overwrite existing runtime data unless `--reset` is passed.
+- The FastAPI admin now has the first parent-facing workflows: balance changes with history, minimal product/user/recipe edits, SVG barcode downloads, and A4 printable PDFs.
 
 ## What Is Not Finished Yet
 
@@ -123,7 +124,7 @@ The recipe UI now has a screenshot-based baseline, mockups, and a first asset-ba
 1. Run a manual UI smoke test in the pygame app on the real display and note any touch, scanner, or readability regressions.
 2. Validate the new cashier and recipe UI on the 1024x600 touch display with scanner and kid-testing feedback; use issues #1 and #2 for observations.
 3. Keep Phase 7 in the existing FastAPI admin and add backend forms there.
-4. Keep database setup discipline before adding CRUD: one local DB, non-destructive default setup, explicit reset only.
+4. Treat the direct Pygame admin mode as a separate work package after the remote admin is stable.
 5. Split the next implementation cycle into one of these paths:
 
 Path A: Finish UI polish and hardware validation first.

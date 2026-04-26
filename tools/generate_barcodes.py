@@ -17,7 +17,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils.barcodes import BARCODE_DIR, barcode_path, write_ean13_svg
-from src.utils.database import get_all_products, get_all_recipes, get_all_users
+from src.utils.database import (
+    get_all_products,
+    get_all_recipes,
+    get_all_users,
+    init_database,
+)
 
 
 def remove_stale_barcodes(directory: Path, expected_paths: set[Path]) -> int:
@@ -88,6 +93,7 @@ def generate_recipe_barcodes() -> int:
 
 def main() -> None:
     """Generate all barcodes."""
+    init_database()
     print("📊 Generiere Barcodes...\n")
 
     print("📦 Produkte:")

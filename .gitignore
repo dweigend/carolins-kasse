@@ -26,6 +26,7 @@ CLAUDE.md
 
 # Project-specific
 design-vorlagen/
+data/print/*.pdf
 dev/*
 !dev/HANDOVER.md
 !dev/PLAN.md
