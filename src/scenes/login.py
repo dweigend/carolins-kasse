@@ -8,6 +8,7 @@ from src.constants import SCREEN_HEIGHT, SCREEN_WIDTH
 from src.scenes.base import Scene
 from src.scenes.mixins import MessageMixin
 from src.utils import state
+from src.utils.barcodes import USER_PREFIX
 from src.utils.database import get_user
 from src.utils.fonts import body
 
@@ -38,7 +39,7 @@ class LoginScene(MessageMixin, Scene):
 
     def _handle_barcode(self, barcode: str) -> None:
         """Process a scanned barcode."""
-        if not barcode.startswith("200"):
+        if not barcode.startswith(USER_PREFIX):
             self._show_message("Das ist keine Benutzerkarte!")
             return
 

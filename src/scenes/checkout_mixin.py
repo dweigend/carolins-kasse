@@ -15,6 +15,7 @@ from src.constants import (
 )
 from src.utils.assets import get as get_asset
 from src.utils.assets import get_raw as get_raw_asset
+from src.utils.barcodes import USER_PREFIX
 from src.utils.database import get_user, process_checkout
 from src.utils.earnings import award_cashier_salary
 from src.utils.fonts import bold_custom, body, caption
@@ -121,8 +122,7 @@ class CheckoutMixin:
         if not hasattr(self, "_checkout_mode") or not self._checkout_mode:
             return False
 
-        # Only accept user badges (200 prefix)
-        if not barcode.startswith("200"):
+        if not barcode.startswith(USER_PREFIX):
             self._show_message("Bitte Kunden-Badge scannen!")
             return True
 

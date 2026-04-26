@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-26 11:10 CEST
+**Last Updated:** 2026-04-26 11:08 CEST
 
 ## Current State
 
@@ -18,6 +18,7 @@
 - Added on-device Pygame admin mode and refactored its rendering helpers.
 - Merged User and Konten into one Pygame admin tab with safer bottom spacing.
 - Cleaned active documentation down to `AGENTS.md`, `README.md`, `dev/HANDOVER.md`, `dev/PLAN.md`, and `dev/ARCHITECTURE.md`.
+- Removed unused `src/utils/layout.py` Phase 6 stubs and replaced scene barcode prefix strings with central constants.
 
 ## Verification Run Recently
 

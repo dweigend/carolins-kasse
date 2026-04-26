@@ -11,6 +11,7 @@ from src.scenes.base import Scene
 from src.scenes.checkout_mixin import CheckoutMixin
 from src.scenes.mixins import MessageMixin
 from src.utils import state
+from src.utils.barcodes import RECIPE_PREFIX, USER_PREFIX
 from src.utils.cart import Cart
 from src.utils.database import get_product
 from src.utils.fonts import body
@@ -120,9 +121,9 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
             if self._scrollable_cart:
                 self._scrollable_cart.rebuild_rows()
         else:
-            if barcode.startswith("200"):
+            if barcode.startswith(USER_PREFIX):
                 self._show_message("Das ist eine Benutzerkarte!")
-            elif barcode.startswith("300"):
+            elif barcode.startswith(RECIPE_PREFIX):
                 self._show_message("Das ist ein Rezept!")
             else:
                 self._show_message(f"Unbekannter Barcode: {barcode[:8]}...")

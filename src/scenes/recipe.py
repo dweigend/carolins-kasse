@@ -18,6 +18,7 @@ from src.scenes.base import Scene
 from src.scenes.checkout_mixin import CheckoutMixin
 from src.scenes.mixins import MessageMixin
 from src.utils import assets, state
+from src.utils.barcodes import RECIPE_PREFIX
 from src.utils.database import (
     Product,
     Recipe,
@@ -200,7 +201,7 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
             self._handle_checkout_barcode(barcode)
             return
 
-        if barcode.startswith("300"):
+        if barcode.startswith(RECIPE_PREFIX):
             if self._load_recipe(barcode):
                 self._show_message(f"Rezept geladen: {self._recipe.name}")
             else:
