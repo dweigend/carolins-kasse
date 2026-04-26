@@ -84,10 +84,16 @@ uv run python main.py
 # View local admin pages
 uv run uvicorn src.admin.server:app --reload --port 8080
 
-# Recreate demo data and generated barcode SVGs
+# Initialize a missing or empty database and generate barcode SVGs
 uv run python tools/seed_database.py
 uv run python tools/generate_barcodes.py
 ```
+
+The setup script is non-destructive by default. It keeps the current
+Carolin/Annelie family setup in code and refuses to overwrite an existing
+database with balances, sessions, earnings, or transactions. Use
+`uv run python tools/seed_database.py --reset` only when you intentionally want
+to rebuild the full local database.
 
 The internal EAN-13 prefixes are:
 

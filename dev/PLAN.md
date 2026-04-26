@@ -231,7 +231,7 @@
 - [x] Read-only Admin-Seiten für Produkte, Benutzer und Rezepte
 - [x] Zentrale Barcode-Konventionen in `src/utils/barcodes.py`
 - [x] Versionierbare Seed- und Barcode-Tools vorbereiten
-- [ ] DB-Demozustand festlegen: getrackte Demo-DB behalten oder aus Seed reproduzierbar machen
+- [x] DB-Initialsetup festlegen: eine lokale DB, festes Carolin/Annelie-Setup im Code, normales Setup nicht-destruktiv
 - [ ] `src/utils/database.py` in kleinere Verantwortlichkeiten schneiden
 - [ ] Admin-Form-Validierung und Fehlerdarstellung festlegen
 - [ ] Barcode-Printformat festlegen: SVG-Einzeldruck, PDF-Bögen oder beides

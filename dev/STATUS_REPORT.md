@@ -37,7 +37,8 @@ The local worktree also shows a major UI migration already in progress. That mea
 - `src/admin/server.py` provides read-only list pages for products, users, and recipes.
 - Templates already exist in `src/admin/templates/`.
 - Barcode conventions now have a single utility module in `src/utils/barcodes.py`.
-- The seed and barcode scripts in `tools/` are part of the backend foundation and should be pushed with the next GitHub update.
+- The initial setup and barcode scripts in `tools/` are part of the backend foundation and should be pushed with the next GitHub update.
+- `tools/seed_database.py` now treats the Carolin/Annelie setup as the current fixed installation data and refuses to overwrite existing runtime data unless `--reset` is passed.
 
 ## What Is Not Finished Yet
 
@@ -122,7 +123,7 @@ The recipe UI now has a screenshot-based baseline, mockups, and a first asset-ba
 1. Run a manual UI smoke test in the pygame app on the real display and note any touch, scanner, or readability regressions.
 2. Validate the new cashier and recipe UI on the 1024x600 touch display with scanner and kid-testing feedback; use issues #1 and #2 for observations.
 3. Keep Phase 7 in the existing FastAPI admin and add backend forms there.
-4. Add a small database migration/seed discipline before adding CRUD, so demo data and runtime data do not drift silently.
+4. Keep database setup discipline before adding CRUD: one local DB, non-destructive default setup, explicit reset only.
 5. Split the next implementation cycle into one of these paths:
 
 Path A: Finish UI polish and hardware validation first.
@@ -133,6 +134,6 @@ Path C: Build printable barcode output first, then wire it into product/user/rec
 
 - The local UI migration and repo workflow cleanup are committed locally; push and visual QA are the next sensible steps after this cleanup commit.
 - `AGENTS.md` is now the primary Codex instruction file.
-- The previous local runtime/demo change in `data/kasse.db` was saved as `stash@{0}`. Do not treat runtime database drift as source-of-truth without deciding whether to preserve demo history or reset from seed.
+- The previous local runtime DB change in `data/kasse.db` was saved as `stash@{0}`. Do not treat runtime database drift as source-of-truth; the setup script now protects existing data by default.
 - Follow-up issues created for the backend foundation: #3 demo database workflow, #4 database module split, #5 printable barcode workflow.
 - If new follow-up work appears during testing, capture it as GitHub issues immediately.

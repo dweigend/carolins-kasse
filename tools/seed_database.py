@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
-"""Seed the database with initial data.
+"""Initialize the database with the current family setup.
 
 Usage:
     uv run python tools/seed_database.py
+    uv run python tools/seed_database.py --reset
 
-Creates data/products.db with:
+Creates data/kasse.db with:
 - 32 products
 - 4 users (Carolin, Annelie, Gast, Admin)
 - 5 recipes with ingredients
+
+The default mode is intentionally non-destructive. Use --reset only when you
+want to rebuild the full local database and discard runtime balances, sessions,
+earnings, and transactions.
 """
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -26,12 +32,23 @@ from src.utils.database import (
     add_recipe,
     add_recipe_ingredient,
     add_user,
+    get_db,
     init_database,
 )
 from src.utils.barcodes import (
     generate_product_barcode,
     generate_recipe_barcode,
     generate_user_barcode,
+)
+
+SEEDED_TABLES = (
+    "products",
+    "users",
+    "recipes",
+    "recipe_ingredients",
+    "sessions",
+    "earnings",
+    "transactions",
 )
 
 
@@ -41,30 +58,30 @@ def seed_products() -> dict[str, str]:
     All prices are whole numbers (integers) for easier mental math for kids.
     """
     products_data = [
-        # Kühlregal (has_barcode=True)
+        # Refrigerated products (has_barcode=True)
         ("milk", "Milch", 1, "kuehlregal", True),
         ("eggs", "Eier (6er)", 2, "kuehlregal", True),
         ("butter", "Butter", 1, "kuehlregal", True),
         ("cheese", "Käse", 2, "kuehlregal", True),
         ("sausage", "Wurst", 2, "kuehlregal", True),
-        # Backzutaten (has_barcode=True)
+        # Baking ingredients (has_barcode=True)
         ("flour", "Mehl", 1, "backzutaten", True),
         ("sugar", "Zucker", 1, "backzutaten", True),
-        # Frühstück/Vorrat (has_barcode=True)
+        # Pantry products (has_barcode=True)
         ("oatmeal", "Haferflocken", 1, "vorrat", True),
         ("pasta", "Nudeln", 1, "vorrat", True),
         ("tomatoes_canned", "Tomaten (Dose)", 1, "vorrat", True),
-        # Getränke (has_barcode=True)
+        # Drinks (has_barcode=True)
         ("lemonade", "Limonade", 2, "getraenke", True),
         ("juice", "Saft", 2, "getraenke", True),
-        # Backwaren (has_barcode=False - Touch-Auswahl)
+        # Bakery products (has_barcode=False - touch picker)
         ("bread", "Brot", 1, "backwaren", True),
         ("roll", "Brötchen", 1, "backwaren", False),
         ("croissant", "Croissant", 1, "backwaren", False),
         ("pretzel", "Brezel", 1, "backwaren", False),
         ("muffin", "Muffin", 1, "backwaren", False),
         ("cinnamon_roll", "Zimtschnecke", 1, "backwaren", False),
-        # Obst (has_barcode=False - Touch-Auswahl)
+        # Fruit (has_barcode=False - touch picker)
         ("banana", "Banane", 1, "obst", False),
         ("apple", "Apfel", 1, "obst", False),
         ("orange", "Orange", 1, "obst", False),
@@ -72,7 +89,7 @@ def seed_products() -> dict[str, str]:
         ("grapes", "Trauben", 1, "obst", False),
         ("pear", "Birne", 1, "obst", False),
         ("peach", "Pfirsich", 1, "obst", False),
-        # Gemüse (has_barcode=False - Touch-Auswahl)
+        # Vegetables (has_barcode=False - touch picker)
         ("tomato", "Tomate", 1, "gemuese", False),
         ("cucumber", "Gurke", 1, "gemuese", False),
         ("carrot", "Karotte", 1, "gemuese", False),
@@ -106,10 +123,13 @@ def seed_products() -> dict[str, str]:
 
 def seed_users() -> None:
     """Seed users."""
+    # Initial family setup for the current installation. Carolin and Annelie
+    # stay fixed for now; future contributors can replace or externalize this
+    # if the project becomes configurable for other households.
     users_data = [
-        ("Carolin", 10.0, "#0066CC", 1, False),  # Blau
-        ("Annelie", 10.0, "#CC3333", 3, False),  # Rot
-        ("Gast", 10.0, "#888888", 1, False),  # Grau
+        ("Carolin", 10.0, "#0066CC", 1, False),  # Blue
+        ("Annelie", 10.0, "#CC3333", 3, False),  # Red
+        ("Gast", 10.0, "#888888", 1, False),  # Gray
         ("Admin", 100.0, "#FFD700", 3, True),  # Gold
     ]
 
@@ -132,7 +152,7 @@ def seed_users() -> None:
 def seed_recipes(product_barcodes: dict[str, str]) -> None:
     """Seed recipes with ingredients.
 
-    Image files are stored in assets/L/recipes/ with English names.
+    Image files are stored in assets/680er/ with English asset keys.
     """
     # (name, image_file, ingredients)
     recipes_data = [
@@ -184,18 +204,51 @@ def seed_recipes(product_barcodes: dict[str, str]) -> None:
             add_recipe_ingredient(ingredient)
 
 
-def main() -> None:
+def database_has_records() -> bool:
+    """Return True when any managed table already contains data."""
+    with get_db() as conn:
+        for table_name in SEEDED_TABLES:
+            row = conn.execute(f"SELECT 1 FROM {table_name} LIMIT 1").fetchone()
+            if row:
+                return True
+    return False
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Initialize the local Carolin's Kasse database."
+    )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help=(
+            "delete and rebuild the full database, including runtime balances, "
+            "sessions, earnings, and transactions"
+        ),
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
     """Main entry point."""
+    args = parse_args()
+
     print("🗄️  Initialisiere Datenbank...")
 
-    # Remove existing database
-    if DB_PATH.exists():
+    if args.reset and DB_PATH.exists():
         DB_PATH.unlink()
-        print(f"  ✓ Alte Datenbank gelöscht: {DB_PATH}")
+        print(f"  ✓ Existing database removed: {DB_PATH}")
 
-    # Initialize schema
     init_database()
     print(f"  ✓ Schema erstellt: {DB_PATH}")
+
+    if not args.reset and database_has_records():
+        print("\n⚠️  Datenbank enthält bereits Daten.")
+        print("   Normales Setup löscht keine Guthaben, Sessions oder Transaktionen.")
+        print("   Für einen vollständigen Neuaufbau bewusst ausführen:")
+        print("   uv run python tools/seed_database.py --reset")
+        return 1
 
     print("\n📦 Füge Produkte hinzu...")
     product_barcodes = seed_products()
@@ -208,7 +261,8 @@ def main() -> None:
 
     print("\n✅ Datenbank erfolgreich befüllt!")
     print(f"   Pfad: {DB_PATH}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

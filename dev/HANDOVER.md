@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-26 08:48 CEST
+**Last Updated:** 2026-04-26 09:20 CEST
 
 ## Current State
 
@@ -11,6 +11,7 @@
 🟡 Git-Historie wurde lokal in sinnvolle Blöcke überführt und sollte als Nächstes gepusht werden
 🟡 Phase 7 Admin-Bereich ist nur als read-only FastAPI-Ansicht vorhanden
 🟡 Barcode-Erzeugung ist jetzt als eigene Backend-Verantwortung vorbereitet
+✅ DB-Initialsetup ist entschieden: eine lokale DB, festes Carolin/Annelie-Setup, normales Setup nicht-destruktiv
 🔲 Phase 8 Polish und Hardware-Validierung offen
 
 | Area | Status | Notes |
@@ -22,6 +23,27 @@
 | Codex workflow | ✅ | `AGENTS.md` ist jetzt die führende Assistenz-Doku |
 
 ## What Was Done In This Session
+
+### Initial Database Setup Discipline
+
+- Die DB-Entscheidung wurde KISS festgelegt: Es gibt eine lokale `data/kasse.db` und ein initiales Setup-Skript, keine separate Demo-DB als Architekturkonzept.
+- `tools/seed_database.py` ist jetzt standardmäßig nicht-destruktiv:
+  - fehlende/leere DB wird initialisiert und mit Startdaten befüllt
+  - vorhandene DB mit Produkten, Benutzern, Rezepten oder Runtime-Daten wird nicht überschrieben
+  - vollständiger Neuaufbau geht nur bewusst über `uv run python tools/seed_database.py --reset`
+- Die feste Carolin/Annelie-Konfiguration bleibt im Setup-Code und ist mit einem kurzen Kommentar als aktuelle Installation markiert.
+- Doku aktualisiert:
+  - `README.md`
+  - `dev/PLAN.md`
+  - `dev/ARCHITECTURE.md`
+  - `dev/STATUS_REPORT.md`
+- Admin-Schutz-Entscheidung dokumentiert: KISS-Version nutzt die Admin-Karte bzw. den passenden Barcode; kein Basic Auth, kein Web-Login, keine PIN.
+- Verifikation:
+  - `uv run ruff format src/ tools/`
+  - `uv run ruff check src/ tools/`
+  - `uv run python -m compileall src tools`
+  - `uv run python tools/seed_database.py` verweigert erwartungsgemäß das Überschreiben der vorhandenen DB
+  - `uv run python tools/seed_database.py --help`
 
 ### Project State + Backend Foundation
 
@@ -362,7 +384,7 @@
 ## Current Risks / Open Questions
 
 1. Die neue Kassen- und Rezept-UI wurde lokal per Screenshots und synthetischem Smoke-Test geprüft; ein echter Durchklick-Test auf App/Hardware bleibt offen.
-2. Der Admin-Bereich ist weiterhin nur lesend; Phase 7 braucht noch eine klare Entscheidung zum Scope.
+2. Der Admin-Bereich ist weiterhin nur lesend; nächste sinnvolle Phase ist Guthaben ändern plus Barcode-/Druckworkflow.
 3. Hardware-Tests auf dem Raspberry Pi fehlen weiterhin für Touch, Scanner und Performance.
 4. Das neue Rechenspiel inklusive Coin-Assets ist im Code verdrahtet, aber noch nicht auf dem Raspberry-Pi-Display mit echter USB-Numpad-Eingabe getestet.
 5. Kassen- und Rezept-UI sind implementiert und visuell nachpoliert, aber noch nicht mit echter Scanner-/Touch-Hardware und Kindern validiert. Wichtig: `FrameShell` bleibt weiterhin die einzige Shell-/Footer-Wahrheit.
@@ -380,6 +402,7 @@
 ```bash
 uv run python main.py
 uv run uvicorn src.admin.server:app --reload --port 8080
+uv run python tools/seed_database.py
 uv run ruff check src/
 uv run ruff format src/
 ```

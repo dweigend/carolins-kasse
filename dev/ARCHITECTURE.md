@@ -502,22 +502,24 @@ assets.get("frames/red")          →  assets/nobg/frames/red.png  # keine Grö�
                           └───────────────┘
 ```
 
-### Data Pipeline: YAML → SQLite
+### Data Pipeline: Initial Setup → SQLite
 
 ```
 ┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
-│   products.yaml     │     │  seed_database.py   │     │     kasse.db        │
-│   users.yaml        │────▶│  (Import-Tool)      │────▶│   (SQLite)          │
+│  seed_database.py   │────▶│      kasse.db       │────▶│  pygame + admin    │
+│  (initial setup)    │     │      (SQLite)       │     │  runtime usage     │
 └─────────────────────┘     └─────────────────────┘     └─────────────────────┘
-         │
-         │                  ┌─────────────────────┐     ┌─────────────────────┐
-         └─────────────────▶│ generate_barcodes.py│────▶│   data/barcodes/    │
-                            │  (Barcode-Generator)│     │   (PNG-Dateien)     │
+          │
+          │                 ┌─────────────────────┐     ┌─────────────────────┐
+          └────────────────▶│ generate_barcodes.py│────▶│   data/barcodes/    │
+                            │ (SVG generation)    │     │   (SVG files)       │
                             └─────────────────────┘     └─────────────────────┘
 
-Single Source of Truth: YAML-Dateien
-→ DB wird bei Bedarf neu generiert
-→ Barcodes werden für den Druck generiert
+There is one local SQLite database. `tools/seed_database.py` contains the
+current Carolin/Annelie family setup and initializes a missing or empty DB. The
+default setup path is non-destructive and must not overwrite runtime balances,
+sessions, earnings, or transactions. A full rebuild is only allowed through an
+explicit reset command.
 ```
 
 ### Admin Web-UI Flow
@@ -563,6 +565,10 @@ Single Source of Truth: YAML-Dateien
 | Statistiken | ❌ | ✅ | Charts, Export |
 | Mathe-Schwierigkeit | ❌ | ✅ | Pro Kind einstellbar |
 
+Admin access is intentionally kept simple for now: the kiosk flow is gated by
+the Admin card barcode. No separate web login, Basic Auth, or PIN is planned in
+the KISS version.
+
 **Guthaben aufladen an der Kasse (Quick-Flow):**
 ```
 [Admin-Karte scannen] → Admin-Modus aktiv
@@ -577,15 +583,13 @@ Single Source of Truth: YAML-Dateien
 
 ```
 tools/
-├── generate_barcodes.py   # YAML → Barcode-PNGs (python-barcode)
-├── seed_database.py       # YAML → SQLite
+├── generate_barcodes.py   # DB → Barcode SVGs (python-barcode)
+├── seed_database.py       # Initial setup → SQLite
 └── start_admin.sh         # WiFi-Hotspot + FastAPI starten
 
 data/
-├── products.yaml          # Produkt-Definitionen (Source of Truth)
-├── users.yaml             # User-Definitionen (Source of Truth)
-├── barcodes/              # Generierte Barcode-Bilder (EAN-13 PNGs)
-└── kasse.db               # SQLite (generiert aus YAML)
+├── barcodes/              # Generierte Barcode-Bilder (EAN-13 SVGs)
+└── kasse.db               # Lokale SQLite-Datenbank
 
 assets/
 ├── master/                # Original-Assets (NIEMALS verändern!)
@@ -616,5 +620,5 @@ src/
 
 ### Why python-barcode?
 - Einfache API: `barcode.get('ean13', '123...').save('file')`
-- Generiert PNG/SVG
+- Generiert SVGs für den aktuellen Barcode-Workflow
 - Keine externen Dependencies
