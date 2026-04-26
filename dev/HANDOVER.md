@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-26 10:57 CEST
+**Last Updated:** 2026-04-26 10:59 CEST
 
 ## Current State
 
@@ -85,7 +85,7 @@
 - `src/scenes/admin.py` wurde ohne UI-Verhaltensänderung auf kleinere Rendering-Helfer geschnitten.
 - Status-Tab trennt jetzt Panel-Layout, Statuszeilen, Server-Controls und QR-Rendering.
 - User-&-Konten-Tab trennt User-Zeile, Zusammenfassung, Guthabenbuttons und Admin-/Schwierigkeitsbuttons.
-- Das Klick-Register nutzt jetzt eine kleine `AdminButton`-Dataclass statt eines unbenannten Tuples.
+- Nachgeschärft: Refactors sollen auch netto schlanker werden; die überzählige Button-Dataclass/Helper-Schicht wurde wieder entfernt.
 - Verifikation:
   - `uv run ruff format src/ tools/`
   - `uv run ruff check src/ tools/`

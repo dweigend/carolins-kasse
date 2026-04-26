@@ -1,7 +1,6 @@
 """On-device admin scene for quick parent tasks at the register."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
 
 import pygame
 import qrcode
@@ -76,21 +75,13 @@ HELP_LINES = [
 ]
 
 
-@dataclass(frozen=True)
-class AdminButton:
-    """Clickable rectangle registered during one admin render pass."""
-
-    rect: pygame.Rect
-    callback: Callable[[], None]
-
-
 class AdminScene(MessageMixin, Scene):
     """Admin screen shown after scanning the existing Admin card."""
 
     def __init__(self) -> None:
         """Initialize the on-device admin scene."""
         self._active_tab = "status"
-        self._buttons: list[AdminButton] = []
+        self._buttons: list[tuple[pygame.Rect, Callable[[], None]]] = []
         self._users: list[User] = []
         self._adjustments: list[BalanceAdjustment] = []
         self._status: AdminServerStatus = get_admin_server_status()
@@ -105,9 +96,9 @@ class AdminScene(MessageMixin, Scene):
     def handle_event(self, event: pygame.event.Event) -> str | None:
         """Handle touch events."""
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for button in reversed(self._buttons):
-                if button.rect.collidepoint(event.pos):
-                    button.callback()
+            for rect, callback in reversed(self._buttons):
+                if rect.collidepoint(event.pos):
+                    callback()
                     return self._consume_next_scene()
         return self._consume_next_scene()
 
@@ -294,16 +285,11 @@ class AdminScene(MessageMixin, Scene):
                 panel.width - 32,
                 USER_ROW_HEIGHT,
             )
-            self._draw_user_row(screen, row, user)
+            pygame.draw.rect(screen, GREY_LIGHT, row, border_radius=10)
+            self._draw_user_summary(screen, row, user)
+            self._draw_balance_buttons(screen, row, user)
+            self._draw_user_admin_buttons(screen, row, user)
             y += USER_ROW_HEIGHT + USER_ROW_GAP
-
-    def _draw_user_row(
-        self, screen: pygame.Surface, row: pygame.Rect, user: User
-    ) -> None:
-        pygame.draw.rect(screen, GREY_LIGHT, row, border_radius=10)
-        self._draw_user_summary(screen, row, user)
-        self._draw_balance_buttons(screen, row, user)
-        self._draw_user_admin_buttons(screen, row, user)
 
     def _draw_user_summary(
         self, screen: pygame.Surface, row: pygame.Rect, user: User
@@ -341,37 +327,42 @@ class AdminScene(MessageMixin, Scene):
         self, screen: pygame.Surface, row: pygame.Rect, user: User
     ) -> None:
         button_y = row.y + 9
-        self._draw_button(
-            screen,
-            pygame.Rect(
-                row.right - 242, button_y, TOGGLE_BUTTON_WIDTH, BALANCE_BUTTON_HEIGHT
+        controls = (
+            (
+                row.right - 242,
+                TOGGLE_BUTTON_WIDTH,
+                "Admin" if user.is_admin else "An/Aus",
+                ORANGE,
+                lambda u=user: self._toggle_user_active(u),
+                not user.is_admin,
             ),
-            "Admin" if user.is_admin else "An/Aus",
-            ORANGE,
-            WHITE,
-            lambda u=user: self._toggle_user_active(u),
-            enabled=not user.is_admin,
+            (
+                row.right - 144,
+                DIFFICULTY_BUTTON_WIDTH,
+                "S-",
+                BLUE,
+                lambda u=user: self._change_difficulty(u, -1),
+                True,
+            ),
+            (
+                row.right - 78,
+                DIFFICULTY_BUTTON_WIDTH,
+                "S+",
+                BLUE,
+                lambda u=user: self._change_difficulty(u, 1),
+                True,
+            ),
         )
-        self._draw_difficulty_button(screen, row.right - 144, button_y, "S-", user, -1)
-        self._draw_difficulty_button(screen, row.right - 78, button_y, "S+", user, 1)
-
-    def _draw_difficulty_button(
-        self,
-        screen: pygame.Surface,
-        x: int,
-        y: int,
-        label: str,
-        user: User,
-        delta: int,
-    ) -> None:
-        self._draw_button(
-            screen,
-            pygame.Rect(x, y, DIFFICULTY_BUTTON_WIDTH, BALANCE_BUTTON_HEIGHT),
-            label,
-            BLUE,
-            WHITE,
-            lambda u=user, d=delta: self._change_difficulty(u, d),
-        )
+        for x, width, label, color, callback, enabled in controls:
+            self._draw_button(
+                screen,
+                pygame.Rect(x, button_y, width, BALANCE_BUTTON_HEIGHT),
+                label,
+                color,
+                WHITE,
+                callback,
+                enabled=enabled,
+            )
 
     def _draw_latest_adjustment_summary(
         self, screen: pygame.Surface, panel: pygame.Rect
@@ -460,7 +451,7 @@ class AdminScene(MessageMixin, Scene):
         text = self._font_small.render(label, True, text_color)
         screen.blit(text, text.get_rect(center=rect.center))
         if enabled:
-            self._buttons.append(AdminButton(rect, callback))
+            self._buttons.append((rect, callback))
 
     def _draw_text(
         self,
