@@ -31,6 +31,4 @@ dev/*
 !dev/HANDOVER.md
 !dev/PLAN.md
 !dev/ARCHITECTURE.md
-!dev/WORKFLOW.md
-!dev/STATUS_REPORT.md
 /ui/

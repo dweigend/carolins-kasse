@@ -1,131 +1,71 @@
-# Carolin's Kasse 🛒
+# Carolin's Kasse
 
-A DIY self-checkout register for kids — because every child deserves their own barcode scanner.
+A Raspberry Pi toy checkout for Carolin and Annelie: real barcode scanner,
+touch display, SQLite balances, shopping, recipes, math rewards, and a small
+parent admin area.
 
-> [!NOTE]
-> 🚧 **Under Active Development** — This project is being built for Carolin's 4th birthday. Core features are still in progress. Star the repo to follow along!
+## What Works
 
----
+- Pygame kiosk app for the 1024x600 touch display.
+- User card login, session tracking, balances, earnings, and transactions.
+- Shopping flow with scanner, touch picker, cart, checkout, and insufficient-funds handling.
+- Recipe mode with recipe cards and ingredient scanning.
+- Math mode with difficulty per child and Taler rewards.
+- FastAPI remote admin for products, users, recipes, barcodes, balances, and A4 print sheets.
+- On-device pygame admin mode via Admin card `2000000000046`.
 
-## 📖 About
+## Hardware
 
-My daughter Carolin loves playing store. Like *really* loves it. And if you've ever been to a supermarket with a preschooler, you know the magnetic pull of those self-checkout scanners. She'd scan groceries all day if we let her.
-
-So for her 4th birthday, I'm building her the real thing: a fully functional toy cash register with an actual barcode scanner, running on a Raspberry Pi, housed in a custom wooden case.
-
-**The Goal:** Let kids play store while sneaking in some early math — adding prices, counting items, following recipe checklists, grouping products. All the intuitive mental models that make numbers click, wrapped in the joy of *beep beep beep*.
-
-I couldn't find anything like this on the market. Toy registers exist, but none with real scanning, real products, and educational depth. So here we are.
-
----
-
-## ✨ Features
-
-- **Barcode Scanning** — Real USB scanner, real product lookups
-- **Shopping Mode** — Scan items, manage cart, checkout
-- **Recipe Mode** — Follow ingredient checklists (learning to read lists)
-- **Math Games** — Practice addition & subtraction with prices
-- **Multi-User** — Each child gets their own card, balance, and color theme
-- **Touch + Numpad** — Works with touchscreen or physical numpad input
-
----
-
-## 🔧 Hardware
-
-| Component | Model |
-|-----------|-------|
+| Part | Model |
+|---|---|
 | Computer | Raspberry Pi Zero 2 W |
-| Display | Elecrow 7" IPS Touch (1024×600) |
-| Power | Anker 20K 87W (~20h runtime) |
-| Scanner | USB Barcode Scanner |
-| Input | USB Numpad |
-| Case | Custom wooden housing (WIP) |
+| Display | Elecrow 7" IPS Touch, 1024x600 |
+| Power | Anker 20K 87W |
+| Scanner | USB barcode scanner |
+| Input | Touch plus optional USB numpad |
 
-The whole setup runs on battery power — no cables, fully portable. Perfect for living room floor deployment.
-
----
-
-## 🏗️ Tech Stack
-
-- **Python 3.13+** with [pygame-ce](https://pyga.me/) for graphics
-- **SQLite** for products, users, and transactions
-- **FastAPI** for the local parent/admin pages
-- **uv** for dependency management
-
-```
-src/
-├── admin/        # FastAPI admin pages
-├── scenes/       # Screen states (menu, scan, recipe, etc.)
-├── components/   # Reusable UI elements (buttons, badges)
-└── utils/        # Helpers (assets, database)
-```
-
----
-
-## 🚀 Getting Started
+## Setup
 
 ```bash
-# Clone
-git clone https://github.com/dweigend/carolins_kasse.git
-cd carolins_kasse
-
-# Install dependencies
 uv sync
-
-# Run
+uv run python tools/seed_database.py
+uv run python tools/generate_barcodes.py
 uv run python main.py
 ```
 
-**Note:** Runs windowed on desktop, fullscreen (KMSDRM) on Pi.
+`tools/seed_database.py` is non-destructive by default. It keeps the current
+Carolin/Annelie setup and refuses to overwrite existing balances, sessions,
+earnings, or transactions. Use `--reset` only for an intentional full rebuild.
 
-Scan the existing Admin card (`2000000000046`) on the login screen to open the
-on-device pygame admin mode. It can start/stop the remote admin server, show the
-home-network admin URL as a QR code, and adjust existing user balances quickly.
-
-### Admin + Barcodes
+## Admin
 
 ```bash
-# View local admin pages
+# Local browser
 uv run uvicorn src.admin.server:app --reload --port 8080
 
-# Remote admin on the home network
+# Phone on the home network
 uv run uvicorn src.admin.server:app --host 0.0.0.0 --port 8080
 
-# Initialize a missing or empty database and generate barcode SVGs
-uv run python tools/seed_database.py
-uv run python tools/generate_barcodes.py
-
-# Generate A4 printable PDFs
+# Printable A4 PDFs
 uv run python tools/generate_printables.py
 ```
 
-The setup script is non-destructive by default. It keeps the current
-Carolin/Annelie family setup in code and refuses to overwrite an existing
-database with balances, sessions, earnings, or transactions. Use
-`uv run python tools/seed_database.py --reset` only when you intentionally want
-to rebuild the full local database.
+At the kiosk, scan the Admin card (`2000000000046`) on the login screen. The
+pygame admin mode can start/stop the remote admin server, show a QR code for
+`http://<pi-ip>:8080`, and adjust existing user balances quickly.
 
-The internal EAN-13 prefixes are:
+## Barcode Prefixes
 
 - `100`: products
-- `200`: user cards
-- `300`: recipe cards
+- `200`: users
+- `300`: recipes
 
----
+## Project Docs
 
-## 🤝 Want to Build One?
+- `AGENTS.md`: repository instructions for Codex work.
+- `dev/HANDOVER.md`: current state and next steps.
+- `dev/PLAN.md`: active roadmap.
+- `dev/ARCHITECTURE.md`: system boundaries and runtime flows.
 
-If you're interested in building something similar for your kids, feel free to reach out! I'm happy to share hardware tips, case designs, and lessons learned.
-
-- **GitHub:** [@dweigend](https://github.com/dweigend)
-- **Website:** [weigend.studio](https://weigend.studio)
-
----
-
-## 📄 License
-
-MIT — do whatever you want with it. If you build one, send pictures!
-
----
-
-*Built with ❤️ for Carolin's 4th birthday.*
+Historical design drafts were removed from the active docs to keep the repo
+lean. Use Git history if an old concept is needed again.

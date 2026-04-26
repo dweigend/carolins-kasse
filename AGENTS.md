@@ -4,114 +4,97 @@
 
 - Chat with me in German.
 - Write code, file names, commit messages, pull requests, and code comments in English.
+- Keep UI text in German.
 
-## Repository First
-
-Always inspect the repository before changing anything.
-
-### Session Start
+## Session Start
 
 1. Read `dev/HANDOVER.md`.
 2. Read `dev/PLAN.md`.
-3. Read `dev/ARCHITECTURE.md` if structure or responsibilities matter for the task.
-4. Run `gh issue list --limit 20` for project context.
+3. Read `dev/ARCHITECTURE.md` when structure or responsibilities matter.
+4. Run `gh issue list --limit 20`.
 5. Run `git status --short --branch` before editing files.
 
-### Before Ending a Session
+## Before Ending
 
-1. Run the relevant checks.
+1. Run relevant checks.
 2. Update `dev/HANDOVER.md`.
-3. Add or update follow-up notes in `dev/STATUS_REPORT.md` if priorities changed.
-4. Create GitHub issues for newly discovered bugs, ideas, or kid-testing tasks.
-
-## Core Principles
-
-- Prefer readable, maintainable, well-structured code over clever code.
-- Keep solutions simple. Reuse existing project code before introducing new abstractions.
-- Preserve the current architecture, design language, and project conventions unless there is a strong reason to change them.
-- Do not add dependencies when the standard library or already-installed packages are enough.
+3. Update `dev/PLAN.md` or `dev/ARCHITECTURE.md` only when priorities or structure changed.
+4. Create GitHub issues for newly discovered bugs, ideas, decisions, or hardware/kid tests.
 
 ## Project Context
 
-- Stack: Python + `pygame-ce` + SQLite + FastAPI admin pages
-- Package manager: `uv`
-- Target hardware: Raspberry Pi Zero 2 W with 1024x600 touch display
-- Primary app entry point: `main.py`
-- Admin entry point: `uv run uvicorn src.admin.server:app --reload --port 8080`
+- Stack: Python, `pygame-ce`, SQLite, FastAPI, Jinja2.
+- Package manager: `uv`.
+- Target: Raspberry Pi Zero 2 W with 1024x600 touch display.
+- Kiosk entry point: `main.py`.
+- Remote admin entry point: `uv run uvicorn src.admin.server:app --reload --port 8080`.
 
-## Current Structure
+## Structure
 
 ```text
 src/
 ├── admin/         # FastAPI admin pages and templates
 ├── components/    # Reusable pygame UI pieces
-├── scenes/        # Scene flow and screen-specific logic
+├── scenes/        # Scene flow and screen logic
 ├── ui/            # Shared shell and rendering helpers
 └── utils/         # State, database, assets, fonts, layout helpers
-assets/
-├── 40er/          # Small icons
-├── 50er/          # Small UI assets
-├── 340er/         # Product images
-└── 680er/         # Scene and recipe artwork
-data/              # SQLite DB and generated barcodes
-dev/               # Project docs, plans, handover, status report
-tools/             # Seed and helper scripts
+assets/            # Product, scene, UI, font assets
+data/              # Local SQLite DB and generated barcodes
+dev/               # Active docs only: handover, plan, architecture
+tools/             # Seed, barcode, print helper scripts
 ```
 
-## Implementation Priorities
+## Engineering Rules
 
-1. Reuse existing scene, component, or utility patterns.
-2. Extend current code paths instead of adding parallel systems.
-3. Keep business logic, rendering, and persistence concerns separated.
-4. Prefer early returns and explicit names.
-5. Keep UI text in German. Keep code and comments in English.
+- Inspect existing patterns before changing architecture.
+- Prefer readable, maintainable code over clever code.
+- Reuse project code first, then standard library, then installed dependencies.
+- Add new dependencies only when clearly justified.
+- Keep business logic, rendering, persistence, and orchestration separated.
+- Prefer early returns, explicit names, and small functions.
+- Refactors should reduce real complexity; avoid abstraction that only adds lines.
 
 ## Python Rules
 
 - Use `uv`, never `pip`.
 - Run scripts with `uv run`.
-- Keep type hints where they improve clarity and correctness.
+- Use type hints where they improve readability or correctness.
 - Add short English docstrings for shared or non-obvious public APIs.
-- No `ty` by default here; `pygame` typing is still incomplete.
+- No `ty` by default; pygame typing is still incomplete.
 
 ## Verification
 
-Run the repository checks first:
+Run at least:
 
 ```bash
-uv run ruff check src/
-uv run ruff format src/
+uv run ruff check src/ tools/
+uv run ruff format src/ tools/
+uv run python -m compileall src tools
 ```
 
-When relevant, also run:
-
-```bash
-uv run python main.py
-uv run uvicorn src.admin.server:app --reload --port 8080
-```
-
-Manual testing is expected for pygame flows, especially for scene navigation, touch input, barcode scanning, and layout on the 1024x600 target size.
+When relevant, also run targeted smoke tests for pygame scenes, barcode flows,
+admin pages, print generation, and database safety. Manual Pi validation remains
+required for scanner, touch, fullscreen behavior, and performance.
 
 ## Git Workflow
 
-- Keep the tree understandable and avoid touching unrelated user changes.
-- Before substantial work, create a safe git checkpoint when the worktree allows it.
+- Keep unrelated local changes untouched; `data/kasse.db` often has runtime drift.
+- Stage explicit files only.
+- Commit completed, meaningful units promptly.
 - Use concise English commit messages.
-- Never mention AI, Codex, Claude, or generated code in commits or pull requests.
+- Never mention AI, Codex, Claude, or generated code in commits or PRs.
+- Never use destructive git commands unless explicitly requested.
 
 ## Issue Workflow
 
 Create GitHub issues immediately for:
 
 - bugs discovered during development
-- new feature ideas
+- feature ideas worth preserving
 - decisions that need follow-up
-- anything that should be tested with kids on real hardware
-
-Example:
+- anything to validate with children or real hardware
 
 ```bash
 gh issue create --title "Bug: Scanner doesn't read barcode" --label "bug"
-gh issue create --title "Idea: Sound on login" --label "enhancement"
-gh issue create --title "Test: Touch vs Numpad for picker" --label "needs-testing"
+gh issue create --title "Test: Touch targets on admin screen" --label "needs-testing"
 ```
