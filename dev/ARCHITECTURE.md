@@ -93,11 +93,27 @@ physical Admin card flow.
 tools/seed_database.py       -> initializes missing/empty data/kasse.db
 tools/generate_barcodes.py   -> writes SVG barcodes from DB contents
 tools/generate_printables.py -> writes A4 PDFs under data/print/
+tools/pi_prepare_boot.py     -> prepares Raspberry Pi bootfs for first install
+tools/pi_bootstrap.sh        -> first Pi install into /opt/carolins-kasse
+tools/pi_update.sh           -> backup, pull, sync, verify, restart
+tools/pi_backup.sh           -> SQLite backup helper
+tools/pi_debug.py            -> read-only SSH diagnostics
 ```
 
 `tools/seed_database.py` is non-destructive unless called with `--reset`.
 Runtime DB changes, generated PDFs, and generated barcode outputs should not be
 treated as source-of-truth code changes.
+
+Pi installations set `CAROLINS_KASSE_DB_PATH=/var/lib/carolins-kasse/kasse.db`
+so balances and sessions survive Git updates outside the source checkout.
+Local development keeps the default `data/kasse.db` path.
+
+Systemd units live under `systemd/`:
+
+- `carolins-kasse.service`: starts the pygame kiosk.
+- `carolins-kasse-backup.service` and `.timer`: daily SQLite backups.
+- `carolins-kasse-update.service`: manually triggered GitHub update.
+- `carolins-install.service`: temporary first-install service.
 
 ## Module Responsibilities
 
@@ -111,6 +127,7 @@ treated as source-of-truth code changes.
 | `src/utils/barcodes.py` | Barcode rules and generated SVG paths |
 | `src/utils/admin_runtime.py` | Managed FastAPI server start/stop for pygame admin |
 | `src/utils/network.py` | Local IP and admin URL helpers |
+| `src/utils/pi_system.py` | Pi diagnostics, admin PIN validation, system actions |
 | `tools/` | Operational scripts for setup, barcodes, printables |
 
 ## Refactor Rules

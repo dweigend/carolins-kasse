@@ -1,0 +1,10 @@
+[Unit]
+Description=Update Carolin's Kasse from GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=CAROLINS_KASSE_DB_PATH=/var/lib/carolins-kasse/kasse.db
+Environment=CAROLINS_KASSE_BACKUP_DIR=/var/backups/carolins-kasse
+ExecStart=/opt/carolins-kasse/tools/pi_update.sh

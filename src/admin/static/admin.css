@@ -109,6 +109,11 @@ input[type="checkbox"] {
     width: auto;
 }
 
+code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 0.9rem;
+}
+
 button,
 .button-link {
     display: inline-flex;
@@ -293,6 +298,51 @@ button.small,
 
 .admin-card p {
     margin-bottom: 1rem;
+}
+
+.notice {
+    background: #e8f2ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    color: #1e3a8a;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.debug-login {
+    max-width: 520px;
+}
+
+.debug-grid {
+    align-items: stretch;
+}
+
+.debug-list {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.5rem 0.75rem;
+    overflow-wrap: anywhere;
+}
+
+.debug-list dt {
+    color: #86868b;
+    font-weight: 600;
+}
+
+.debug-log {
+    margin-top: 1rem;
+}
+
+.debug-log pre {
+    background: #1d1d1f;
+    border-radius: 8px;
+    color: #f5f5f7;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 0.85rem;
+    max-height: 26rem;
+    overflow: auto;
+    padding: 1rem;
+    white-space: pre-wrap;
 }
 
 .modal {

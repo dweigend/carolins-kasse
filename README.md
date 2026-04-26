@@ -26,6 +26,8 @@ parent admin area.
 
 ## Setup
 
+Local development:
+
 ```bash
 uv sync
 uv run python tools/seed_database.py
@@ -36,6 +38,10 @@ uv run python main.py
 `tools/seed_database.py` is non-destructive by default. It keeps the current
 Carolin/Annelie setup and refuses to overwrite existing balances, sessions,
 earnings, or transactions. Use `--reset` only for an intentional full rebuild.
+
+Raspberry Pi first-boot setup is documented in `docs/PI_SETUP.md`. The automated
+path uses Raspberry Pi OS Lite 64-bit, `tools/pi_prepare_boot.py`, and systemd
+services to install and start the kiosk after first boot.
 
 ## Admin
 
@@ -53,6 +59,10 @@ uv run python tools/generate_printables.py
 At the kiosk, scan the Admin card (`2000000000046`) on the login screen. The
 pygame admin mode can start/stop the remote admin server, show a QR code for
 `http://<pi-ip>:8080`, and adjust existing user balances quickly.
+
+The browser admin also includes a PIN-protected `/debug` page on Raspberry Pi
+installations. It shows service status, logs, backups, SSH details, and can
+start backup/update/restart actions.
 
 ## Barcode Prefixes
 

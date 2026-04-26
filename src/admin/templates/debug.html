@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Debug{% endblock %}
+
+{% block content %}
+<h1>Debug</h1>
+
+{% if message %}
+<div class="notice">{{ message }}</div>
+{% endif %}
+
+{% if not unlocked %}
+<section class="admin-card debug-login">
+    <h2>Admin-PIN</h2>
+    <p class="muted">
+        Der PIN wird beim Raspi-Setup lokal auf der Kasse erzeugt.
+    </p>
+    <form class="compact-form" method="post" action="/debug/unlock">
+        <input class="field-medium" name="pin" type="password" inputmode="numeric" autocomplete="current-password" aria-label="Admin-PIN">
+        <button type="submit">Entsperren</button>
+    </form>
+</section>
+{% else %}
+<div class="card-grid debug-grid">
+    <section class="admin-card">
+        <h2>System</h2>
+        <dl class="debug-list">
+            <dt>Hostname</dt>
+            <dd>{{ snapshot.hostname }}</dd>
+            <dt>IP</dt>
+            <dd>{{ snapshot.ip_address }}</dd>
+            <dt>Admin</dt>
+            <dd>{{ snapshot.admin_url }}</dd>
+            <dt>SSH</dt>
+            <dd><code>{{ snapshot.ssh_command }}</code></dd>
+        </dl>
+    </section>
+
+    <section class="admin-card">
+        <h2>Version</h2>
+        <dl class="debug-list">
+            <dt>Branch</dt>
+            <dd>{{ snapshot.git_branch }}</dd>
+            <dt>Commit</dt>
+            <dd>{{ snapshot.git_commit }}</dd>
+            <dt>Datenbank</dt>
+            <dd>{{ snapshot.db_path }}</dd>
+            <dt>Backup</dt>
+            <dd>{{ snapshot.latest_backup }}</dd>
+        </dl>
+    </section>
+
+    <section class="admin-card">
+        <h2>Dienste</h2>
+        <dl class="debug-list">
+            <dt>Kasse</dt>
+            <dd>{{ snapshot.kiosk_service.active }} · {{ snapshot.kiosk_service.enabled }}</dd>
+            <dt>Update</dt>
+            <dd>{{ snapshot.update_service.active }} · {{ snapshot.update_service.enabled }}</dd>
+            <dt>Backup</dt>
+            <dd>{{ snapshot.backup_service.active }} · {{ snapshot.backup_service.enabled }}</dd>
+            <dt>PIN</dt>
+            <dd>{% if snapshot.pin_configured %}eingerichtet{% else %}fehlt{% endif %}</dd>
+        </dl>
+    </section>
+
+    <section class="admin-card">
+        <h2>Aktionen</h2>
+        <div class="quick-actions">
+            <form method="post" action="/debug/action">
+                <input type="hidden" name="action" value="backup">
+                <button type="submit" class="secondary">Backup starten</button>
+            </form>
+            <form method="post" action="/debug/action">
+                <input type="hidden" name="action" value="restart">
+                <button type="submit" class="secondary">Kasse neu starten</button>
+            </form>
+            <form method="post" action="/debug/action">
+                <input type="hidden" name="action" value="update">
+                <button type="submit">Update starten</button>
+            </form>
+        </div>
+    </section>
+</div>
+
+<section class="admin-card debug-log">
+    <h2>Letzte Kassen-Logs</h2>
+    <pre>{{ snapshot.logs }}</pre>
+</section>
+{% endif %}
+{% endblock %}

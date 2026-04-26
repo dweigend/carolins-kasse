@@ -9,6 +9,7 @@ Uses EAN-13 barcodes with prefixes:
 """
 
 import json
+import os
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -18,8 +19,14 @@ from pathlib import Path
 from typing import Self
 
 
-# Database path
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "kasse.db"
+# Database path. The Pi installer sets this to /var/lib/carolins-kasse/kasse.db
+# so runtime balances are kept outside the Git checkout.
+DB_PATH = Path(
+    os.environ.get(
+        "CAROLINS_KASSE_DB_PATH",
+        Path(__file__).parent.parent.parent / "data" / "kasse.db",
+    )
+).expanduser()
 
 
 @dataclass

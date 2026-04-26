@@ -1,0 +1,8 @@
+[Unit]
+Description=Back up Carolin's Kasse database
+
+[Service]
+Type=oneshot
+Environment=CAROLINS_KASSE_DB_PATH=/var/lib/carolins-kasse/kasse.db
+Environment=CAROLINS_KASSE_BACKUP_DIR=/var/backups/carolins-kasse
+ExecStart=/opt/carolins-kasse/tools/pi_backup.sh

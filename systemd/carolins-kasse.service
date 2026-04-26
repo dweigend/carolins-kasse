@@ -1,0 +1,22 @@
+[Unit]
+Description=Carolin's Kasse kiosk
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=kasse
+Group=kasse
+WorkingDirectory=/opt/carolins-kasse
+Environment=PYTHONUNBUFFERED=1
+Environment=CAROLINS_KASSE_DB_PATH=/var/lib/carolins-kasse/kasse.db
+Environment=CAROLINS_KASSE_ADMIN_PIN_PATH=/etc/carolins-kasse/admin-pin
+Environment=CAROLINS_KASSE_BACKUP_DIR=/var/backups/carolins-kasse
+Environment=SDL_VIDEODRIVER=kmsdrm
+ExecStart=/opt/carolins-kasse/.venv/bin/python main.py
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

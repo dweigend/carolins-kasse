@@ -1,0 +1,12 @@
+[Unit]
+Description=Install Carolin's Kasse after first boot
+After=network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/carolins-pi-bootstrap.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

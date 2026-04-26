@@ -11,7 +11,7 @@ For remote admin on the home network:
 """
 
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -33,6 +33,13 @@ from src.utils.database import (
     update_user_balance,
 )
 from src.utils.barcodes import BARCODE_DIR, barcode_path, barcode_url, write_ean13_svg
+from src.utils.pi_system import (
+    collect_debug_snapshot,
+    run_admin_action,
+    verify_admin_pin,
+)
+
+DEBUG_COOKIE = "carolins_admin_debug"
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -162,6 +169,62 @@ async def printables_page(request: Request):
             "active": "printables",
         },
     )
+
+
+@app.get("/debug")
+async def debug_page(request: Request, message: str | None = None):
+    """Show PIN-protected Raspberry Pi diagnostics and maintenance actions."""
+    unlocked = verify_admin_pin(request.cookies.get(DEBUG_COOKIE))
+    return templates.TemplateResponse(
+        "debug.html",
+        {
+            "request": request,
+            "active": "debug",
+            "unlocked": unlocked,
+            "snapshot": collect_debug_snapshot() if unlocked else None,
+            "message": message,
+        },
+    )
+
+
+@app.post("/debug/unlock")
+async def unlock_debug(request: Request):
+    """Unlock the debug page with the locally generated admin PIN."""
+    form = await _parse_form(request)
+    pin = form.get("pin")
+    if not verify_admin_pin(pin):
+        return RedirectResponse(
+            url="/debug?message=PIN%20ist%20falsch",
+            status_code=303,
+        )
+
+    response = RedirectResponse(url="/debug", status_code=303)
+    response.set_cookie(
+        DEBUG_COOKIE,
+        pin or "",
+        max_age=3600,
+        httponly=True,
+        samesite="strict",
+    )
+    return response
+
+
+@app.post("/debug/action")
+async def run_debug_action(request: Request):
+    """Run a PIN-protected system action from the debug page."""
+    if not verify_admin_pin(request.cookies.get(DEBUG_COOKIE)):
+        return RedirectResponse(
+            url="/debug?message=Bitte%20PIN%20eingeben",
+            status_code=303,
+        )
+
+    form = await _parse_form(request)
+    result = run_admin_action(form.get("action", ""))
+    status = "gestartet" if result.ok else "fehlgeschlagen"
+    message = f"Aktion {status}"
+    if result.output:
+        message = f"{message}: {result.output[:160]}"
+    return RedirectResponse(url=f"/debug?message={quote(message)}", status_code=303)
 
 
 @app.post("/printables/generate")

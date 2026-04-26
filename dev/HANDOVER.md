@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-26 11:08 CEST
+**Last Updated:** 2026-04-26 18:10 CEST
 
 ## Current State
 
@@ -9,6 +9,9 @@
 - FastAPI remote admin is usable on the home network for products, users, recipes, balances, barcode downloads, and A4 print PDFs.
 - Pygame admin mode opens with Admin card `2000000000046` and provides server status/QR, balance controls, account overview, and notes.
 - Database setup is KISS: one local `data/kasse.db`, fixed Carolin/Annelie initial setup, non-destructive seed script by default.
+- Raspberry Pi first-boot setup is automated with `tools/pi_prepare_boot.py`, `tools/pi_bootstrap.sh`, systemd units, and `docs/PI_SETUP.md`.
+- Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
+- Browser admin has a PIN-protected `/debug` page for status, logs, backups, restart, and update actions.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 
 ## Recent Completed Work
@@ -19,6 +22,7 @@
 - Merged User and Konten into one Pygame admin tab with safer bottom spacing.
 - Cleaned active documentation down to `AGENTS.md`, `README.md`, `dev/HANDOVER.md`, `dev/PLAN.md`, and `dev/ARCHITECTURE.md`.
 - Removed unused `src/utils/layout.py` Phase 6 stubs and replaced scene barcode prefix strings with central constants.
+- Added automated Raspberry Pi Lite first-boot installation path, update/backup scripts, systemd units, and setup documentation.
 
 ## Verification Run Recently
 
@@ -29,11 +33,20 @@
 - Remote admin smoke: managed server starts, `/users` returns 200, stop terminates the managed process.
 - Seed safety smoke: setup refuses to overwrite existing runtime data unless `--reset` is passed.
 
+Run after the Pi setup implementation:
+
+- `uv run ruff check src/ tools/`
+- `uv run ruff format src/ tools/`
+- `uv run python -m compileall src tools`
+- `uv run python tools/pi_prepare_boot.py <temporary bootfs fixture>`
+- FastAPI admin smoke including `/debug`
+
 ## Open GitHub Issues
 
 - #1 Validate cashier UI with kids on touch display
 - #2 Validate recipe UI with kids on touch display
 - #4 Split database module for admin backend
+- #7 Validate automated Raspberry Pi first-boot setup
 
 Closed in this phase:
 
@@ -45,13 +58,14 @@ Closed in this phase:
 
 - `src/utils/database.py` is still the largest mixed-responsibility module. Split it only when the next write path makes the boundary obvious.
 - Hardware behavior is not fully validated: scanner timing, touch target precision, fullscreen rendering, Pi performance, and child comprehension still need real tests.
-- Remote admin has no web login by design. Access is protected by local/home-network context and the Admin card flow, not by HTTP auth.
+- Remote admin product/user/recipe pages still have no web login by design. Debug/update actions are protected by the generated local setup PIN.
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
+- The first-boot installer still needs validation on a freshly flashed Raspberry Pi OS Lite 64-bit Trixie image.
 
 ## Next Best Steps
 
-1. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, and remote admin QR.
-2. Add observations to issues #1 and #2.
-3. Add read-only transaction and earnings views before more write-heavy CRUD.
-4. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
-5. Keep future refactors net-slim where possible: fewer lines or clearly less complexity at unchanged behavior.
+1. Flash Raspberry Pi OS Lite 64-bit, run `tools/pi_prepare_boot.py`, and validate the automated first-boot setup.
+2. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
+3. Add observations to issues #1, #2, and #7.
+4. Add read-only transaction and earnings views before more write-heavy CRUD.
+5. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.

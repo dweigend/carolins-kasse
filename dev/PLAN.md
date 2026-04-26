@@ -15,15 +15,17 @@ local data handling.
 | UI shell | Done | Shared frame, footer, user colors, asset-based scene direction |
 | Remote admin | Done | FastAPI pages, edits, balances, history, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
+| Pi first-boot setup | Done | Automated Lite install path, systemd services, debug/update hooks |
 | Hardware validation | Open | Pi, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 
 ## Active Priorities
 
 1. **Hardware and kid testing**
+   - Validate automated first-boot setup on a freshly flashed Pi.
    - Validate cashier UI on Pi touch display with scanner.
    - Validate recipe UI with children.
-   - Record observations in issues #1 and #2.
+   - Record observations in issues #1, #2, and #7.
 
 2. **Admin read-only history**
    - Add transaction history view.
@@ -49,8 +51,10 @@ local data handling.
 ## Current Decisions
 
 - One local SQLite DB is used at runtime.
+- Pi installs keep the runtime DB at `/var/lib/carolins-kasse/kasse.db`.
 - `tools/seed_database.py` contains the fixed Carolin/Annelie setup and is non-destructive by default.
-- Admin protection stays KISS: no Basic Auth, no web login, no PIN in v1.
+- Kiosk admin protection stays KISS via physical Admin card.
+- Browser debug/update actions require the locally generated setup PIN.
 - The Pi stays on the home WiFi; no hotspot in v1.
 - Print output target is A4 PDF sheets plus existing SVG barcode files.
 - Asset creation should reuse existing `assets/340er/`, `assets/680er/`, and `assets/ui/` before adding new files.
