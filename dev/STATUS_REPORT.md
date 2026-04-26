@@ -1,6 +1,6 @@
 # Project Status Report
 
-**Date:** 2026-04-25
+**Date:** 2026-04-26
 
 ## Where The Project Stands
 
@@ -36,6 +36,8 @@ The local worktree also shows a major UI migration already in progress. That mea
 
 - `src/admin/server.py` provides read-only list pages for products, users, and recipes.
 - Templates already exist in `src/admin/templates/`.
+- Barcode conventions now have a single utility module in `src/utils/barcodes.py`.
+- The seed and barcode scripts in `tools/` are part of the backend foundation and should be pushed with the next GitHub update.
 
 ## What Is Not Finished Yet
 
@@ -61,9 +63,25 @@ Missing capabilities include:
 - transaction views and statistics
 - barcode generation and print workflows in the UI
 
+### Backend Structure
+
+The next backend pass should keep data concerns separated:
+
+- schema/init and seed data
+- product, user, recipe, transaction, and earning queries
+- barcode generation and printable output
+- admin page orchestration
+- pygame scene state
+
+Current refactor candidates:
+
+- `src/utils/database.py` mixes schema creation, data models, CRUD, sessions, earnings, and checkout persistence.
+- `src/admin/server.py` is still small, but list-page view shaping will grow quickly once forms and POST flows are added.
+- `src/utils/state.py` uses module-level globals, which is acceptable for the kiosk loop now, but should not become the admin backend's state source.
+
 ### Documentation Consistency
 
-Some developer docs still describe older intermediate states. The codebase and the docs should be aligned before the next larger implementation phase.
+The core tracked docs now describe the backend start more clearly. `dev/ARCHITECTURE.md` should be tracked with the next commit because the repository instructions require it during session start.
 
 ### Math Game Asset Delivery
 
@@ -103,15 +121,18 @@ The recipe UI now has a screenshot-based baseline, mockups, and a first asset-ba
 
 1. Run a manual UI smoke test in the pygame app on the real display and note any touch, scanner, or readability regressions.
 2. Validate the new cashier and recipe UI on the 1024x600 touch display with scanner and kid-testing feedback; use issues #1 and #2 for observations.
-3. Verify the FastAPI admin locally and decide whether Phase 7 should continue there.
-4. Clean up stale planning and architecture docs so the current state is obvious to future sessions.
+3. Keep Phase 7 in the existing FastAPI admin and add backend forms there.
+4. Add a small database migration/seed discipline before adding CRUD, so demo data and runtime data do not drift silently.
 5. Split the next implementation cycle into one of these paths:
 
 Path A: Finish UI polish and hardware validation first.
 Path B: Expand the FastAPI admin into a true parent-facing management area.
+Path C: Build printable barcode output first, then wire it into product/user/recipe CRUD.
 
 ## Notes For The Next Session
 
-- The local UI migration and repo workflow cleanup are committed together; push and visual QA are the next sensible steps.
+- The local UI migration and repo workflow cleanup are committed locally; push and visual QA are the next sensible steps after this cleanup commit.
 - `AGENTS.md` is now the primary Codex instruction file.
+- The previous local runtime/demo change in `data/kasse.db` was saved as `stash@{0}`. Do not treat runtime database drift as source-of-truth without deciding whether to preserve demo history or reset from seed.
+- Follow-up issues created for the backend foundation: #3 demo database workflow, #4 database module split, #5 printable barcode workflow.
 - If new follow-up work appears during testing, capture it as GitHub issues immediately.

@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-25 18:24 CEST
+**Last Updated:** 2026-04-26 08:48 CEST
 
 ## Current State
 
@@ -10,6 +10,7 @@
 🟡 Codex-Portierung der Projektdoku ist jetzt angelegt
 🟡 Git-Historie wurde lokal in sinnvolle Blöcke überführt und sollte als Nächstes gepusht werden
 🟡 Phase 7 Admin-Bereich ist nur als read-only FastAPI-Ansicht vorhanden
+🟡 Barcode-Erzeugung ist jetzt als eigene Backend-Verantwortung vorbereitet
 🔲 Phase 8 Polish und Hardware-Validierung offen
 
 | Area | Status | Notes |
@@ -21,6 +22,34 @@
 | Codex workflow | ✅ | `AGENTS.md` ist jetzt die führende Assistenz-Doku |
 
 ## What Was Done In This Session
+
+### Project State + Backend Foundation
+
+- Aktueller Stand geprüft: `master` ist nach dieser Session lokal 10 Commits vor `origin/master`; die vorherige Runtime-Änderung in `data/kasse.db` wurde als `stash@{0}` gesichert.
+- GitHub-Issues geprüft:
+  - #1 Validate cashier UI with kids on touch display
+  - #2 Validate recipe UI with kids on touch display
+  - #3 Define demo database workflow
+  - #4 Split database module for admin backend
+  - #5 Add printable barcode workflow
+- Backend-/Admin-Schnitt vorbereitet:
+  - Barcode-Präfixe, EAN-13-Check-Digit, Dateipfade und SVG-Erzeugung liegen jetzt zentral in `src/utils/barcodes.py`.
+  - `src/admin/server.py` nutzt die zentrale Barcode-URL-Erzeugung statt eigener Dateinamenlogik.
+  - `tools/seed_database.py` und `tools/generate_barcodes.py` sind aus der Ignorierliste herausgenommen und sollen versioniert werden.
+  - `dev/ARCHITECTURE.md` ist jetzt ebenfalls zur Versionierung vorgesehen, weil es im Session-Start gelesen werden muss.
+- Refactor-Fund für später: `src/utils/database.py` ist noch das größte Modul und sollte in einer separaten Runde in Schema, Queries und Transaktionslogik aufgeteilt werden.
+- `python-barcode`-Doku geprüft: `Barcode.save(...)` hängt die Dateiendung selbst an; die neue Utility schreibt deshalb über den Pfad ohne Suffix.
+
+### Verification In This Session
+
+- Erfolgreich ausgeführt:
+  - `uv run ruff format src/ tools/`
+  - `uv run ruff check src/ tools/`
+  - `uv run python -m compileall src tools`
+  - `uv run python tools/generate_barcodes.py`
+  - Admin-/Barcode-Import-Smoke-Test
+
+## Previous Session Notes
 
 ### Codex Port
 

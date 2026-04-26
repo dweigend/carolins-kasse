@@ -14,7 +14,7 @@
 | 5 | System Integration | ✅ | Inactivity, Time-Bonus, UX-Verbesserungen |
 | 5.5 | UI-Refactoring | ✅ | Kindgerechte Fortschrittsanzeige |
 | **6** | **UI-Overhaul** | 🔨 | **Asset-First Design, Mockup-Style** |
-| 7 | Admin-Bereich | 🔲 | Vollständige Web-UI für Eltern |
+| 7 | Admin-Bereich | 🔨 | Vollständige Web-UI für Eltern |
 | 8 | Polish | 🔲 | Sounds, Animationen, Edge Cases |
 
 ---
@@ -221,9 +221,20 @@
 
 ---
 
-## Phase 7: Admin-Bereich 🔲
+## Phase 7: Admin-Bereich 🔨
 
 **Goal:** Vollständige Admin-Web-UI für Eltern
+
+**Status 2026-04-26:** FastAPI ist als read-only Viewer vorhanden. Die nächste Phase sollte keine zweite Backend-Struktur aufbauen, sondern die bestehenden DB-Funktionen vorsichtig erweitern und klare Modulgrenzen setzen.
+
+### 7.0 Backend Foundation
+- [x] Read-only Admin-Seiten für Produkte, Benutzer und Rezepte
+- [x] Zentrale Barcode-Konventionen in `src/utils/barcodes.py`
+- [x] Versionierbare Seed- und Barcode-Tools vorbereiten
+- [ ] DB-Demozustand festlegen: getrackte Demo-DB behalten oder aus Seed reproduzierbar machen
+- [ ] `src/utils/database.py` in kleinere Verantwortlichkeiten schneiden
+- [ ] Admin-Form-Validierung und Fehlerdarstellung festlegen
+- [ ] Barcode-Printformat festlegen: SVG-Einzeldruck, PDF-Bögen oder beides
 
 ### 7.1 User-Verwaltung
 - [ ] User-Liste anzeigen
@@ -253,6 +264,15 @@
 - [ ] Admin-Karte Erkennung
 - [ ] Schnelles Guthaben-Aufladen
 - [ ] Letzte Transaktion stornieren
+
+### Recommended Implementation Order
+
+1. Database boundary: split schema, models, and query functions enough that admin CRUD does not keep growing `database.py`.
+2. Product CRUD: add/create/edit product fields and regenerate a barcode SVG when barcode-bearing products change.
+3. User CRUD: add/edit users, difficulty, color, balance, and card barcode generation.
+4. Printable barcodes: start with product/user/recipe SVG download links, then add PDF sheets.
+5. Transactions/earnings: read-only history first, then controlled balance top-ups.
+6. Admin-card flow on the pygame side only after the web admin is stable.
 
 ---
 

@@ -19,13 +19,11 @@ from src.utils.database import (
     get_all_users,
     get_recipe_ingredients,
 )
-from src.utils.filename import sanitize_filename
+from src.utils.barcodes import BARCODE_DIR, barcode_url
 
 # Paths
 BASE_DIR = Path(__file__).parent
 TEMPLATES_DIR = BASE_DIR / "templates"
-BARCODE_DIR = Path(__file__).parent.parent.parent / "data" / "barcodes"
-
 # FastAPI app
 app = FastAPI(title="Carolin's Kasse - Admin")
 
@@ -52,8 +50,7 @@ async def products_page(request: Request):
     for p in products:
         barcode_path = None
         if p.has_barcode:
-            filename = f"{sanitize_filename(p.name_de)}_{p.barcode}.svg"
-            barcode_path = f"/barcodes/products/{filename}"
+            barcode_path = barcode_url("products", p.name_de, p.barcode)
 
         product_data.append(
             {
@@ -80,9 +77,6 @@ async def users_page(request: Request):
 
     user_data = []
     for u in users:
-        filename = f"{sanitize_filename(u.name)}_{u.card_id}.svg"
-        barcode_path = f"/barcodes/users/{filename}"
-
         user_data.append(
             {
                 "card_id": u.card_id,
@@ -91,7 +85,7 @@ async def users_page(request: Request):
                 "color": u.color,
                 "difficulty": u.difficulty,
                 "is_admin": u.is_admin,
-                "barcode_path": barcode_path,
+                "barcode_path": barcode_url("users", u.name, u.card_id),
             }
         )
 
@@ -108,9 +102,6 @@ async def recipes_page(request: Request):
 
     recipe_data = []
     for r in recipes:
-        filename = f"{sanitize_filename(r.name)}_{r.barcode}.svg"
-        barcode_path = f"/barcodes/recipes/{filename}"
-
         # Get ingredients
         ingredients = get_recipe_ingredients(r.barcode)
         ingredient_list = [
@@ -122,7 +113,7 @@ async def recipes_page(request: Request):
                 "barcode": r.barcode,
                 "name": r.name,
                 "ingredients": ingredient_list,
-                "barcode_path": barcode_path,
+                "barcode_path": barcode_url("recipes", r.name, r.barcode),
             }
         )
 

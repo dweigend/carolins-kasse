@@ -516,43 +516,6 @@ def clear_recipe_ingredients(recipe_barcode: str) -> None:
         conn.commit()
 
 
-# --- Barcode Helpers ---
-
-
-def calculate_ean13_check_digit(code: str) -> str:
-    """Calculate EAN-13 check digit for a 12-digit code."""
-    if len(code) != 12:
-        raise ValueError("Code must be exactly 12 digits")
-    if not code.isdigit():
-        raise ValueError("Code must contain only digits")
-
-    total = 0
-    for i, digit in enumerate(code):
-        weight = 1 if i % 2 == 0 else 3
-        total += int(digit) * weight
-
-    check_digit = (10 - (total % 10)) % 10
-    return code + str(check_digit)
-
-
-def generate_product_barcode(number: int) -> str:
-    """Generate EAN-13 barcode for a product (prefix 100)."""
-    base = f"100{number:09d}"
-    return calculate_ean13_check_digit(base)
-
-
-def generate_user_barcode(number: int) -> str:
-    """Generate EAN-13 barcode for a user (prefix 200)."""
-    base = f"200{number:09d}"
-    return calculate_ean13_check_digit(base)
-
-
-def generate_recipe_barcode(number: int) -> str:
-    """Generate EAN-13 barcode for a recipe (prefix 300)."""
-    base = f"300{number:09d}"
-    return calculate_ean13_check_digit(base)
-
-
 # --- Session Management ---
 
 

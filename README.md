@@ -47,12 +47,14 @@ The whole setup runs on battery power — no cables, fully portable. Perfect for
 
 ## 🏗️ Tech Stack
 
-- **Python 3.12+** with [pygame](https://www.pygame.org/) for graphics
+- **Python 3.13+** with [pygame-ce](https://pyga.me/) for graphics
 - **SQLite** for products, users, and transactions
+- **FastAPI** for the local parent/admin pages
 - **uv** for dependency management
 
 ```
 src/
+├── admin/        # FastAPI admin pages
 ├── scenes/       # Screen states (menu, scan, recipe, etc.)
 ├── components/   # Reusable UI elements (buttons, badges)
 └── utils/        # Helpers (assets, database)
@@ -75,6 +77,23 @@ uv run python main.py
 ```
 
 **Note:** Runs windowed on desktop, fullscreen (KMSDRM) on Pi.
+
+### Admin + Barcodes
+
+```bash
+# View local admin pages
+uv run uvicorn src.admin.server:app --reload --port 8080
+
+# Recreate demo data and generated barcode SVGs
+uv run python tools/seed_database.py
+uv run python tools/generate_barcodes.py
+```
+
+The internal EAN-13 prefixes are:
+
+- `100`: products
+- `200`: user cards
+- `300`: recipe cards
 
 ---
 
