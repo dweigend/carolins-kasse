@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-26 09:20 CEST
+**Last Updated:** 2026-04-26 10:23 CEST
 
 ## Current State
 
@@ -8,11 +8,11 @@
 ✅ UI-Migration auf Shell-basierte Scenes ist im Projektstand verankert
 ✅ Produkt- und Rezept-Assets wurden bereits auf das neue Schema umgestellt
 🟡 Codex-Portierung der Projektdoku ist jetzt angelegt
-🟡 Git-Historie wurde lokal in sinnvolle Blöcke überführt und sollte als Nächstes gepusht werden
 🟡 Phase 7 Admin-Bereich hat erste Schreibflows für Eltern
 🟡 Barcode-Erzeugung ist jetzt als eigene Backend-Verantwortung vorbereitet
 ✅ DB-Initialsetup ist entschieden: eine lokale DB, festes Carolin/Annelie-Setup, normales Setup nicht-destruktiv
-🟡 Remote-Admin ist in Arbeit: Guthaben, minimale Edits und Druck-PDFs sind der aktuelle Fokus
+✅ Remote-Admin hat Guthaben, minimale Edits, Barcode-Downloads und Druck-PDFs
+✅ Pygame-Adminmodus ist über die bestehende Admin-Karte erreichbar
 🔲 Phase 8 Polish und Hardware-Validierung offen
 
 | Area | Status | Notes |
@@ -20,7 +20,7 @@
 | Gameplay core | ✅ | Login, Menu, Scan, Recipe, Math, Picker vorhanden |
 | Session economy | ✅ | Balance, Earnings, Transactions, Session tracking vorhanden |
 | UI overhaul | 🟡 | Neue Shell sowie asset-basierte Kassen- und Rezept-UI; Hardware-Test offen |
-| Admin area | 🟡 | Guthaben, minimale Edits, Barcode-Downloads und Druck-PDFs vorhanden |
+| Admin area | 🟡 | Remote-Admin plus Pygame-Quick-Admin vorhanden; Hardware-Test offen |
 | Codex workflow | ✅ | `AGENTS.md` ist jetzt die führende Assistenz-Doku |
 
 ## What Was Done In This Session
@@ -49,7 +49,6 @@
 ### Remote Admin Implementation Pass
 
 - FastAPI bleibt der Remote-Admin für Eltern im Heimnetz.
-- Pygame-Adminmodus direkt an der Kasse bleibt ein separates Folgepaket: https://github.com/dweigend/carolins-kasse/issues/6
 - Umgesetzt in diesem Pass:
   - Guthaben setzen und per `+1`, `+5`, `+10` aufladen
   - einfache `balance_adjustments`-Historie
@@ -59,11 +58,32 @@
   - A4-PDF-Druckbögen für Karten, Rezepte, Produktlabels und alles zusammen
 - Follow-up-Issues:
   - #5 printable barcode workflow wurde geschlossen
-  - #6 für den separaten Pygame-Adminmodus wurde angelegt
+  - #6 Pygame-Adminmodus wurde umgesetzt und geschlossen
+
+### On-Device Pygame Admin Pass
+
+- Bestehender Admin-Barcode bleibt unverändert: `2000000000046`.
+- `LoginScene` startet für Admin-User eine Session und wechselt direkt in `AdminScene`; Kinder-Logins gehen weiter ins Menü.
+- `AdminScene` hat vier Touch-Tabs:
+  - Status/QR: lokale IP, Serverstatus, Admin-URL und QR-Code
+  - User Management: Guthaben `-1`, `+1`, `+5`, `+10`, aktiv/inaktiv und Schwierigkeit
+  - Kontoübersicht: Saldo je User plus letzte manuelle Guthabenänderungen
+  - Hinweise: kurze Eltern-Hinweise zum Heim-WLAN und Remote-Admin
+- Der Admin-User kann im Pygame-Admin nicht deaktiviert werden.
+- `src/utils/admin_runtime.py` startet/stoppt den FastAPI-Server als verwalteten Hintergrundprozess.
+- `src/utils/network.py` ermittelt die Heimnetz-IP und baut die URL `http://<ip>:8080`.
+- Neue Dependency: `qrcode` für die QR-Surface im Pygame-Screen.
+- Verifikation:
+  - `uv run ruff format src/ tools/`
+  - `uv run ruff check src/ tools/`
+  - `uv run python -m compileall src tools`
+  - Login-Smoke gegen temporäre DB: Admin-Barcode → `admin`, Kinderkarte → `menu`
+  - AdminScene-Smoke gegen temporäre DB: Render nicht leer, Guthabenänderung schreibt `balance_adjustments`
+  - Remote-Smoke: Server startet, `/users` antwortet mit 200, Stop beendet den verwalteten Prozess
 
 ### Project State + Backend Foundation
 
-- Aktueller Stand geprüft: `master` ist nach dieser Session lokal 10 Commits vor `origin/master`; die vorherige Runtime-Änderung in `data/kasse.db` wurde als `stash@{0}` gesichert.
+- Aktueller Stand geprüft: `master` enthält die Remote-Admin-Grundlage; `data/kasse.db` kann lokale Runtime-Änderungen enthalten und sollte nicht automatisch mitcommitted werden.
 - GitHub-Issues geprüft:
   - #1 Validate cashier UI with kids on touch display
   - #2 Validate recipe UI with kids on touch display
@@ -400,7 +420,7 @@
 ## Current Risks / Open Questions
 
 1. Die neue Kassen- und Rezept-UI wurde lokal per Screenshots und synthetischem Smoke-Test geprüft; ein echter Durchklick-Test auf App/Hardware bleibt offen.
-2. Der Admin-Bereich ist weiterhin nur lesend; nächste sinnvolle Phase ist Guthaben ändern plus Barcode-/Druckworkflow.
+2. Der Admin-Bereich hat Remote- und Kassen-Quick-Flows; nächste sinnvolle Phase sind Hardware-Test, Transaktionsansicht und spätere CRUD-Erweiterungen.
 3. Hardware-Tests auf dem Raspberry Pi fehlen weiterhin für Touch, Scanner und Performance.
 4. Das neue Rechenspiel inklusive Coin-Assets ist im Code verdrahtet, aber noch nicht auf dem Raspberry-Pi-Display mit echter USB-Numpad-Eingabe getestet.
 5. Kassen- und Rezept-UI sind implementiert und visuell nachpoliert, aber noch nicht mit echter Scanner-/Touch-Hardware und Kindern validiert. Wichtig: `FrameShell` bleibt weiterhin die einzige Shell-/Footer-Wahrheit.

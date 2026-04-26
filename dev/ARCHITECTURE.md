@@ -140,6 +140,11 @@ Current remote admin scope:
 - minimal product, user, and recipe edits
 - A4 PDF print sheets for cards, recipes, and product labels
 
+The pygame app has a separate on-device admin mode for quick parent work at the
+register. Scanning the existing Admin card opens `AdminScene`; that scene can
+start or stop the FastAPI server process, show the current home-network URL as a
+QR code, and adjust existing user balances without leaving the kiosk.
+
 Further CRUD should be added in small slices. View/form orchestration belongs in
 `src/admin/`, persistence belongs in `src/utils/database.py` or future smaller
 database modules, and barcode file naming/generation belongs in
@@ -487,20 +492,20 @@ assets.get("frames/red")          →  assets/nobg/frames/red.png  # keine Grö�
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      Admin Scene aktiviert                           │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │  • WiFi-Hotspot starten (wpa_supplicant → hostapd)           │   │
-│  │  • FastAPI-Server starten (Port 8080)                           │   │
-│  │  • UI zeigt: SSID, Passwort, IP (192.168.4.1)                │   │
+│  │  • Heim-WLAN bleibt aktiv                                    │   │
+│  │  • FastAPI-Server starten/stoppen (Port 8080)                │   │
+│  │  • UI zeigt IP, Admin-URL, QR-Code und Kontoübersicht        │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
                                   │
         ┌─────────────────────────┼─────────────────────────┐
         ▼                         ▼                         ▼
 ┌───────────────┐         ┌───────────────┐         ┌───────────────┐
-│  WiFi Modul   │         │ FastAPI Server  │         │  pygame UI    │
+│  Netzwerk     │         │ FastAPI Server  │         │  pygame UI    │
 │               │         │               │         │               │
-│ • hostapd     │         │ • /products   │         │ • SSID anzeigen│
-│ • dnsmasq     │         │ • /users      │         │ • IP anzeigen │
-│ • IP: .4.1    │         │ • /barcodes   │         │ • Status      │
+│ • Heim-WLAN   │         │ • /products   │         │ • IP anzeigen │
+│ • lokale IP   │         │ • /users      │         │ • QR-Code     │
+│ • kein Hotspot│         │ • /printables │         │ • Guthaben    │
 └───────────────┘         │ • /scan       │         └───────────────┘
                           └───────────────┘
 ```
@@ -528,7 +533,7 @@ explicit reset command.
 ### Admin Web-UI Flow
 
 ```
-[Eltern-Handy] ──WiFi──▶ [Pi Hotspot] ──HTTP──▶ [FastAPI @ :8080]
+[Eltern-Handy] ──Heim-WLAN──▶ [Pi] ──HTTP──▶ [FastAPI @ :8080]
                                                        │
                          ┌─────────────────────────────┘
                          ▼
@@ -564,9 +569,9 @@ explicit reset command.
 | Produkt anlegen | ❌ | ✅ | Mit Bild-Upload |
 | Barcode zuordnen | ✅ | ✅ | Kasse: Scan-Modus |
 | Barcode generieren | ❌ | ✅ | Mit Druck-Option |
-| Transaktion stornieren | ✅ | ✅ | Kasse: nur letzte |
+| Transaktion stornieren | ❌ | ✅ | Noch nicht umgesetzt |
 | Statistiken | ❌ | ✅ | Charts, Export |
-| Mathe-Schwierigkeit | ❌ | ✅ | Pro Kind einstellbar |
+| Mathe-Schwierigkeit | ✅ | ✅ | Pro Kind einstellbar |
 
 Admin access is intentionally kept simple for now: the kiosk flow is gated by
 the Admin card barcode. No separate web login, Basic Auth, or PIN is planned in
@@ -575,9 +580,9 @@ the KISS version.
 **Guthaben aufladen an der Kasse (Quick-Flow):**
 ```
 [Admin-Karte scannen] → Admin-Modus aktiv
-[Kind-Karte scannen] → "Carolin: 5 Taler"
-[Numpad: 10] → "Aufladen: +10 Taler?"
-[Enter] → "Carolin: 15 Taler ✓"
+[User-Tab öffnen] → Carolin/Annelie/Gast sehen
+[+1/+5/+10 tippen] → Guthaben wird gespeichert
+[Konten-Tab öffnen] → letzte manuelle Änderungen prüfen
 ```
 
 ---
@@ -588,7 +593,7 @@ the KISS version.
 tools/
 ├── generate_barcodes.py   # DB → Barcode SVGs (python-barcode)
 ├── seed_database.py       # Initial setup → SQLite
-└── start_admin.sh         # WiFi-Hotspot + FastAPI starten
+└── generate_printables.py # DB → A4 PDF sheets
 
 data/
 ├── barcodes/              # Generierte Barcode-Bilder (EAN-13 SVGs)
@@ -604,22 +609,22 @@ assets/
 src/
 ├── admin/                 # Admin-Server
 │   ├── server.py          # FastAPI App + Jinja2
-│   ├── routes.py          # API Endpoints
-│   ├── templates/         # Jinja2 Templates + HTMX
-│   └── static/            # CSS, JS (minimal)
+│   ├── templates/         # Jinja2 Templates
+│   └── static/            # CSS
 ├── scenes/
-│   └── admin.py           # Admin-Scene (zeigt SSID/IP)
+│   └── admin.py           # On-device Admin scene
 └── utils/
-    └── wifi.py            # WiFi-Hotspot Toggle (hostapd/dnsmasq)
+    ├── admin_runtime.py   # FastAPI process start/stop
+    └── network.py         # Local IP and admin URL helpers
 ```
 
 ## Design Decisions (Admin-System)
 
-### Why FastAPI + Jinja2 + HTMX?
+### Why FastAPI + Jinja2?
 - **FastAPI**: Modern, async, auto-generierte API-Docs, Pydantic-Validation
 - **Jinja2**: Server-side Templates, kein Build-Step nötig
-- **HTMX**: Interaktivität ohne JavaScript-Framework, partial page updates
 - **Kein separates Frontend**: Alles in einem Python-Prozess, einfaches Deployment
+- **Pygame-Admin separat**: Direkte Kassenarbeit bleibt im Kiosk und startet den Remote-Admin nur bei Bedarf
 
 ### Why python-barcode?
 - Einfache API: `barcode.get('ean13', '123...').save('file')`

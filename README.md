@@ -78,6 +78,10 @@ uv run python main.py
 
 **Note:** Runs windowed on desktop, fullscreen (KMSDRM) on Pi.
 
+Scan the existing Admin card (`2000000000046`) on the login screen to open the
+on-device pygame admin mode. It can start/stop the remote admin server, show the
+home-network admin URL as a QR code, and adjust existing user balances quickly.
+
 ### Admin + Barcodes
 
 ```bash

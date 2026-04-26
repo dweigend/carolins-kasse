@@ -11,7 +11,8 @@ Carolin's Kasse is no longer a prototype skeleton. The core play flow is already
 - cart and checkout logic with balance handling
 - session and earnings tracking
 - a new shell-based UI direction with dedicated scene artwork
-- a small FastAPI admin backend for browsing products, users, and recipes
+- a FastAPI remote admin for parent workflows in the home network
+- an on-device pygame admin mode opened by the existing Admin barcode
 
 The local worktree also shows a major UI migration already in progress. That means the project is closer to a polish and integration phase than to early foundation work.
 
@@ -34,12 +35,13 @@ The local worktree also shows a major UI migration already in progress. That mea
 
 ### Admin Foundation
 
-- `src/admin/server.py` provides read-only list pages for products, users, and recipes.
+- `src/admin/server.py` provides parent-facing list and edit pages for products, users, and recipes.
 - Templates already exist in `src/admin/templates/`.
 - Barcode conventions now have a single utility module in `src/utils/barcodes.py`.
 - The initial setup and barcode scripts in `tools/` are part of the backend foundation and should be pushed with the next GitHub update.
 - `tools/seed_database.py` now treats the Carolin/Annelie setup as the current fixed installation data and refuses to overwrite existing runtime data unless `--reset` is passed.
 - The FastAPI admin now has the first parent-facing workflows: balance changes with history, minimal product/user/recipe edits, SVG barcode downloads, and A4 printable PDFs.
+- The pygame app now recognizes the existing Admin barcode (`2000000000046`) and opens an on-device admin mode with server start/stop, QR URL, user balance buttons, account overview, and notes.
 
 ## What Is Not Finished Yet
 
@@ -55,15 +57,15 @@ The biggest missing step is a full visual pass through the app after the UI migr
 
 ### Admin Area
 
-Phase 7 is only partially started. The current FastAPI admin is useful as a viewer, but not yet as a management tool.
+Phase 7 now covers the most important parent day-to-day flows: remote admin pages, printable sheets, and a quick on-device admin area at the register.
 
 Missing capabilities include:
 
 - create and edit users
 - create and edit products
-- balance top-ups
 - transaction views and statistics
-- barcode generation and print workflows in the UI
+- last-transaction cancellation
+- hardware validation of the Admin card, QR screen, and touch targets on the Pi
 
 ### Backend Structure
 
@@ -123,8 +125,8 @@ The recipe UI now has a screenshot-based baseline, mockups, and a first asset-ba
 
 1. Run a manual UI smoke test in the pygame app on the real display and note any touch, scanner, or readability regressions.
 2. Validate the new cashier and recipe UI on the 1024x600 touch display with scanner and kid-testing feedback; use issues #1 and #2 for observations.
-3. Keep Phase 7 in the existing FastAPI admin and add backend forms there.
-4. Treat the direct Pygame admin mode as a separate work package after the remote admin is stable.
+3. Hardware-test the on-device admin mode: Admin card, server button, QR code, and balance buttons.
+4. Keep later CRUD and transaction statistics in small, separate work packages.
 5. Split the next implementation cycle into one of these paths:
 
 Path A: Finish UI polish and hardware validation first.

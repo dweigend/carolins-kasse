@@ -4,6 +4,7 @@ import pygame
 
 from src.constants import FPS, SCREEN_HEIGHT, SCREEN_WIDTH
 from src.scenes import (
+    AdminScene,
     LoginScene,
     MathGameScene,
     MenuScene,
@@ -34,6 +35,7 @@ def main() -> None:
     scenes = {
         "start": StartScene(),
         "login": LoginScene(),
+        "admin": AdminScene(),
         "menu": MenuScene(),
         "scan": ScanScene(),
         "recipe": RecipeScene(),
@@ -60,7 +62,7 @@ def main() -> None:
                     and state.get_current_user()
                     and shell.handle_close_click(event)
                 ):
-                    if manager.current_name == "menu":
+                    if manager.current_name in {"menu", "admin"}:
                         state.logout()
                         manager.switch_to("login")
                     else:

@@ -225,7 +225,7 @@
 
 **Goal:** Vollständige Admin-Web-UI für Eltern
 
-**Status 2026-04-26:** FastAPI ist als read-only Viewer vorhanden. Die nächste Phase sollte keine zweite Backend-Struktur aufbauen, sondern die bestehenden DB-Funktionen vorsichtig erweitern und klare Modulgrenzen setzen.
+**Status 2026-04-26:** FastAPI ist als Remote-Admin im Heimnetz nutzbar. Der Pygame-Adminmodus an der Kasse ist als KISS-Alltagsflow vorhanden: Admin-Karte scannen, Server/QR anzeigen, Guthaben ändern, Konten prüfen.
 
 ### 7.0 Backend Foundation
 - [x] Read-only Admin-Seiten für Produkte, Benutzer und Rezepte
@@ -237,7 +237,7 @@
 - [ ] Barcode-Printformat festlegen: SVG-Einzeldruck, PDF-Bögen oder beides
 
 ### 7.1 User-Verwaltung
-- [ ] User-Liste anzeigen
+- [x] User-Liste anzeigen
 - [x] Guthaben setzen und per Schnellbuttons aufladen
 - [x] Einfache Guthaben-Historie
 - [x] User bearbeiten (Name, Schwierigkeit, aktiv/inaktiv)
@@ -264,8 +264,11 @@
 - [ ] Export-Funktion
 
 ### 7.5 Quick-Admin an der Kasse
-- [ ] Admin-Karte Erkennung
-- [ ] Schnelles Guthaben-Aufladen
+- [x] Admin-Karte Erkennung
+- [x] Schnelles Guthaben-Aufladen
+- [x] Remote-Admin-Server an/aus
+- [x] QR-Code zur Admin-URL
+- [x] Kontoübersicht und letzte Guthabenänderungen
 - [ ] Letzte Transaktion stornieren
 
 ### 7.6 Druckworkflow
@@ -276,12 +279,11 @@
 
 ### Recommended Implementation Order
 
-1. Database boundary: split schema, models, and query functions enough that admin CRUD does not keep growing `database.py`.
-2. Product CRUD: add/create/edit product fields and regenerate a barcode SVG when barcode-bearing products change.
-3. User CRUD: add/edit users, difficulty, color, balance, and card barcode generation.
-4. Printable barcodes: start with product/user/recipe SVG download links, then add PDF sheets.
-5. Transactions/earnings: read-only history first, then controlled balance top-ups.
-6. Admin-card flow on the pygame side only after the web admin is stable.
+1. Hardware-test the Admin card flow on the Pi with the real scanner and touch display.
+2. Record kid/parent test observations in issues #1 and #2.
+3. Add read-only transaction and earnings views next, before more write paths.
+4. Keep full product/user/recipe creation as a later CRUD pass.
+5. Split `src/utils/database.py` only when the next write path makes the boundary obvious.
 
 ---
 

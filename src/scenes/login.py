@@ -46,7 +46,10 @@ class LoginScene(MessageMixin, Scene):
         if user:
             state.start_session(user)
             self._show_message(f"Hallo {user.name}!")
-            self._go_to("menu")
+            if user.is_admin:
+                self._go_to("admin")
+            else:
+                self._go_to("menu")
         else:
             self._show_message("Karte nicht erkannt!")
 
