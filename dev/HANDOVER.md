@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-26 18:10 CEST
+**Last Updated:** 2026-04-29 10:30 CEST
 
 ## Current State
 
@@ -13,6 +13,8 @@
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
 - Browser admin has a PIN-protected `/debug` page for status, logs, backups, restart, and update actions.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
+- USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the Pi USB data port stays free.
+- Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
 
 ## Recent Completed Work
 
@@ -23,6 +25,7 @@
 - Cleaned active documentation down to `AGENTS.md`, `README.md`, `dev/HANDOVER.md`, `dev/PLAN.md`, and `dev/ARCHITECTURE.md`.
 - Removed unused `src/utils/layout.py` Phase 6 stubs and replaced scene barcode prefix strings with central constants.
 - Added automated Raspberry Pi Lite first-boot installation path, update/backup scripts, systemd units, and setup documentation.
+- Added USB hub debugging notes and local-only SD-card/headless setup memory for the current hardware bring-up.
 
 ## Verification Run Recently
 
@@ -47,6 +50,7 @@ Run after the Pi setup implementation:
 - #2 Validate recipe UI with kids on touch display
 - #4 Split database module for admin backend
 - #7 Validate automated Raspberry Pi first-boot setup
+- #8 Validate Pi Zero USB hub and OTG host path
 
 Closed in this phase:
 
@@ -61,11 +65,13 @@ Closed in this phase:
 - Remote admin product/user/recipe pages still have no web login by design. Debug/update actions are protected by the generated local setup PIN.
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer still needs validation on a freshly flashed Raspberry Pi OS Lite 64-bit Trixie image.
+- SEENGREAT hub behavior is unknown. Validate Pi direct OTG, hub-as-normal-hub on Mac, then hub-on-Pi with `SW1 = 0` and `SW2 = 1`.
 
 ## Next Best Steps
 
-1. Flash Raspberry Pi OS Lite 64-bit, run `tools/pi_prepare_boot.py`, and validate the automated first-boot setup.
-2. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
-3. Add observations to issues #1, #2, and #7.
-4. Add read-only transaction and earnings views before more write-heavy CRUD.
-5. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
+1. Flash Raspberry Pi OS Lite 64-bit and validate the automated first-boot setup.
+2. Run USB bring-up matrix: Pi direct OTG, hub on Mac, hub on Pi, Gadget-mode check, undervoltage check.
+3. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
+4. Add observations to issues #1, #2, #7, and #8.
+5. Add read-only transaction and earnings views before more write-heavy CRUD.
+6. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.

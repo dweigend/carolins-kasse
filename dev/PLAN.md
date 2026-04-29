@@ -16,16 +16,19 @@ local data handling.
 | Remote admin | Done | FastAPI pages, edits, balances, history, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Done | Automated Lite install path, systemd services, debug/update hooks |
-| Hardware validation | Open | Pi, scanner, touch, children |
+| Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 
 ## Active Priorities
 
 1. **Hardware and kid testing**
    - Validate automated first-boot setup on a freshly flashed Pi.
+   - Validate Pi direct USB OTG before debugging the SEENGREAT Pi USB HUB Rev1.1.
+   - Validate the SEENGREAT hub as a normal USB hub on the Mac.
+   - Validate the SEENGREAT hub on the Pi with `SW1 = 0` and `SW2 = 1`.
    - Validate cashier UI on Pi touch display with scanner.
    - Validate recipe UI with children.
-   - Record observations in issues #1, #2, and #7.
+   - Record observations in issues #1, #2, #7, and #8.
 
 2. **Admin read-only history**
    - Add transaction history view.
@@ -56,6 +59,7 @@ local data handling.
 - Kiosk admin protection stays KISS via physical Admin card.
 - Browser debug/update actions require the locally generated setup PIN.
 - The Pi stays on the home WiFi; no hotspot in v1.
+- Hardware debugging uses SSH over WiFi so the Pi USB data port remains available for OTG and hub tests.
 - Print output target is A4 PDF sheets plus existing SVG barcode files.
 - Asset creation should reuse existing `assets/340er/`, `assets/680er/`, and `assets/ui/` before adding new files.
 

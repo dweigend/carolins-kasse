@@ -21,8 +21,10 @@ parent admin area.
 | Computer | Raspberry Pi Zero 2 W |
 | Display | Elecrow 7" IPS Touch, 1024x600 |
 | Power | Anker 20K 87W |
+| USB hub under test | SEENGREAT Pi USB HUB Rev1.1 |
 | Scanner | USB barcode scanner |
 | Input | Touch plus optional USB numpad |
+| USB debug kit | Micro-USB OTG adapter, simple USB mouse/keyboard, USB 2.0 stick |
 
 ## Setup
 
@@ -42,6 +44,9 @@ earnings, or transactions. Use `--reset` only for an intentional full rebuild.
 Raspberry Pi first-boot setup is documented in `docs/PI_SETUP.md`. The automated
 path uses Raspberry Pi OS Lite 64-bit, `tools/pi_prepare_boot.py`, and systemd
 services to install and start the kiosk after first boot.
+
+For hardware bring-up, keep local-only notes, secrets, logs, and scripts under
+`dev/local-debug/`. That directory is intentionally ignored by Git.
 
 ## Admin
 
