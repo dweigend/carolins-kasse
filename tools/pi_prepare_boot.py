@@ -2,6 +2,7 @@
 """Prepare a Raspberry Pi OS bootfs partition for first-boot installation."""
 
 import argparse
+import os
 import shutil
 from pathlib import Path
 
@@ -23,6 +24,14 @@ install -m 0755 "${BOOT_DIR}/carolins-pi-bootstrap.sh" \\
     /usr/local/sbin/carolins-pi-bootstrap.sh
 install -m 0644 "${BOOT_DIR}/carolins-install.service" \\
     /etc/systemd/system/carolins-install.service
+if [ -f "${BOOT_DIR}/carolins-install.env" ]; then
+    install -d -m 0750 /etc/carolins-kasse
+    install -m 0640 "${BOOT_DIR}/carolins-install.env" \\
+        /etc/carolins-kasse/install.env
+fi
+
+systemctl disable --now userconfig.service || true
+rm -f /etc/ssh/sshd_config.d/rename_user.conf /run/sshwarn
 
 CMDLINE="${BOOT_DIR}/cmdline.txt"
 if [ -f "${CMDLINE}" ]; then
@@ -33,7 +42,8 @@ fi
 rm -f \\
     "${BOOT_DIR}/carolins-firstboot.sh" \\
     "${BOOT_DIR}/carolins-pi-bootstrap.sh" \\
-    "${BOOT_DIR}/carolins-install.service"
+    "${BOOT_DIR}/carolins-install.service" \\
+    "${BOOT_DIR}/carolins-install.env"
 
 systemctl daemon-reload
 systemctl enable carolins-install.service
@@ -62,6 +72,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="replace an existing non-Carolin systemd.run first-boot hook",
     )
+    parser.add_argument(
+        "--repo-url",
+        default=os.environ.get("CAROLINS_KASSE_REPO_URL", ""),
+        help="optional Git repository URL for the Pi bootstrap checkout",
+    )
+    parser.add_argument(
+        "--repo-ref",
+        default=os.environ.get("CAROLINS_KASSE_REPO_REF", ""),
+        help="optional remote branch name for the Pi bootstrap checkout",
+    )
     return parser.parse_args()
 
 
@@ -88,7 +108,7 @@ def main() -> int:
         )
         return 1
 
-    write_firstboot_files(bootfs)
+    write_firstboot_files(bootfs, repo_url=args.repo_url, repo_ref=args.repo_ref)
     update_cmdline(cmdline_path)
     print(f"Prepared {bootfs} for Carolin's Kasse first boot.")
     return 0
@@ -121,7 +141,7 @@ def has_foreign_systemd_run(cmdline: str) -> bool:
     return False
 
 
-def write_firstboot_files(bootfs: Path) -> None:
+def write_firstboot_files(bootfs: Path, *, repo_url: str, repo_ref: str) -> None:
     """Write first-boot installer files to the boot partition."""
     firstboot_path = bootfs / "carolins-firstboot.sh"
     firstboot_path.write_text(FIRSTBOOT_SCRIPT, encoding="utf-8")
@@ -134,6 +154,27 @@ def write_firstboot_files(bootfs: Path) -> None:
         REPO_ROOT / "systemd" / "carolins-install.service",
         bootfs / "carolins-install.service",
     )
+    write_install_env(bootfs, repo_url=repo_url, repo_ref=repo_ref)
+
+
+def write_install_env(bootfs: Path, *, repo_url: str, repo_ref: str) -> None:
+    """Write optional bootstrap checkout settings for systemd."""
+    lines = []
+    if repo_url:
+        lines.append(f"CAROLINS_KASSE_REPO_URL={quote_systemd_env(repo_url)}")
+    if repo_ref:
+        lines.append(f"CAROLINS_KASSE_REPO_REF={quote_systemd_env(repo_ref)}")
+
+    install_env_path = bootfs / "carolins-install.env"
+    if lines:
+        install_env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    elif install_env_path.exists():
+        install_env_path.unlink()
+
+
+def quote_systemd_env(value: str) -> str:
+    """Quote a value for a systemd EnvironmentFile."""
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def try_chmod(path: Path, mode: int) -> None:

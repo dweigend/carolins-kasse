@@ -37,6 +37,16 @@ Wenn die Boot-Partition nicht automatisch gefunden wird:
 uv run python tools/pi_prepare_boot.py /Volumes/bootfs
 ```
 
+Für Test-Branches, die der Pi direkt von GitHub klonen soll, den Branch
+explizit setzen:
+
+```bash
+uv run python tools/pi_prepare_boot.py /Volumes/bootfs --repo-ref codex/pi-firstboot-installer
+```
+
+Der angegebene Branch muss auf GitHub verfügbar sein. Sonst kann der Pi beim
+ersten Boot das Checkout nicht erstellen.
+
 Das Script schreibt einen einmaligen First-Boot-Hook auf `bootfs`. Es bricht ab,
 wenn `cmdline.txt` bereits einen fremden `systemd.run`-Hook enthält. In diesem
 Fall zuerst prüfen, ob der Raspberry Pi Imager noch eine eigene

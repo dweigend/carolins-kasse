@@ -22,6 +22,8 @@ local data handling.
 ## Active Priorities
 
 1. **Hardware and kid testing**
+   - Fix the Pi first-boot installer regression tracked in issue #9 before the next clean automated install attempt.
+   - Push or merge the installer branch before using `--repo-ref` on a fresh Pi, because the Pi clones from GitHub during first boot.
    - Validate automated first-boot setup on a freshly flashed Pi.
    - Validate Pi direct USB OTG before debugging the SEENGREAT Pi USB HUB Rev1.1.
    - Validate the SEENGREAT hub as a normal USB hub on the Mac.
@@ -56,6 +58,7 @@ local data handling.
 - One local SQLite DB is used at runtime.
 - Pi installs keep the runtime DB at `/var/lib/carolins-kasse/kasse.db`.
 - `tools/seed_database.py` contains the fixed Carolin/Annelie setup and is non-destructive by default.
+- First-boot installation must not assume optional Linux groups exist, and it must install from the intended repo ref or carry required installer files from bootfs.
 - Kiosk admin protection stays KISS via physical Admin card.
 - Browser debug/update actions require the locally generated setup PIN.
 - The Pi stays on the home WiFi; no hotspot in v1.

@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-04-29 10:30 CEST
+**Last Updated:** 2026-04-29 11:05 CEST
 
 ## Current State
 
@@ -15,6 +15,11 @@
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the Pi USB data port stays free.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
+- Fresh Raspberry Pi OS Lite 64-bit was flashed successfully on 2026-04-29 and the Pi is reachable over WiFi SSH as `kasse@carolins-kasse.local` / `192.168.1.139`.
+- First-boot validation failed late: the Pi cloned GitHub `master` at `aa76175`, which lacks the local `systemd/` files from `codex/pi-firstboot-installer`, so `carolins-install.service` failed before installing `carolins-kasse.service`.
+- The first-boot user group setup also failed on missing `lpadmin`, leaving `kasse` without sudo. Track and fix in issue #9.
+- USB baseline on the Pi: host mode is active via `dtoverlay=dwc2,dr_mode=host`, `vcgencmd get_throttled` reports `0x0`, `lsusb` shows only the root hub, and boot dmesg contains `usb 1-1 ... error -71` descriptor failures.
+- The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` and a manual kiosk process running over SSH as `kasse` with PID `2453`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary workaround, not a systemd-managed install.
 
 ## Recent Completed Work
 
@@ -26,6 +31,8 @@
 - Removed unused `src/utils/layout.py` Phase 6 stubs and replaced scene barcode prefix strings with central constants.
 - Added automated Raspberry Pi Lite first-boot installation path, update/backup scripts, systemd units, and setup documentation.
 - Added USB hub debugging notes and local-only SD-card/headless setup memory for the current hardware bring-up.
+- Flashed the fresh Pi OS Lite SD card, confirmed SSH access, captured first-boot failure details, and documented USB baseline observations in issues #7, #8, and #9.
+- Updated the Pi setup path after first hardware validation: `carolins-install.service` reads `/etc/carolins-kasse/install.env`, `tools/pi_prepare_boot.py` can write `--repo-ref`, and bootstrap group setup now skips missing optional groups instead of failing the whole `usermod` call.
 
 ## Verification Run Recently
 
@@ -66,12 +73,14 @@ Closed in this phase:
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer still needs validation on a freshly flashed Raspberry Pi OS Lite 64-bit Trixie image.
 - SEENGREAT hub behavior is unknown. Validate Pi direct OTG, hub-as-normal-hub on Mac, then hub-on-Pi with `SW1 = 0` and `SW2 = 1`.
+- The current Pi is usable over SSH but not fully installed: no kiosk systemd service exists yet, and `kasse` cannot run sudo. A manual kiosk process is running, but rebooting this Pi will not return to the kiosk until the installer/service issue is fixed by reflash or bootfs recovery.
 
 ## Next Best Steps
 
 1. Flash Raspberry Pi OS Lite 64-bit and validate the automated first-boot setup.
-2. Run USB bring-up matrix: Pi direct OTG, hub on Mac, hub on Pi, Gadget-mode check, undervoltage check.
-3. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
-4. Add observations to issues #1, #2, #7, and #8.
-5. Add read-only transaction and earnings views before more write-heavy CRUD.
-6. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
+2. Fix issue #9 so first-boot installs from the intended ref/files and handles optional Linux groups safely.
+3. Run USB bring-up matrix: Pi direct OTG, hub on Mac, hub on Pi, Gadget-mode check, undervoltage check.
+4. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
+5. Add observations to issues #1, #2, #7, and #8.
+6. Add read-only transaction and earnings views before more write-heavy CRUD.
+7. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.

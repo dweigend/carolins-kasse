@@ -5,6 +5,7 @@ Wants=network-online.target time-sync.target
 
 [Service]
 Type=oneshot
+EnvironmentFile=-/etc/carolins-kasse/install.env
 ExecStart=/usr/local/sbin/carolins-pi-bootstrap.sh
 RemainAfterExit=yes
 

@@ -5,6 +5,7 @@ APP_USER="${CAROLINS_KASSE_USER:-kasse}"
 APP_GROUP="${CAROLINS_KASSE_GROUP:-kasse}"
 APP_DIR="${CAROLINS_KASSE_APP_DIR:-/opt/carolins-kasse}"
 REPO_URL="${CAROLINS_KASSE_REPO_URL:-https://github.com/dweigend/carolins-kasse.git}"
+REPO_REF="${CAROLINS_KASSE_REPO_REF:-}"
 DB_PATH="${CAROLINS_KASSE_DB_PATH:-/var/lib/carolins-kasse/kasse.db}"
 STATE_DIR="${CAROLINS_KASSE_STATE_DIR:-/var/lib/carolins-kasse}"
 BACKUP_DIR="${CAROLINS_KASSE_BACKUP_DIR:-/var/backups/carolins-kasse}"
@@ -26,11 +27,34 @@ exec > >(tee -a "${LOG_FILE}") 2>&1
 
 echo "Starting Carolin's Kasse bootstrap at $(date --iso-8601=seconds)"
 
+add_user_to_existing_groups() {
+    local user_name="$1"
+    shift
+
+    local existing_groups=()
+    local group_name
+    for group_name in "$@"; do
+        if getent group "${group_name}" >/dev/null 2>&1; then
+            existing_groups+=("${group_name}")
+        else
+            echo "Skipping missing group: ${group_name}"
+        fi
+    done
+
+    if [ "${#existing_groups[@]}" -eq 0 ]; then
+        return
+    fi
+
+    local joined_groups
+    joined_groups="$(IFS=,; echo "${existing_groups[*]}")"
+    usermod -aG "${joined_groups}" "${user_name}"
+}
+
 ensure_user() {
     if ! id "${APP_USER}" >/dev/null 2>&1; then
         useradd --create-home --shell /bin/bash "${APP_USER}"
     fi
-    usermod -aG video,render,input "${APP_USER}" || true
+    add_user_to_existing_groups "${APP_USER}" video render input
 }
 
 install_packages() {
@@ -69,7 +93,15 @@ install_uv() {
 checkout_repo() {
     install -d -m 0755 "$(dirname "${APP_DIR}")"
     if [ ! -d "${APP_DIR}/.git" ]; then
-        git clone "${REPO_URL}" "${APP_DIR}"
+        if [ -n "${REPO_REF}" ]; then
+            git clone --branch "${REPO_REF}" --single-branch "${REPO_URL}" "${APP_DIR}"
+        else
+            git clone "${REPO_URL}" "${APP_DIR}"
+        fi
+    elif [ -n "${REPO_REF}" ]; then
+        git -C "${APP_DIR}" fetch origin "${REPO_REF}:refs/remotes/origin/${REPO_REF}"
+        git -C "${APP_DIR}" checkout -B "${REPO_REF}" "origin/${REPO_REF}"
+        git -C "${APP_DIR}" pull --ff-only origin "${REPO_REF}"
     else
         git -C "${APP_DIR}" pull --ff-only
     fi
