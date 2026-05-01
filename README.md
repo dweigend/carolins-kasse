@@ -26,6 +26,11 @@ parent admin area.
 | Input | Touch plus optional USB numpad |
 | USB debug kit | Micro-USB OTG adapter, simple USB mouse/keyboard, USB 2.0 stick |
 
+USB topology on the Pi Zero 2 W is intentionally strict: when the SEENGREAT
+shield is in Pi Zero hub mode, all USB peripherals must be plugged into the
+shield. Do not use the Pi's micro-USB data port at the same time; it is the
+same single USB bus as the shield pogo-pin upstream.
+
 ## Setup
 
 Local development:

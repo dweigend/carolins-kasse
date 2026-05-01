@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-05-01 18:50 CEST
+**Last Updated:** 2026-05-01 19:05 CEST
 
 ## Current State
 
@@ -13,17 +13,17 @@
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
 - Browser admin has a PIN-protected `/debug` page for status, logs, backups, restart, and update actions.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
-- USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the Pi USB data port stays free.
+- USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
 - Fresh Raspberry Pi OS Lite 64-bit was flashed successfully on 2026-04-29 and the Pi is reachable over WiFi SSH as `kasse@carolins-kasse.local` / `192.168.1.139`.
 - First-boot validation failed late: the Pi cloned GitHub `master` at `aa76175`, which lacks the local `systemd/` files from `codex/pi-firstboot-installer`, so `carolins-install.service` failed before installing `carolins-kasse.service`.
 - The first-boot user group setup also failed on missing `lpadmin`, leaving `kasse` without sudo. Track and fix in issue #9.
 - USB baseline on the Pi: host mode is active via `dtoverlay=dwc2,dr_mode=host`, `vcgencmd get_throttled` reports `0x0`, `lsusb` shows only the root hub, and boot dmesg contains `usb 1-1 ... error -71` descriptor failures.
 - SEENGREAT hub works as a standalone Mac USB hub and exposes downstream HID/CP2102 devices there, so the hub chip and Mac-side cable path are basically functional.
-- Latest Pi-side retest with the shield in Pi mode: the Pi sees a high-speed device on `usb 1-1`, but descriptor reads repeatedly fail with `error -71`, followed by `device not accepting address` and disconnect. Afterward `lsusb` still shows only the root hub and `throttled=0x0`.
-- The current setup sketch shows display touch connected directly to the Pi USB data port while the SEENGREAT shield is also in Pi mode via pogo pins. The Pi Zero 2 W only has one USB data bus, and the pogo pads are the same USB D+/D- path as the micro-USB data port. Treat this as the leading hypothesis for the `error -71` failures until proven otherwise.
-- Direct SSH retest on 2026-05-01 confirms the Pi still sees only the root hub, no USB touch/HID input devices, and `throttled=0x0`. The HDMI display image alone does not prove USB touch enumeration.
-- The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` and a manual kiosk process running over SSH as `kasse` with PID `2453`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary workaround, not a systemd-managed install.
+- The corrected SEENGREAT topology is validated: leave the Pi micro-USB data port empty, keep the shield in `SW1=0`, `SW2=1`, and attach touch, scanner, and number pad downstream of the shield. `lsusb` now shows the QinHeng hub, QDTECH MPI7002 touch, M4 YX scanner, and SIGMACHIP number pad.
+- The Pi still has an incomplete first-boot install. `carolins-install.service` is failed, `kasse` is not in sudoers, root SSH is unavailable, and the SSH banner still reports the Raspberry Pi new-user warning. This cannot be fixed in-place without root access or SD-card recovery.
+- The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` at local commit `400bf06`, while the remote branch was rewritten. A manual kiosk process is running over SSH as `kasse` with PID `1580`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary test workaround, not a systemd-managed install.
+- User-level helper scripts for this temporary Pi state live at `/home/kasse/carolins-debug/start-kiosk.sh` and `/home/kasse/carolins-debug/status-kiosk.sh`.
 
 ## Recent Completed Work
 
@@ -37,6 +37,7 @@
 - Added USB hub debugging notes and local-only SD-card/headless setup memory for the current hardware bring-up.
 - Flashed the fresh Pi OS Lite SD card, confirmed SSH access, captured first-boot failure details, and documented USB baseline observations in issues #7, #8, and #9.
 - Updated the Pi setup path after first hardware validation: `carolins-install.service` reads `/etc/carolins-kasse/install.env`, `tools/pi_prepare_boot.py` can write `--repo-ref`, and bootstrap group setup now skips missing optional groups instead of failing the whole `usermod` call.
+- Validated the USB shield topology after moving all USB devices to the SEENGREAT shield and leaving the Pi micro-USB data port unused.
 
 ## Verification Run Recently
 
@@ -76,15 +77,16 @@ Closed in this phase:
 - Remote admin product/user/recipe pages still have no web login by design. Debug/update actions are protected by the generated local setup PIN.
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer still needs validation on a freshly flashed Raspberry Pi OS Lite 64-bit Trixie image.
-- SEENGREAT hub behavior is now narrowed: standalone Mac hub mode works, but Pi hub mode fails enumeration with `error -71`. The next discriminator is the corrected topology test: leave the Pi micro-USB data port empty, keep the shield in `SW1=0`, `SW2=1`, and plug a single simple HID device into the shield.
-- The current Pi is usable over SSH but not fully installed: no kiosk systemd service exists yet, and `kasse` cannot run sudo. A manual kiosk process is running, but rebooting this Pi will not return to the kiosk until the installer/service issue is fixed by reflash or bootfs recovery.
+- SEENGREAT hub behavior is validated with the corrected topology. The Pi Zero 2 W has one USB data bus, so using the Pi micro-USB data port and the shield pogo-pin upstream at the same time causes descriptor failures.
+- The current Pi is usable over SSH and the kiosk is running manually, but it is not fully installed: no kiosk systemd service exists yet, `carolins-install.service` is failed, and `kasse` cannot run sudo. Rebooting this Pi will not reliably return to the kiosk until the installer/service issue is fixed by reflash or root/SD-card recovery.
 
 ## Next Best Steps
 
 1. Flash Raspberry Pi OS Lite 64-bit and validate the automated first-boot setup.
 2. Fix issue #9 so first-boot installs from the intended ref/files and handles optional Linux groups safely.
-3. Run the corrected SEENGREAT topology test: Pi USB data port empty, shield in `SW1=0` and `SW2=1`, power through shield USB-C, then attach only one simple HID device to the shield and check `lsusb`/`dmesg` over WiFi SSH.
-4. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
-5. Add observations to issues #1, #2, #7, and #8.
-6. Add read-only transaction and earnings views before more write-heavy CRUD.
-7. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
+3. For today's tests, keep the Pi powered and use the running manual kiosk process. If it stops, run `/home/kasse/carolins-debug/start-kiosk.sh` over SSH.
+4. In the next session, reflash or mount the SD card to repair the incomplete first-boot install, then rerun the installer from the pushed branch.
+5. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
+6. Add observations to issues #1, #2, #7, and #8.
+7. Add read-only transaction and earnings views before more write-heavy CRUD.
+8. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.

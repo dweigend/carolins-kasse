@@ -98,14 +98,26 @@ checkout_repo() {
         else
             git clone "${REPO_URL}" "${APP_DIR}"
         fi
-    elif [ -n "${REPO_REF}" ]; then
+        chown -R "${APP_USER}:${APP_GROUP}" "${APP_DIR}"
+        return
+    fi
+
+    mark_app_dir_as_safe_for_root_git
+    if [ -d "${APP_DIR}/.git" ] && [ -n "${REPO_REF}" ]; then
         git -C "${APP_DIR}" fetch origin "${REPO_REF}:refs/remotes/origin/${REPO_REF}"
         git -C "${APP_DIR}" checkout -B "${REPO_REF}" "origin/${REPO_REF}"
         git -C "${APP_DIR}" pull --ff-only origin "${REPO_REF}"
-    else
+    elif [ -d "${APP_DIR}/.git" ]; then
         git -C "${APP_DIR}" pull --ff-only
     fi
     chown -R "${APP_USER}:${APP_GROUP}" "${APP_DIR}"
+}
+
+mark_app_dir_as_safe_for_root_git() {
+    if git config --global --get-all safe.directory | grep -Fx -- "${APP_DIR}" >/dev/null 2>&1; then
+        return
+    fi
+    git config --global --add safe.directory "${APP_DIR}"
 }
 
 sync_python() {

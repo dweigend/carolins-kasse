@@ -31,6 +31,7 @@ if [ -f "${BOOT_DIR}/carolins-install.env" ]; then
 fi
 
 systemctl disable --now userconfig.service || true
+systemctl mask userconfig.service || true
 rm -f /etc/ssh/sshd_config.d/rename_user.conf /run/sshwarn
 
 CMDLINE="${BOOT_DIR}/cmdline.txt"

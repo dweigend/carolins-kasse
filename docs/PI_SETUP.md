@@ -8,6 +8,11 @@ Für das aktuelle USB-Hub-Debugging gilt: SSH soll über WLAN laufen, damit der
 USB-Datenport des Pi frei für OTG-/Hub-Tests bleibt. Kein USB-Gadget-Setup
 verwenden, solange Scanner, Hub oder OTG-Adapter getestet werden.
 
+Wichtig für den produktiven Shield-Aufbau: Der Raspberry Pi Zero 2 W hat nur
+einen USB-Datenbus. Wenn der SEENGREAT Pi USB HUB im Pi-Zero-Hub-Modus läuft,
+muss der Pi-Micro-USB-Datenport frei bleiben. Touch-USB, Scanner und
+Nummernblock werden alle am Shield angeschlossen.
+
 ## 1. SD-Karte flashen
 
 1. Raspberry Pi Imager öffnen.
@@ -176,11 +181,14 @@ Regeln:
 
 1. Immer nur eine Variable ändern.
 2. SSH über WLAN verwenden.
-3. Den Pi-USB-Datenport nicht gleichzeitig mit dem Mac verbinden, wenn der Hub
+3. Im Pi-Zero-Hub-Modus den Pi-Micro-USB-Datenport frei lassen.
+4. Touch-USB, Scanner und Nummernblock ausschließlich am Shield anschließen.
+5. Den Pi-USB-Datenport nicht gleichzeitig mit dem Mac verbinden, wenn der Hub
    getestet wird.
-4. Erst den Pi-USB-Port direkt per OTG testen.
-5. Dann den Hub am Mac im Normal-Hub-Modus testen.
-6. Erst danach den Hub am Pi im Pi-Zero-Hub-Modus testen.
+6. Erst den Pi-USB-Port direkt per OTG testen, wenn der Shield-Test wieder
+   fehlschlägt.
+7. Dann den Hub am Mac im Normal-Hub-Modus testen.
+8. Erst danach den Hub am Pi im Pi-Zero-Hub-Modus testen.
 
 Wichtige Hub-Stellungen laut Debug-Plan:
 
@@ -207,3 +215,6 @@ Entscheidung:
 - Pi direkt funktioniert und Hub am Mac funktioniert, aber Hub am Pi nicht:
   Pogo-Pins, mechanischen Sitz, `SW1/SW2` und Hub-Pi-Modus prüfen. Dann ist ein
   aktiver USB-Hub über OTG-Kabel wahrscheinlich robuster.
+- Hub funktioniert am Pi, sobald der Pi-Micro-USB-Datenport frei bleibt:
+  Das ist der richtige Produktivaufbau. Alle USB-Geräte bleiben downstream am
+  Shield.
