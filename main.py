@@ -19,6 +19,40 @@ from src.utils import state
 from src.utils.database import init_database
 
 
+def normalize_touch_event(event: pygame.event.Event) -> pygame.event.Event:
+    """Map SDL finger events to the mouse events used by the scene UI."""
+    if event.type == pygame.FINGERDOWN:
+        return pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN,
+            {"pos": finger_position(event), "button": 1},
+        )
+    if event.type == pygame.FINGERUP:
+        return pygame.event.Event(
+            pygame.MOUSEBUTTONUP,
+            {"pos": finger_position(event), "button": 1},
+        )
+    if event.type == pygame.FINGERMOTION:
+        return pygame.event.Event(
+            pygame.MOUSEMOTION,
+            {
+                "pos": finger_position(event),
+                "rel": (
+                    round(event.dx * SCREEN_WIDTH),
+                    round(event.dy * SCREEN_HEIGHT),
+                ),
+                "buttons": (1, 0, 0),
+            },
+        )
+    return event
+
+
+def finger_position(event: pygame.event.Event) -> tuple[int, int]:
+    """Return a pixel position for a normalized SDL finger event."""
+    x = max(0, min(SCREEN_WIDTH - 1, round(event.x * SCREEN_WIDTH)))
+    y = max(0, min(SCREEN_HEIGHT - 1, round(event.y * SCREEN_HEIGHT)))
+    return x, y
+
+
 def main() -> None:
     """Initialize pygame and run the main game loop."""
     init_database()
@@ -49,6 +83,7 @@ def main() -> None:
     while running:
         # Handle events
         for event in pygame.event.get():
+            event = normalize_touch_event(event)
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:

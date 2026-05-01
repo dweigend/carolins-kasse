@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-05-01 19:05 CEST
+**Last Updated:** 2026-05-01 19:20 CEST
 
 ## Current State
 
@@ -21,8 +21,9 @@
 - USB baseline on the Pi: host mode is active via `dtoverlay=dwc2,dr_mode=host`, `vcgencmd get_throttled` reports `0x0`, `lsusb` shows only the root hub, and boot dmesg contains `usb 1-1 ... error -71` descriptor failures.
 - SEENGREAT hub works as a standalone Mac USB hub and exposes downstream HID/CP2102 devices there, so the hub chip and Mac-side cable path are basically functional.
 - The corrected SEENGREAT topology is validated: leave the Pi micro-USB data port empty, keep the shield in `SW1=0`, `SW2=1`, and attach touch, scanner, and number pad downstream of the shield. `lsusb` now shows the QinHeng hub, QDTECH MPI7002 touch, M4 YX scanner, and SIGMACHIP number pad.
+- Touch is now working again through the shield. Keep the current cabling/ports as the known-good setup. The app also normalizes SDL finger events into mouse events so touch-only SDL paths still drive the existing UI.
 - The Pi still has an incomplete first-boot install. `carolins-install.service` is failed, `kasse` is not in sudoers, root SSH is unavailable, and the SSH banner still reports the Raspberry Pi new-user warning. This cannot be fixed in-place without root access or SD-card recovery.
-- The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` at local commit `400bf06`, while the remote branch was rewritten. A manual kiosk process is running over SSH as `kasse` with PID `1580`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary test workaround, not a systemd-managed install.
+- The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` at local commit `400bf06`, while the remote branch was rewritten. A manual kiosk process is running over SSH as `kasse` with PID `1885`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary test workaround, not a systemd-managed install.
 - User-level helper scripts for this temporary Pi state live at `/home/kasse/carolins-debug/start-kiosk.sh` and `/home/kasse/carolins-debug/status-kiosk.sh`.
 
 ## Recent Completed Work
@@ -38,6 +39,7 @@
 - Flashed the fresh Pi OS Lite SD card, confirmed SSH access, captured first-boot failure details, and documented USB baseline observations in issues #7, #8, and #9.
 - Updated the Pi setup path after first hardware validation: `carolins-install.service` reads `/etc/carolins-kasse/install.env`, `tools/pi_prepare_boot.py` can write `--repo-ref`, and bootstrap group setup now skips missing optional groups instead of failing the whole `usermod` call.
 - Validated the USB shield topology after moving all USB devices to the SEENGREAT shield and leaving the Pi micro-USB data port unused.
+- Confirmed the touch display works after cabling/port correction and added SDL finger-event normalization in `main.py`.
 
 ## Verification Run Recently
 
@@ -86,7 +88,7 @@ Closed in this phase:
 2. Fix issue #9 so first-boot installs from the intended ref/files and handles optional Linux groups safely.
 3. For today's tests, keep the Pi powered and use the running manual kiosk process. If it stops, run `/home/kasse/carolins-debug/start-kiosk.sh` over SSH.
 4. In the next session, reflash or mount the SD card to repair the incomplete first-boot install, then rerun the installer from the pushed branch.
-5. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
+5. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
 6. Add observations to issues #1, #2, #7, and #8.
 7. Add read-only transaction and earnings views before more write-heavy CRUD.
 8. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.

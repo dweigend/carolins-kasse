@@ -29,6 +29,7 @@ local data handling.
    - Validate the SEENGREAT hub as a normal USB hub on the Mac.
    - Validate the SEENGREAT hub on the Pi with `SW1 = 0` and `SW2 = 1`.
    - Validate cashier UI on Pi touch display with scanner.
+   - Validate scanner, number pad, checkout, Admin card, recipe cards, and math mode on the current manually started Pi kiosk.
    - Validate recipe UI with children.
    - Record observations in issues #1, #2, #7, and #8.
 
