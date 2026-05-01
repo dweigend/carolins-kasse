@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-05-01 11:25 CEST
+**Last Updated:** 2026-05-01 18:50 CEST
 
 ## Current State
 
@@ -21,6 +21,8 @@
 - USB baseline on the Pi: host mode is active via `dtoverlay=dwc2,dr_mode=host`, `vcgencmd get_throttled` reports `0x0`, `lsusb` shows only the root hub, and boot dmesg contains `usb 1-1 ... error -71` descriptor failures.
 - SEENGREAT hub works as a standalone Mac USB hub and exposes downstream HID/CP2102 devices there, so the hub chip and Mac-side cable path are basically functional.
 - Latest Pi-side retest with the shield in Pi mode: the Pi sees a high-speed device on `usb 1-1`, but descriptor reads repeatedly fail with `error -71`, followed by `device not accepting address` and disconnect. Afterward `lsusb` still shows only the root hub and `throttled=0x0`.
+- The current setup sketch shows display touch connected directly to the Pi USB data port while the SEENGREAT shield is also in Pi mode via pogo pins. The Pi Zero 2 W only has one USB data bus, and the pogo pads are the same USB D+/D- path as the micro-USB data port. Treat this as the leading hypothesis for the `error -71` failures until proven otherwise.
+- Direct SSH retest on 2026-05-01 confirms the Pi still sees only the root hub, no USB touch/HID input devices, and `throttled=0x0`. The HDMI display image alone does not prove USB touch enumeration.
 - The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` and a manual kiosk process running over SSH as `kasse` with PID `2453`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary workaround, not a systemd-managed install.
 
 ## Recent Completed Work
@@ -74,14 +76,14 @@ Closed in this phase:
 - Remote admin product/user/recipe pages still have no web login by design. Debug/update actions are protected by the generated local setup PIN.
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer still needs validation on a freshly flashed Raspberry Pi OS Lite 64-bit Trixie image.
-- SEENGREAT hub behavior is now narrowed: standalone Mac hub mode works, but Pi hub mode fails enumeration with `error -71`. Validate Pi direct OTG without shield next; if direct OTG works, the shield's Pi-mode data path/Pogo/switch path is the likely blocker.
+- SEENGREAT hub behavior is now narrowed: standalone Mac hub mode works, but Pi hub mode fails enumeration with `error -71`. The next discriminator is the corrected topology test: leave the Pi micro-USB data port empty, keep the shield in `SW1=0`, `SW2=1`, and plug a single simple HID device into the shield.
 - The current Pi is usable over SSH but not fully installed: no kiosk systemd service exists yet, and `kasse` cannot run sudo. A manual kiosk process is running, but rebooting this Pi will not return to the kiosk until the installer/service issue is fixed by reflash or bootfs recovery.
 
 ## Next Best Steps
 
 1. Flash Raspberry Pi OS Lite 64-bit and validate the automated first-boot setup.
 2. Fix issue #9 so first-boot installs from the intended ref/files and handles optional Linux groups safely.
-3. Run Pi direct OTG without shield using a simple HID device; this is the next discriminator after Mac hub success and Pi-mode `error -71`.
+3. Run the corrected SEENGREAT topology test: Pi USB data port empty, shield in `SW1=0` and `SW2=1`, power through shield USB-C, then attach only one simple HID device to the shield and check `lsusb`/`dmesg` over WiFi SSH.
 4. Run full kiosk smoke on the real Pi: Admin card, child cards, scanner, touch, checkout, recipe, math, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, and #8.
 6. Add read-only transaction and earnings views before more write-heavy CRUD.

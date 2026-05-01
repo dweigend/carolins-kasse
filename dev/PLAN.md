@@ -25,7 +25,7 @@ local data handling.
    - Fix the Pi first-boot installer regression tracked in issue #9 before the next clean automated install attempt.
    - Push or merge the installer branch before using `--repo-ref` on a fresh Pi, because the Pi clones from GitHub during first boot.
    - Validate automated first-boot setup on a freshly flashed Pi.
-   - Validate Pi direct USB OTG before debugging the SEENGREAT Pi USB HUB Rev1.1.
+   - Validate the corrected SEENGREAT topology: leave the Pi USB data port empty while the shield is in Pi mode, then attach touch, scanner, and number pad downstream of the shield.
    - Validate the SEENGREAT hub as a normal USB hub on the Mac.
    - Validate the SEENGREAT hub on the Pi with `SW1 = 0` and `SW2 = 1`.
    - Validate cashier UI on Pi touch display with scanner.
@@ -62,7 +62,8 @@ local data handling.
 - Kiosk admin protection stays KISS via physical Admin card.
 - Browser debug/update actions require the locally generated setup PIN.
 - The Pi stays on the home WiFi; no hotspot in v1.
-- Hardware debugging uses SSH over WiFi so the Pi USB data port remains available for OTG and hub tests.
+- Hardware debugging uses SSH over WiFi so the Pi USB data bus can be isolated for OTG and hub tests.
+- When the SEENGREAT shield is in Pi Zero hub mode, the Pi micro-USB data port must stay unused; downstream USB devices should connect through the shield.
 - Print output target is A4 PDF sheets plus existing SVG barcode files.
 - Asset creation should reuse existing `assets/340er/`, `assets/680er/`, and `assets/ui/` before adding new files.
 
