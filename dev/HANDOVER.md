@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-05-02 10:20 CEST
+**Last Updated:** 2026-05-02 10:40 CEST
 
 ## Current State
 
@@ -27,6 +27,8 @@
 - User-level helper scripts for this temporary Pi state live at `/home/kasse/carolins-debug/start-kiosk.sh` and `/home/kasse/carolins-debug/status-kiosk.sh`.
 - The SD card was fully reflashed on 2026-05-02 through a Terminal sudo flow. The flash log reports `3229614080 bytes transferred`, bootfs preparation completed, and `/dev/disk5` was ejected.
 - Local ignored flash helper `dev/local-debug/scripts/flash_carolins_kasse_sd.sh` has been updated to mask `userconfig.service` during first boot, matching `tools/pi_prepare_boot.py`.
+- The fresh Pi is reachable over SSH at `carolins-kasse.local` / `192.168.1.139`. First-boot user setup worked; `kasse` is in `sudo`, `input`, `render`, `gpio`, `i2c`, and `spi`.
+- The installer completed its real work but hit the systemd start timeout at the final service-start step. Manual recovery via SSH started `carolins-kasse.service`; it is now `active` and `enabled`, `userconfig.service` is `masked`, and no failed units remain.
 
 ## Recent Completed Work
 
@@ -43,6 +45,7 @@
 - Validated the USB shield topology after moving all USB devices to the SEENGREAT shield and leaving the Pi micro-USB data port unused.
 - Confirmed the touch display works after cabling/port correction and added SDL finger-event normalization in `main.py`.
 - Reflashed the SD card on 2026-05-02 after verifying `/dev/disk5`, the Raspberry Pi OS image SHA256, the local flash helper patch, and a dry-run bootfs containing `systemctl mask userconfig.service`, `CAROLINS_KASSE_REPO_REF=codex/pi-firstboot-installer`, and the `systemd.run` first-boot hook.
+- Validated the freshly flashed Pi over SSH and manually started the kiosk service after the installer timed out at the final start step.
 
 ## Verification Run Recently
 
@@ -81,16 +84,15 @@ Closed in this phase:
 - Hardware behavior is not fully validated: scanner timing, touch target precision, fullscreen rendering, Pi performance, and child comprehension still need real tests.
 - Remote admin product/user/recipe pages still have no web login by design. Debug/update actions are protected by the generated local setup PIN.
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
-- The first-boot installer still needs validation on a freshly flashed Raspberry Pi OS Lite 64-bit Trixie image.
+- The first-boot installer needs one more clean validation after the timeout fix: the current fresh install succeeded after manual service start, but `carolins-install.service` timed out just before the final kiosk start completed.
 - SEENGREAT hub behavior is validated with the corrected topology. The Pi Zero 2 W has one USB data bus, so using the Pi micro-USB data port and the shield pogo-pin upstream at the same time causes descriptor failures.
 - The current Pi is usable over SSH and the kiosk is running manually, but it is not fully installed: no kiosk systemd service exists yet, `carolins-install.service` is failed, and `kasse` cannot run sudo. Rebooting this Pi will not reliably return to the kiosk until the installer/service issue is fixed by reflash or root/SD-card recovery.
 
 ## Next Best Steps
 
-1. Put the freshly flashed SD card into the Pi and boot with the validated shield topology: `SW1=0`, `SW2=1`, power through shield USB-C, all USB peripherals on the shield, Pi micro-USB data port empty.
-2. Wait for the first boot to prepare the installer and reboot, then wait for the second boot to install the app and start the kiosk.
-3. Validate the automated first-boot setup over WiFi SSH: `carolins-kasse.service` active, `userconfig.service` masked, no Raspberry Pi rename-user prompt, `throttled=0x0`, and all shield USB devices visible.
-4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
+1. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
+2. On the next clean install validation, confirm the updated installer no longer times out: `carolins-install.service` should disappear cleanly, `carolins-kasse.service` should start automatically, `userconfig.service` should stay masked, and `systemctl --failed` should be empty.
+3. Validate reboot behavior: after `sudo systemctl reboot`, the Pi should return directly to the kiosk without manual SSH recovery.
 5. Add observations to issues #1, #2, #7, and #8.
 6. Add read-only transaction and earnings views before more write-heavy CRUD.
 7. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.

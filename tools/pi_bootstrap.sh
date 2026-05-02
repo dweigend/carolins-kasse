@@ -180,7 +180,7 @@ finish_install() {
     systemctl disable carolins-install.service || true
     rm -f /etc/systemd/system/carolins-install.service
     systemctl daemon-reload
-    systemctl restart carolins-kasse.service
+    systemctl start --no-block carolins-kasse.service
     echo "Bootstrap finished at $(date --iso-8601=seconds)"
 }
 

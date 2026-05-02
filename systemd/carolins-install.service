@@ -8,6 +8,7 @@ Type=oneshot
 EnvironmentFile=-/etc/carolins-kasse/install.env
 ExecStart=/usr/local/sbin/carolins-pi-bootstrap.sh
 RemainAfterExit=yes
+TimeoutStartSec=30min
 
 [Install]
 WantedBy=multi-user.target
