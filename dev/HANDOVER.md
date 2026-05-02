@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-05-02 10:06 CEST
+**Last Updated:** 2026-05-02 10:20 CEST
 
 ## Current State
 
@@ -25,7 +25,7 @@
 - The Pi still has an incomplete first-boot install. `carolins-install.service` is failed, `kasse` is not in sudoers, root SSH is unavailable, and the SSH banner still reports the Raspberry Pi new-user warning. This cannot be fixed in-place without root access or SD-card recovery.
 - The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` at local commit `400bf06`, while the remote branch was rewritten. A manual kiosk process is running over SSH as `kasse` with PID `1885`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary test workaround, not a systemd-managed install.
 - User-level helper scripts for this temporary Pi state live at `/home/kasse/carolins-debug/start-kiosk.sh` and `/home/kasse/carolins-debug/status-kiosk.sh`.
-- The SD card is back in the Mac as `/dev/disk5` with `bootfs` on `/dev/disk5s1`. Full reflash is prepared but not yet written because this Codex session has no active macOS sudo ticket.
+- The SD card was fully reflashed on 2026-05-02 through a Terminal sudo flow. The flash log reports `3229614080 bytes transferred`, bootfs preparation completed, and `/dev/disk5` was ejected.
 - Local ignored flash helper `dev/local-debug/scripts/flash_carolins_kasse_sd.sh` has been updated to mask `userconfig.service` during first boot, matching `tools/pi_prepare_boot.py`.
 
 ## Recent Completed Work
@@ -42,7 +42,7 @@
 - Updated the Pi setup path after first hardware validation: `carolins-install.service` reads `/etc/carolins-kasse/install.env`, `tools/pi_prepare_boot.py` can write `--repo-ref`, and bootstrap group setup now skips missing optional groups instead of failing the whole `usermod` call.
 - Validated the USB shield topology after moving all USB devices to the SEENGREAT shield and leaving the Pi micro-USB data port unused.
 - Confirmed the touch display works after cabling/port correction and added SDL finger-event normalization in `main.py`.
-- Prepared the next clean SD-card flash path on 2026-05-02: verified `/dev/disk5`, verified Raspberry Pi OS image SHA256, patched the local flash helper, and confirmed a dry-run bootfs contains `systemctl mask userconfig.service`, `CAROLINS_KASSE_REPO_REF=codex/pi-firstboot-installer`, and the `systemd.run` first-boot hook.
+- Reflashed the SD card on 2026-05-02 after verifying `/dev/disk5`, the Raspberry Pi OS image SHA256, the local flash helper patch, and a dry-run bootfs containing `systemctl mask userconfig.service`, `CAROLINS_KASSE_REPO_REF=codex/pi-firstboot-installer`, and the `systemd.run` first-boot hook.
 
 ## Verification Run Recently
 
@@ -87,8 +87,8 @@ Closed in this phase:
 
 ## Next Best Steps
 
-1. In a Mac Terminal with admin rights, run `dev/local-debug/scripts/flash_carolins_kasse_sd.sh write /dev/disk5 --yes` from the repo root.
-2. After the script ejects the SD card, boot the Pi with the validated shield topology: `SW1=0`, `SW2=1`, power through shield USB-C, all USB peripherals on the shield, Pi micro-USB data port empty.
+1. Put the freshly flashed SD card into the Pi and boot with the validated shield topology: `SW1=0`, `SW2=1`, power through shield USB-C, all USB peripherals on the shield, Pi micro-USB data port empty.
+2. Wait for the first boot to prepare the installer and reboot, then wait for the second boot to install the app and start the kiosk.
 3. Validate the automated first-boot setup over WiFi SSH: `carolins-kasse.service` active, `userconfig.service` masked, no Raspberry Pi rename-user prompt, `throttled=0x0`, and all shield USB devices visible.
 4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, and #8.
