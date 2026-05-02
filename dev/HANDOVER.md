@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-05-01 19:20 CEST
+**Last Updated:** 2026-05-02 10:06 CEST
 
 ## Current State
 
@@ -25,6 +25,8 @@
 - The Pi still has an incomplete first-boot install. `carolins-install.service` is failed, `kasse` is not in sudoers, root SSH is unavailable, and the SSH banner still reports the Raspberry Pi new-user warning. This cannot be fixed in-place without root access or SD-card recovery.
 - The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` at local commit `400bf06`, while the remote branch was rewritten. A manual kiosk process is running over SSH as `kasse` with PID `1885`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary test workaround, not a systemd-managed install.
 - User-level helper scripts for this temporary Pi state live at `/home/kasse/carolins-debug/start-kiosk.sh` and `/home/kasse/carolins-debug/status-kiosk.sh`.
+- The SD card is back in the Mac as `/dev/disk5` with `bootfs` on `/dev/disk5s1`. Full reflash is prepared but not yet written because this Codex session has no active macOS sudo ticket.
+- Local ignored flash helper `dev/local-debug/scripts/flash_carolins_kasse_sd.sh` has been updated to mask `userconfig.service` during first boot, matching `tools/pi_prepare_boot.py`.
 
 ## Recent Completed Work
 
@@ -40,6 +42,7 @@
 - Updated the Pi setup path after first hardware validation: `carolins-install.service` reads `/etc/carolins-kasse/install.env`, `tools/pi_prepare_boot.py` can write `--repo-ref`, and bootstrap group setup now skips missing optional groups instead of failing the whole `usermod` call.
 - Validated the USB shield topology after moving all USB devices to the SEENGREAT shield and leaving the Pi micro-USB data port unused.
 - Confirmed the touch display works after cabling/port correction and added SDL finger-event normalization in `main.py`.
+- Prepared the next clean SD-card flash path on 2026-05-02: verified `/dev/disk5`, verified Raspberry Pi OS image SHA256, patched the local flash helper, and confirmed a dry-run bootfs contains `systemctl mask userconfig.service`, `CAROLINS_KASSE_REPO_REF=codex/pi-firstboot-installer`, and the `systemd.run` first-boot hook.
 
 ## Verification Run Recently
 
@@ -84,11 +87,10 @@ Closed in this phase:
 
 ## Next Best Steps
 
-1. Flash Raspberry Pi OS Lite 64-bit and validate the automated first-boot setup.
-2. Fix issue #9 so first-boot installs from the intended ref/files and handles optional Linux groups safely.
-3. For today's tests, keep the Pi powered and use the running manual kiosk process. If it stops, run `/home/kasse/carolins-debug/start-kiosk.sh` over SSH.
-4. In the next session, reflash or mount the SD card to repair the incomplete first-boot install, then rerun the installer from the pushed branch.
-5. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
-6. Add observations to issues #1, #2, #7, and #8.
-7. Add read-only transaction and earnings views before more write-heavy CRUD.
-8. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
+1. In a Mac Terminal with admin rights, run `dev/local-debug/scripts/flash_carolins_kasse_sd.sh write /dev/disk5 --yes` from the repo root.
+2. After the script ejects the SD card, boot the Pi with the validated shield topology: `SW1=0`, `SW2=1`, power through shield USB-C, all USB peripherals on the shield, Pi micro-USB data port empty.
+3. Validate the automated first-boot setup over WiFi SSH: `carolins-kasse.service` active, `userconfig.service` masked, no Raspberry Pi rename-user prompt, `throttled=0x0`, and all shield USB devices visible.
+4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
+5. Add observations to issues #1, #2, #7, and #8.
+6. Add read-only transaction and earnings views before more write-heavy CRUD.
+7. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
