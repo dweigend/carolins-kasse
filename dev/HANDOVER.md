@@ -54,8 +54,9 @@
   bonus timing, Pi update rollback safety with shell fixtures, Pi update
   systemd unit installation, debug observability, keypad keycode input,
   cashier feedback component render/state behavior, operation script
-  generation against temporary output paths, Pi bootfs preparation, and Pi
-  debug CLI output. The current pipeline suite has 82 passing tests.
+  generation against temporary output paths, Pi bootfs preparation, Pi debug CLI
+  output, and database model import compatibility. The current pipeline suite
+  has 83 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -207,6 +208,10 @@
 - GitHub issue #25 is closed after a read-only coverage audit. Future coverage
   work should be tied to specific risky scene, database, admin, or Pi-operations
   changes instead of a broad standing coverage issue.
+- Local #4 first split moved database row dataclasses, checkout result/error
+  types, and column-list constants into `src/utils/database_models.py`.
+  `src/utils/database.py` re-exports those names so existing imports keep
+  working; SQL, schema, checkout, balance, and transaction logic were not moved.
 
 ## Verification Run Recently
 
@@ -275,6 +280,15 @@ Run on 2026-07-04 CEST for the local #25 Pi debug CLI coverage slice:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `git diff --check`
 - `uv run poe check` (82 tests, 56.81% coverage, 40% minimum)
+
+Run on 2026-07-04 CEST for the local #4 database model split:
+
+- `uv run python -m unittest tests.test_database_smoke` (7 tests)
+- `uv run python -m unittest tests.test_admin_safety tests.test_checkout_mixin tests.test_recipe_scene tests.test_operation_scripts` (12 tests)
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run poe check` (83 tests, 56.82% coverage, 40% minimum)
+- `git diff --check`
 
 Run on 2026-07-04 CEST for the local #29/#22 rendering performance pass:
 
@@ -380,7 +394,9 @@ Open follow-up and validation backlog:
 
 ## Known Risks
 
-- `src/utils/database.py` is still the largest mixed-responsibility module. Split it only when the next write path makes the boundary obvious.
+- `src/utils/database.py` is still a mixed-responsibility SQLite boundary even
+  after the model split. Further #4 slices should move one query family at a
+  time and keep transaction-sensitive checkout/balance code covered.
 - The new quality pipeline is intentionally a practical baseline: Ruff,
   `ty`, Vulture, Deptry, jscpd, and pytest-cov are strict, while Radon remains
   reporting-only. The focused #26 pass removed the current Radon C/D findings.

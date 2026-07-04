@@ -26,6 +26,34 @@ EXPECTED_SCHEMA_TABLES = {
 
 
 class DatabaseSmokeTests(unittest.TestCase):
+    def test_database_reexports_models_for_import_compatibility(self) -> None:
+        from src.utils import database, database_models
+
+        exported_names = (
+            "Product",
+            "User",
+            "Recipe",
+            "RecipeIngredient",
+            "Session",
+            "Earning",
+            "Transaction",
+            "BalanceAdjustment",
+            "CheckoutError",
+            "CheckoutUserNotFoundError",
+            "InsufficientFundsError",
+            "CheckoutResult",
+            "PRODUCT_COLUMNS",
+            "USER_COLUMNS",
+            "RECIPE_COLUMNS",
+        )
+
+        for exported_name in exported_names:
+            with self.subTest(exported_name=exported_name):
+                self.assertIs(
+                    getattr(database, exported_name),
+                    getattr(database_models, exported_name),
+                )
+
     def test_init_database_creates_schema_on_empty_temp_db(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "kasse.db"

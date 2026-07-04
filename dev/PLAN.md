@@ -16,9 +16,9 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 82-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, and Pi debug CLI output |
+| Regression tests | Active | 83-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, and database import compatibility |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
-| Data module split | Open | Tracked as issue #4 |
+| Data module split | Active | #4 first slice moved database models/types; SQL/query families remain |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
 | UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
@@ -38,7 +38,9 @@ local data handling.
   keep the remaining work as a profiling backlog.
 - #1, #2, #7, #8, and #9 remain hardware, child, and first-boot validation
   issues.
-- #4 remains the database module split backlog item.
+- #4 database module split has started: `database_models.py` owns row models,
+  checkout result/error types, and column-list constants; query-family splits
+  remain.
 
 ## Active Priorities
 
@@ -73,11 +75,17 @@ local data handling.
    - Keep exports/statistics simple until parents actually need them.
 
 5. **Database boundary**
-   - Split `src/utils/database.py` only in a dedicated pass.
-   - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
+   - Continue #4 in small behavior-preserving slices.
+   - `src/utils/database_models.py` now owns row dataclasses, checkout
+     result/error types, and column-list constants.
+   - Keep `src/utils/database.py` import-compatible while separating
+     schema/init, product/user/recipe queries, sessions, earnings,
+     transactions, and admin balance changes.
+   - Do not move `process_checkout`, `update_user_balance`, or transaction
+     writes without focused safety tests and a narrow review.
 
 6. **Regression coverage maintenance**
-   - Keep the 82-test pipeline suite green.
+   - Keep the 83-test pipeline suite green.
    - Add focused tests with the next risky scene, database, admin, or
      Pi-operations change instead of keeping a broad standing coverage issue.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
