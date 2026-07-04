@@ -14,7 +14,7 @@ from src.utils import state
 from src.utils.barcodes import RECIPE_PREFIX, USER_PREFIX
 from src.utils.cart import Cart
 from src.utils.database import get_product
-from src.utils.fonts import body
+from src.utils.fonts import body, custom
 from src.utils.input import InputManager, InputType
 from src.utils.state import get_and_clear_selected_product
 
@@ -28,6 +28,15 @@ PAY_BUTTON_WIDTH = 210
 PAY_BUTTON_HEIGHT = 68
 PAY_BUTTON_RIGHT_PADDING = 26
 PAY_BUTTON_BOTTOM_PADDING = 16
+PICKER_BUTTON_WIDTH = 220
+PICKER_BUTTON_HEIGHT = 48
+PICKER_BUTTON_X = RIGHT_PANEL_X + 24
+PICKER_BUTTON_Y = CONTENT_TOP + 10
+PICKER_BUTTON_RADIUS = 16
+PICKER_BUTTON_SHADOW_OFFSET = 3
+PICKER_BUTTON_COLOR = (59, 130, 246)
+PICKER_BUTTON_BORDER = (33, 99, 210)
+PICKER_BUTTON_TEXT = (255, 255, 255)
 
 
 class ScanScene(CheckoutMixin, MessageMixin, Scene):
@@ -38,6 +47,7 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
         self._input_manager = InputManager()
         self._cart = Cart()
         self._pay_button: Button | None = None
+        self._picker_button: Button | None = None
         self._product_display: ProductDisplay | None = None
         self._scrollable_cart: ScrollableCart | None = None
 
@@ -84,6 +94,14 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
             PAY_BUTTON_HEIGHT,
             color=SUCCESS,
             on_click=self._handle_pay,
+        )
+        self._picker_button = Button(
+            PICKER_BUTTON_X,
+            PICKER_BUTTON_Y,
+            PICKER_BUTTON_WIDTH,
+            PICKER_BUTTON_HEIGHT,
+            color=PICKER_BUTTON_COLOR,
+            on_click=self._handle_picker,
         )
 
         # Product display (left side)
@@ -163,6 +181,12 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
             return
         self._enter_checkout_mode()
 
+    def _handle_picker(self) -> None:
+        """Open the touch product picker."""
+        if self._checkout_mode:
+            return
+        self._go_to("picker")
+
     def _change_qty(self, barcode: str, delta: int) -> None:
         """Change quantity of a cart item."""
         self._cart.update_quantity(barcode, delta)
@@ -191,6 +215,9 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
 
         if self._checkout_mode:
             return self._consume_next_scene()
+
+        if self._picker_button:
+            self._picker_button.handle_event(event)
 
         if self._pay_button and not self._cart.is_empty:
             self._pay_button.handle_event(event)
@@ -227,6 +254,8 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
         if self._scrollable_cart:
             self._scrollable_cart.render(screen)
 
+        self._render_picker_button(screen)
+
         # Pay button
         self._render_pay_button(screen)
 
@@ -252,3 +281,53 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
             background_asset="ui/cashier/pay_button_enabled_bg",
             fallback_color=SUCCESS,
         )
+
+    def _render_picker_button(self, screen: pygame.Surface) -> None:
+        """Render the product picker button."""
+        if not self._picker_button:
+            return
+        if self._checkout_mode:
+            return
+
+        rect = self._picker_button.rect
+        shadow_rect = rect.move(0, PICKER_BUTTON_SHADOW_OFFSET)
+        pygame.draw.rect(
+            screen,
+            (0, 0, 0, 30),
+            shadow_rect,
+            border_radius=PICKER_BUTTON_RADIUS,
+        )
+        pygame.draw.rect(
+            screen,
+            PICKER_BUTTON_COLOR,
+            rect,
+            border_radius=PICKER_BUTTON_RADIUS,
+        )
+        pygame.draw.rect(
+            screen,
+            PICKER_BUTTON_BORDER,
+            rect,
+            width=2,
+            border_radius=PICKER_BUTTON_RADIUS,
+        )
+
+        icon_center = (rect.x + 26, rect.centery)
+        pygame.draw.circle(screen, PICKER_BUTTON_TEXT, icon_center, 13)
+        pygame.draw.line(
+            screen,
+            PICKER_BUTTON_COLOR,
+            (icon_center[0] - 7, icon_center[1]),
+            (icon_center[0] + 7, icon_center[1]),
+            4,
+        )
+        pygame.draw.line(
+            screen,
+            PICKER_BUTTON_COLOR,
+            (icon_center[0], icon_center[1] - 7),
+            (icon_center[0], icon_center[1] + 7),
+            4,
+        )
+
+        label = custom(24).render("Produkt wählen", True, PICKER_BUTTON_TEXT)
+        label_rect = label.get_rect(midleft=(rect.x + 50, rect.centery))
+        screen.blit(label, label_rect)

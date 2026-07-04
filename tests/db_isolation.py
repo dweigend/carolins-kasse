@@ -14,6 +14,7 @@ DATABASE_MODULES = (
     "tools.seed_database",
     "src.scenes.checkout_mixin",
     "src.scenes.math_game",
+    "src.scenes.picker",
     "src.scenes.recipe",
     "src.scenes.scan",
     "src.utils.database",
