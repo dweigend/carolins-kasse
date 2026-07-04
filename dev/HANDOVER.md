@@ -5,6 +5,10 @@
 ## Current State
 
 - Core kiosk flows are implemented: login, menu, shopping/scan, picker, checkout, recipe mode, math mode, sessions, earnings, transactions, and balances.
+- SceneManager now supports optional `on_enter()` and `reset_user_state()`
+  lifecycle hooks. Login changes and shell logout reset user-bound scene state
+  between kiosk users without wiping normal in-scene state on ordinary scene
+  entry.
 - The shell-based 1024x600 UI is in place. Cashier and recipe UIs have had local screenshot/smoke validation, but still need real Pi/touch/scanner/kid testing.
 - FastAPI remote admin is usable on the home network for products, users, recipes, balances, barcode downloads, and A4 print PDFs.
 - Pygame admin mode opens with Admin card `2000000000046` and provides server status/QR, balance controls, account overview, and notes.
@@ -21,9 +25,9 @@
   get `CheckoutResult` or `CheckoutError` instead of partial updates.
 - Self-checkout refreshes runtime state after a successful checkout so the
   displayed balance matches the committed database state.
-- A unittest-based temp-DB smoke suite now covers database safety and admin
-  security flows without adding dependencies. The current suite has 15 passing
-  tests.
+- A unittest-based temp-DB and lifecycle smoke suite now covers database
+  safety, admin security flows, atomic checkout, and user-state scene resets
+  without adding dependencies. The current suite has 21 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
@@ -70,6 +74,17 @@
   self-checkout runtime refresh.
 - Added regression coverage for atomic checkout, foreign key enforcement, and
   self-checkout balance refresh.
+- Added SceneManager lifecycle handling for #12: scene entry can refresh local
+  state through `on_enter()`, while login changes and shell logout call
+  `reset_user_state()` to clear user-bound scene state.
+- Updated ScanScene, RecipeScene, and MathGameScene behavior around user-state
+  resets: scan keeps its normal picker/cart flow on ordinary entry, recipe
+  clears selections/scans/completion/checkout state on user reset, and math
+  refreshes for the current user/difficulty without per-frame resets.
+- Added `tests/test_scene_lifecycle.py`; the full unittest suite now has 21
+  passing tests.
+- Review pass found no P0-P3 findings for the current #12 work. PickerScene
+  reachability remains tracked separately as #18.
 
 ## Verification Run Recently
 
@@ -88,12 +103,12 @@ Run after the Pi setup implementation:
 - `uv run python tools/pi_prepare_boot.py <temporary bootfs fixture>`
 - FastAPI admin smoke including `/debug`
 
-Run on 2026-07-04 CEST after the admin safety, data integrity, and temp-DB test
-work:
+Run on 2026-07-04 CEST after the admin safety, data integrity, temp-DB test,
+and scene-lifecycle work:
 
 - `uv run ruff check src/ tools/ tests/`
-- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests`
-- `uv run python -m unittest discover -s tests` (15 tests)
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest discover -s tests` (21 tests)
 - `git diff --check`
 
 ## Open GitHub Issues
@@ -106,10 +121,10 @@ Covered by the current branch commits and ready to close after review/merge:
 - #15 Render admin barcode modal data without inline JavaScript strings
 - #16 Enforce SQLite foreign key constraints
 - #21 Add temp-DB regression smoke suite
-
-Next active scene-state and kiosk correctness issues:
-
 - #12 Reset scene state between kiosk users
+
+Next active kiosk correctness issues:
+
 - #13 Track recipe ingredient quantities instead of binary scans
 - #17 Prevent inactive recipe ingredients from blocking completion
 - #18 Make PickerScene reachable from the kiosk flow
@@ -145,8 +160,8 @@ Still open for validation or later structure work:
 
 ## Next Best Steps
 
-1. Close or update #10, #11, #14, #15, #16, and #21 after the current branch is reviewed or merged.
-2. Fix the next scene-state and kiosk correctness bugs: scene reset (#12), recipe quantities (#13), inactive recipe ingredients (#17), PickerScene reachability (#18), scanner input in math mode (#19), and recipe bonus timing (#20).
+1. Close or update #10, #11, #12, #14, #15, #16, and #21 after the current branch is reviewed or merged.
+2. Fix the next kiosk correctness bugs: recipe quantities (#13), inactive recipe ingredients (#17), PickerScene reachability (#18), scanner input in math mode (#19), and recipe bonus timing (#20).
 3. Improve Pi operations: update rollback safety (#23), debug observability (#24), and Pi Zero runtime performance (#22).
 4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, and #8.

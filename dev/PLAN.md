@@ -16,14 +16,15 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Done | Automated Lite install path, systemd services, debug/update hooks |
-| Regression tests | Active | 15-test unittest temp-DB suite for database, admin safety, and atomic checkout |
+| Regression tests | Active | 21-test unittest temp-DB and lifecycle suite for database, admin safety, atomic checkout, and scene resets |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 
 ## Active Priorities
 
 1. **Scene-state and kiosk correctness bugs**
-   - Reset scene state between kiosk users (#12).
+   - Treat reset scene state between kiosk users (#12) as implemented on
+     `codex/kiosk-correctness` in commit `ef654b8`; close after review/merge.
    - Track recipe ingredient quantities correctly (#13).
    - Prevent inactive recipe ingredients from blocking completion (#17).
    - Make PickerScene reachable from the kiosk flow (#18).
@@ -32,11 +33,12 @@ local data handling.
    - Add focused regression coverage around each risky scene or checkout path.
 
 2. **Regression coverage maintenance**
-   - Keep the 15-test temp-DB unittest suite green.
+   - Keep the 21-test temp-DB and lifecycle unittest suite green.
    - Expand coverage when the next risky write or scene-state path changes.
-   - Treat atomic checkout/balance updates (#11), self-checkout balance refresh
-     (#14), and SQLite foreign key enforcement (#16) as implemented on the
-     current branch and ready to close after review/merge.
+   - Treat scene reset between kiosk users (#12), atomic checkout/balance
+     updates (#11), self-checkout balance refresh (#14), and SQLite foreign key
+     enforcement (#16) as implemented on the current branch and ready to close
+     after review/merge.
 
 3. **Pi operations and hardware validation**
    - Add rollback safety to the update script (#23).
@@ -70,6 +72,9 @@ local data handling.
 
 - One local SQLite DB is used at runtime.
 - Pi installs keep the runtime DB at `/var/lib/carolins-kasse/kasse.db`.
+- SceneManager supports optional `on_enter()` and `reset_user_state()` scene
+  lifecycle hooks. User changes and shell logout reset user-bound scene state;
+  normal scene entry only runs the scene's own entry refresh.
 - SQLite connections enable foreign key checks and a busy timeout.
 - Checkout commits use an atomic `BEGIN IMMEDIATE` transaction and return a
   `CheckoutResult` or `CheckoutError`.

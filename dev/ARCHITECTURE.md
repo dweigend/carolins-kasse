@@ -10,6 +10,10 @@ main.py
   └─ src/utils/database.py persists SQLite data
 ```
 
+SceneManager calls optional scene lifecycle hooks. `on_enter()` runs when a
+scene becomes active. `reset_user_state()` runs on kiosk user changes and shell
+logout so scenes can clear user-bound state without losing normal entry state.
+
 Active scenes:
 
 - `start`: splash screen
