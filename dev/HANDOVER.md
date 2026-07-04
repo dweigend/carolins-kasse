@@ -23,10 +23,12 @@
   and the boot-time shell entrypoint in `tools/pi_firstboot.sh`;
   `tools/pi_prepare_boot.py` copies that script instead of embedding shell text.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
-- The current `codex/pi-ops-safety` branch is pushed through `4fef3ac` and
-  covers Pi operations issues #23, #24, and the deployed #28 startup dependency
-  fix. `tools/pi_update.sh` records the previous commit and rolls back
-  after post-pull failures, including no-op pull failure paths. The
+- The `codex/pi-ops-safety` branch is pushed to GitHub. Runtime code changes
+  through `4fef3ac` cover Pi operations issues #23, #24, and the deployed #28
+  startup dependency fix; the latest verified Pi sync before this handover
+  refresh was the docs-only `b009ebe` commit. `tools/pi_update.sh` records the
+  previous commit and rolls back after post-pull failures, including no-op pull
+  failure paths. The
   PIN-protected debug page now reports service, install/update/backup, timer,
   failed-unit, and log-snippet status while degrading gracefully when Pi or
   systemd access is unavailable.
@@ -68,9 +70,9 @@
 - The fresh Pi is reachable over SSH at `carolins-kasse.local` / `192.168.1.139`. First-boot user setup worked; `kasse` is in `sudo`, `input`, `render`, `gpio`, `i2c`, and `spi`.
 - The installer completed its real work but hit the systemd start timeout at the final service-start step. Manual recovery via SSH started `carolins-kasse.service`; it is now `active` and `enabled`, `userconfig.service` is `masked`, and no failed units remain.
 - Remote debugging is available over SSH as `kasse@carolins-kasse.local`
-  (`192.168.1.139`). The current Pi checkout is `/opt/carolins-kasse` on
-  `codex/pi-ops-safety` at `4fef3ac`; the kiosk service is systemd managed and
-  active.
+  (`192.168.1.139`). The latest verified Pi checkout is
+  `/opt/carolins-kasse` on `codex/pi-ops-safety` at `b009ebe`; the kiosk
+  service is systemd managed and active.
 - Passwordless sudo is limited to the intended service operations:
   restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
   start `carolins-kasse-backup.service`.
@@ -258,6 +260,11 @@ Final Pi deployment validation on 2026-07-04 CEST:
 - Pi `/opt/carolins-kasse` is on `codex/pi-ops-safety` at `4fef3ac`;
   `carolins-kasse.service` is active and `systemd-analyze critical-chain` now
   shows `carolins-kasse.service -> basic.target`.
+- A later docs-only sync pulled `b009ebe` on the Pi at
+  `2026-07-04T21:30:34+02:00`; the kiosk restarted cleanly and stayed active.
+  The same boot journal shows the first kiosk service start at monotonic
+  `37.176s` and the first Pygame log at `39.434s`. A physical first-screen
+  stopwatch check is still needed for #29/#30.
 
 ## Open GitHub Issues
 
