@@ -30,6 +30,7 @@
             </td>
             <td class="table-actions">
                 <form class="compact-form" method="post" action="/recipes/{{ recipe.barcode }}/settings">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input class="field-medium" name="name" value="{{ recipe.name }}" aria-label="Name">
                     <label class="checkbox-label">
                         <input type="checkbox" name="active" {% if recipe.active %}checked{% endif %}>
@@ -43,7 +44,9 @@
                     src="{{ recipe.barcode_path }}"
                     alt="{{ recipe.barcode }}"
                     class="barcode-img"
-                    onclick="showBarcode('{{ recipe.barcode_path }}')"
+                    data-barcode-src="{{ recipe.barcode_path }}"
+                    role="button"
+                    tabindex="0"
                     title="Klicken zum Vergrößern"
                 >
                 <a class="button-link small secondary" href="{{ recipe.barcode_path }}" download>SVG</a>

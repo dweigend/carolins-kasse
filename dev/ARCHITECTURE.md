@@ -80,12 +80,17 @@ Phone/browser on same WiFi
        ├─ users
        ├─ recipes
        ├─ barcode downloads
+       ├─ CSRF-protected mutating POST routes
        └─ A4 printable PDFs
 ```
 
-The Pi remains on the home WiFi. There is no hotspot in v1. Remote admin has no
-HTTP login in v1; the intended protection is local network access plus the
-physical Admin card flow.
+The Pi remains on the home WiFi. There is no hotspot in v1. Remote read pages
+stay lightweight for the home network, while mutating browser POST routes require
+the locally generated debug PIN/admin session cookie plus a CSRF token.
+`/debug/unlock` validates CSRF before accepting a PIN.
+
+Admin templates should pass dynamic barcode modal data through HTML data
+attributes rather than inline JavaScript string arguments.
 
 ## Setup And Generated Outputs
 
@@ -129,6 +134,14 @@ Systemd units live under `systemd/`:
 | `src/utils/network.py` | Local IP and admin URL helpers |
 | `src/utils/pi_system.py` | Pi diagnostics, admin PIN validation, system actions |
 | `tools/` | Operational scripts for setup, barcodes, printables |
+| `tests/` | unittest temp-DB smoke and safety coverage |
+
+## Test Structure
+
+Tests use the Python standard library `unittest` stack and temporary SQLite
+databases. They should not touch `data/kasse.db` and should avoid new test
+dependencies unless there is a clear payoff. Current coverage focuses on
+database smoke behavior and admin POST/session/CSRF safety.
 
 ## Refactor Rules
 

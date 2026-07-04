@@ -12,6 +12,7 @@
         Produktlabels 55×30 mm.
     </p>
     <form method="post" action="/printables/generate">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit">PDFs neu erzeugen</button>
     </form>
 </div>

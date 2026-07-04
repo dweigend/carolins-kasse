@@ -20,22 +20,51 @@
         {% block content %}{% endblock %}
     </main>
 
-    <div class="modal" id="barcodeModal" onclick="closeModal()">
-        <span class="modal-close">&times;</span>
+    <div class="modal" id="barcodeModal" aria-hidden="true">
+        <span class="modal-close" data-modal-close role="button" tabindex="0" aria-label="Schließen">&times;</span>
         <img id="modalImage" src="" alt="Barcode">
     </div>
 
     <script>
+        const barcodeModal = document.getElementById('barcodeModal');
+        const modalImage = document.getElementById('modalImage');
+
         function showBarcode(src) {
-            document.getElementById('modalImage').src = src;
-            document.getElementById('barcodeModal').classList.add('active');
+            if (!src) return;
+            modalImage.src = src;
+            barcodeModal.classList.add('active');
+            barcodeModal.setAttribute('aria-hidden', 'false');
         }
 
         function closeModal() {
-            document.getElementById('barcodeModal').classList.remove('active');
+            barcodeModal.classList.remove('active');
+            barcodeModal.setAttribute('aria-hidden', 'true');
+            modalImage.removeAttribute('src');
         }
 
+        document.addEventListener('click', (event) => {
+            if (!(event.target instanceof Element)) return;
+
+            const barcodeTrigger = event.target.closest('[data-barcode-src]');
+            if (barcodeTrigger) {
+                showBarcode(barcodeTrigger.dataset.barcodeSrc);
+                return;
+            }
+
+            if (event.target === barcodeModal || event.target.closest('[data-modal-close]')) {
+                closeModal();
+            }
+        });
+
         document.addEventListener('keydown', (e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && e.target instanceof Element) {
+                const barcodeTrigger = e.target.closest('[data-barcode-src]');
+                if (barcodeTrigger) {
+                    e.preventDefault();
+                    showBarcode(barcodeTrigger.dataset.barcodeSrc);
+                    return;
+                }
+            }
             if (e.key === 'Escape') closeModal();
         });
     </script>

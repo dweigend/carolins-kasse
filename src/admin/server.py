@@ -11,6 +11,7 @@ For remote admin on the home network:
 """
 
 from pathlib import Path
+from secrets import compare_digest, token_urlsafe
 from urllib.parse import parse_qs, quote
 
 from fastapi import FastAPI, Request
@@ -40,6 +41,12 @@ from src.utils.pi_system import (
 )
 
 DEBUG_COOKIE = "carolins_admin_debug"
+CSRF_COOKIE = "carolins_admin_csrf"
+CSRF_FIELD = "csrf_token"
+ADMIN_SESSION_MAX_AGE_SECONDS = 3600
+CSRF_TOKEN_BYTES = 32
+UNLOCK_REQUIRED_MESSAGE = "Bitte PIN eingeben"
+CSRF_FAILED_MESSAGE = "Bitte Seite neu laden"
 
 # Paths
 BASE_DIR = Path(__file__).parent
@@ -91,9 +98,10 @@ async def products_page(request: Request):
             }
         )
 
-    return templates.TemplateResponse(
+    return _template_response(
+        request,
         "products.html",
-        {"request": request, "products": product_data, "active": "products"},
+        {"products": product_data, "active": "products"},
     )
 
 
@@ -118,10 +126,10 @@ async def users_page(request: Request):
             }
         )
 
-    return templates.TemplateResponse(
+    return _template_response(
+        request,
         "users.html",
         {
-            "request": request,
             "users": user_data,
             "adjustments": get_recent_balance_adjustments(),
             "active": "users",
@@ -152,19 +160,20 @@ async def recipes_page(request: Request):
             }
         )
 
-    return templates.TemplateResponse(
+    return _template_response(
+        request,
         "recipes.html",
-        {"request": request, "recipes": recipe_data, "active": "recipes"},
+        {"recipes": recipe_data, "active": "recipes"},
     )
 
 
 @app.get("/printables")
 async def printables_page(request: Request):
     """Show printable PDF links."""
-    return templates.TemplateResponse(
+    return _template_response(
+        request,
         "printables.html",
         {
-            "request": request,
             "files": printable_files(),
             "active": "printables",
         },
@@ -175,10 +184,10 @@ async def printables_page(request: Request):
 async def debug_page(request: Request, message: str | None = None):
     """Show PIN-protected Raspberry Pi diagnostics and maintenance actions."""
     unlocked = verify_admin_pin(request.cookies.get(DEBUG_COOKIE))
-    return templates.TemplateResponse(
+    return _template_response(
+        request,
         "debug.html",
         {
-            "request": request,
             "active": "debug",
             "unlocked": unlocked,
             "snapshot": collect_debug_snapshot() if unlocked else None,
@@ -191,6 +200,9 @@ async def debug_page(request: Request, message: str | None = None):
 async def unlock_debug(request: Request):
     """Unlock the debug page with the locally generated admin PIN."""
     form = await _parse_form(request)
+    if not _valid_csrf_form(request, form):
+        return _security_redirect(CSRF_FAILED_MESSAGE)
+
     pin = form.get("pin")
     if not verify_admin_pin(pin):
         return RedirectResponse(
@@ -202,23 +214,21 @@ async def unlock_debug(request: Request):
     response.set_cookie(
         DEBUG_COOKIE,
         pin or "",
-        max_age=3600,
+        max_age=ADMIN_SESSION_MAX_AGE_SECONDS,
         httponly=True,
         samesite="strict",
     )
+    _set_csrf_cookie(response, _new_csrf_token())
     return response
 
 
 @app.post("/debug/action")
 async def run_debug_action(request: Request):
     """Run a PIN-protected system action from the debug page."""
-    if not verify_admin_pin(request.cookies.get(DEBUG_COOKIE)):
-        return RedirectResponse(
-            url="/debug?message=Bitte%20PIN%20eingeben",
-            status_code=303,
-        )
+    form, redirect = await _require_admin_form(request)
+    if redirect:
+        return redirect
 
-    form = await _parse_form(request)
     result = run_admin_action(form.get("action", ""))
     status = "gestartet" if result.ok else "fehlgeschlagen"
     message = f"Aktion {status}"
@@ -228,8 +238,12 @@ async def run_debug_action(request: Request):
 
 
 @app.post("/printables/generate")
-async def generate_printables():
+async def generate_printables(request: Request):
     """Generate printable PDFs and return to the print page."""
+    _, redirect = await _require_admin_form(request)
+    if redirect:
+        return redirect
+
     generate_all_printables()
     return RedirectResponse(url="/printables", status_code=303)
 
@@ -237,7 +251,10 @@ async def generate_printables():
 @app.post("/users/{card_id}/balance/set")
 async def set_user_balance(card_id: str, request: Request):
     """Set a user's balance from the admin page."""
-    form = await _parse_form(request)
+    form, redirect = await _require_admin_form(request)
+    if redirect:
+        return redirect
+
     balance = _parse_float(form.get("balance"), default=0.0)
     note = _clean_note(form.get("note"))
     update_user_balance(card_id, max(0.0, balance), note)
@@ -247,7 +264,10 @@ async def set_user_balance(card_id: str, request: Request):
 @app.post("/users/{card_id}/balance/adjust")
 async def adjust_user_balance(card_id: str, request: Request):
     """Adjust a user's balance by a fixed delta."""
-    form = await _parse_form(request)
+    form, redirect = await _require_admin_form(request)
+    if redirect:
+        return redirect
+
     delta = _parse_float(form.get("delta"), default=0.0)
     note = _clean_note(form.get("note"))
     user = get_user(card_id, include_inactive=True)
@@ -259,7 +279,10 @@ async def adjust_user_balance(card_id: str, request: Request):
 @app.post("/users/{card_id}/settings")
 async def update_user_settings(card_id: str, request: Request):
     """Update parent-facing user fields."""
-    form = await _parse_form(request)
+    form, redirect = await _require_admin_form(request)
+    if redirect:
+        return redirect
+
     name = form.get("name", "").strip()
     difficulty = _parse_int(form.get("difficulty"), default=1)
     active = form.get("active") == "on"
@@ -271,7 +294,10 @@ async def update_user_settings(card_id: str, request: Request):
 @app.post("/products/{barcode}/settings")
 async def update_product_settings(barcode: str, request: Request):
     """Update parent-facing product fields."""
-    form = await _parse_form(request)
+    form, redirect = await _require_admin_form(request)
+    if redirect:
+        return redirect
+
     name_de = form.get("name_de", "").strip()
     price = _parse_float(form.get("price"), default=1.0)
     active = form.get("active") == "on"
@@ -283,7 +309,10 @@ async def update_product_settings(barcode: str, request: Request):
 @app.post("/recipes/{barcode}/settings")
 async def update_recipe_settings(barcode: str, request: Request):
     """Update parent-facing recipe fields."""
-    form = await _parse_form(request)
+    form, redirect = await _require_admin_form(request)
+    if redirect:
+        return redirect
+
     name = form.get("name", "").strip()
     active = form.get("active") == "on"
     if name:
@@ -291,10 +320,69 @@ async def update_recipe_settings(barcode: str, request: Request):
     return RedirectResponse(url="/recipes", status_code=303)
 
 
+async def _require_admin_form(
+    request: Request,
+) -> tuple[dict[str, str], RedirectResponse | None]:
+    form = await _parse_form(request)
+    if not verify_admin_pin(request.cookies.get(DEBUG_COOKIE)):
+        return {}, _security_redirect(UNLOCK_REQUIRED_MESSAGE)
+    if not _valid_csrf_form(request, form):
+        return {}, _security_redirect(CSRF_FAILED_MESSAGE)
+    return form, None
+
+
 async def _parse_form(request: Request) -> dict[str, str]:
     body = (await request.body()).decode()
     parsed = parse_qs(body, keep_blank_values=True)
     return {key: values[-1] for key, values in parsed.items()}
+
+
+def _template_response(request: Request, template_name: str, context: dict):
+    csrf_token, refresh_cookie = _csrf_token_for_request(request)
+    response = templates.TemplateResponse(
+        template_name,
+        {"request": request, "csrf_token": csrf_token, **context},
+    )
+    if refresh_cookie:
+        _set_csrf_cookie(response, csrf_token)
+    return response
+
+
+def _csrf_token_for_request(request: Request) -> tuple[str, bool]:
+    token = request.cookies.get(CSRF_COOKIE)
+    if _valid_csrf_token(token):
+        return token, False
+    return _new_csrf_token(), True
+
+
+def _valid_csrf_form(request: Request, form: dict[str, str]) -> bool:
+    cookie_token = request.cookies.get(CSRF_COOKIE)
+    form_token = form.get(CSRF_FIELD)
+    if not _valid_csrf_token(cookie_token) or not _valid_csrf_token(form_token):
+        return False
+    return compare_digest(cookie_token, form_token)
+
+
+def _valid_csrf_token(token: str | None) -> bool:
+    return bool(token and len(token) <= 128)
+
+
+def _new_csrf_token() -> str:
+    return token_urlsafe(CSRF_TOKEN_BYTES)
+
+
+def _set_csrf_cookie(response, token: str) -> None:
+    response.set_cookie(
+        CSRF_COOKIE,
+        token,
+        max_age=ADMIN_SESSION_MAX_AGE_SECONDS,
+        httponly=True,
+        samesite="strict",
+    )
+
+
+def _security_redirect(message: str) -> RedirectResponse:
+    return RedirectResponse(url=f"/debug?message={quote(message)}", status_code=303)
 
 
 def _parse_float(value: str | None, default: float) -> float:

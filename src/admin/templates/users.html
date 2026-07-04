@@ -30,6 +30,7 @@
             <td class="price">{{ user.balance|int }} Taler</td>
             <td class="table-actions">
                 <form class="stack-form" method="post" action="/users/{{ user.card_id }}/settings">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input name="name" value="{{ user.name }}" aria-label="Name">
                     <select name="difficulty" aria-label="Schwierigkeit">
                         <option value="1" {% if user.difficulty == 1 %}selected{% endif %}>Stufe 1</option>
@@ -45,6 +46,7 @@
             </td>
             <td class="table-actions">
                 <form class="compact-form" method="post" action="/users/{{ user.card_id }}/balance/set">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input class="field-small" name="balance" type="number" min="0" step="1" value="{{ user.balance|int }}" aria-label="Guthaben">
                     <input class="field-medium" name="note" placeholder="Notiz" aria-label="Notiz">
                     <button type="submit" class="small">Setzen</button>
@@ -52,6 +54,7 @@
                 <div class="quick-actions">
                     {% for delta in [1, 5, 10] %}
                     <form method="post" action="/users/{{ user.card_id }}/balance/adjust">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="delta" value="{{ delta }}">
                         <input type="hidden" name="note" value="+{{ delta }} Schnellaufladung">
                         <button type="submit" class="small secondary">+{{ delta }}</button>
@@ -69,7 +72,9 @@
                     src="{{ user.barcode_path }}"
                     alt="{{ user.card_id }}"
                     class="barcode-img"
-                    onclick="showBarcode('{{ user.barcode_path }}')"
+                    data-barcode-src="{{ user.barcode_path }}"
+                    role="button"
+                    tabindex="0"
                     title="Klicken zum Vergrößern"
                 >
                 <a class="button-link small secondary" href="{{ user.barcode_path }}" download>SVG</a>

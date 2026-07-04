@@ -16,6 +16,7 @@
         Der PIN wird beim Raspi-Setup lokal auf der Kasse erzeugt.
     </p>
     <form class="compact-form" method="post" action="/debug/unlock">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input class="field-medium" name="pin" type="password" inputmode="numeric" autocomplete="current-password" aria-label="Admin-PIN">
         <button type="submit">Entsperren</button>
     </form>
@@ -68,14 +69,17 @@
         <h2>Aktionen</h2>
         <div class="quick-actions">
             <form method="post" action="/debug/action">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="backup">
                 <button type="submit" class="secondary">Backup starten</button>
             </form>
             <form method="post" action="/debug/action">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="restart">
                 <button type="submit" class="secondary">Kasse neu starten</button>
             </form>
             <form method="post" action="/debug/action">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="action" value="update">
                 <button type="submit">Update starten</button>
             </form>

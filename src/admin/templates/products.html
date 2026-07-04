@@ -29,6 +29,7 @@
             <td><span class="category">{{ product.category }}</span></td>
             <td class="table-actions">
                 <form class="compact-form" method="post" action="/products/{{ product.barcode }}/settings">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input class="field-medium" name="name_de" value="{{ product.name_de }}" aria-label="Name">
                     <input class="field-small" name="price" type="number" min="0" step="1" value="{{ product.price|int }}" aria-label="Preis">
                     <label class="checkbox-label">
@@ -44,7 +45,9 @@
                     src="{{ product.barcode_path }}"
                     alt="{{ product.barcode }}"
                     class="barcode-img"
-                    onclick="showBarcode('{{ product.barcode_path }}')"
+                    data-barcode-src="{{ product.barcode_path }}"
+                    role="button"
+                    tabindex="0"
                     title="Klicken zum Vergrößern"
                 >
                 <a class="button-link small secondary" href="{{ product.barcode_path }}" download>SVG</a>

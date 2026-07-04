@@ -13,46 +13,50 @@ local data handling.
 | Core kiosk | Done | Login, menu, shopping, picker, checkout, recipe, math |
 | Economy | Done | Balances, sessions, earnings, transactions |
 | UI shell | Done | Shared frame, footer, user colors, asset-based scene direction |
-| Remote admin | Done | FastAPI pages, edits, balances, history, barcode links, print PDFs |
+| Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Done | Automated Lite install path, systemd services, debug/update hooks |
+| Regression tests | Started | unittest temp-DB smoke suite for database and admin safety |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 
 ## Active Priorities
 
-1. **Hardware and kid testing**
-   - Fix the Pi first-boot installer regression tracked in issue #9 before the next clean automated install attempt.
-   - Push or merge the installer branch before using `--repo-ref` on a fresh Pi, because the Pi clones from GitHub during first boot.
-   - Validate automated first-boot setup on a freshly flashed Pi.
-   - Keep the validated SEENGREAT topology: leave the Pi USB data port empty while the shield is in Pi mode, then attach touch, scanner, and number pad downstream of the shield.
-   - Validate the SEENGREAT hub as a normal USB hub on the Mac.
-   - Validate the SEENGREAT hub on the Pi with `SW1 = 0` and `SW2 = 1`.
-   - Validate cashier UI on Pi touch display with scanner.
-   - Validate scanner, number pad, checkout, Admin card, recipe cards, and math mode on the current manually started Pi kiosk.
-   - Validate recipe UI with children.
-   - Record observations in issues #1, #2, #7, and #8.
+1. **Data safety and regression coverage**
+   - Keep the temp-DB unittest suite green and expand it around risky write paths.
+   - Fix atomic checkout/balance updates (#11).
+   - Reset scene state between kiosk users (#12).
+   - Track recipe ingredient quantities correctly (#13).
+   - Enforce SQLite foreign key constraints (#16).
+   - Fold the remaining kiosk correctness bugs into the same regression pass (#14, #17, #18, #19, #20).
 
-2. **Admin read-only history**
+2. **Pi operations and hardware validation**
+   - Add rollback safety to the update script (#23).
+   - Show install, update, and backup status on the debug page (#24).
+   - Cache fonts and scaled assets for Pi Zero runtime (#22).
+   - Keep the validated SEENGREAT topology: leave the Pi USB data port empty while the shield is in Pi mode, then attach touch, scanner, and number pad downstream of the shield.
+   - Validate cashier, recipe, scanner, number pad, checkout, Admin card, math mode, update, and QR flows on real hardware.
+   - Record child and hardware observations in issues #1, #2, #7, and #8.
+
+3. **Admin read-only history**
    - Add transaction history view.
    - Add earnings/session overview.
    - Keep exports/statistics simple until parents actually need them.
 
-3. **Database boundary**
+4. **Database boundary**
    - Split `src/utils/database.py` only in a dedicated pass.
    - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
 
-4. **Later CRUD**
+5. **Later CRUD**
    - New products.
    - New users/cards.
    - Recipe creation/editing beyond active/name edits.
    - Image upload/copy workflow.
 
-5. **Polish**
+6. **Polish**
    - Sound effects.
    - Checkout/earning animations.
    - Error states on hardware.
-   - Pi Zero performance pass.
 
 ## Current Decisions
 
@@ -61,7 +65,8 @@ local data handling.
 - `tools/seed_database.py` contains the fixed Carolin/Annelie setup and is non-destructive by default.
 - First-boot installation must not assume optional Linux groups exist, and it must install from the intended repo ref or carry required installer files from bootfs.
 - Kiosk admin protection stays KISS via physical Admin card.
-- Browser debug/update actions require the locally generated setup PIN.
+- Browser mutating POST routes require the locally generated setup PIN/admin
+  session plus CSRF tokens.
 - The Pi stays on the home WiFi; no hotspot in v1.
 - Hardware debugging uses SSH over WiFi so the Pi USB data bus can be isolated for OTG and hub tests.
 - When the SEENGREAT shield is in Pi Zero hub mode, the Pi micro-USB data port must stay unused; downstream USB devices should connect through the shield.

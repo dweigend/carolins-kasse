@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-05-02 10:40 CEST
+**Last Updated:** 2026-07-04 CEST
 
 ## Current State
 
@@ -11,7 +11,14 @@
 - Database setup is KISS: one local `data/kasse.db`, fixed Carolin/Annelie initial setup, non-destructive seed script by default.
 - Raspberry Pi first-boot setup is automated with `tools/pi_prepare_boot.py`, `tools/pi_bootstrap.sh`, systemd units, and `docs/PI_SETUP.md`.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
-- Browser admin has a PIN-protected `/debug` page for status, logs, backups, restart, and update actions.
+- Browser admin has a PIN-protected admin session for mutating POST routes. The
+  existing debug PIN cookie/session is paired with CSRF tokens, including
+  `/debug/unlock` before PIN acceptance.
+- Browser admin barcode modals avoid inline JavaScript string arguments and pass
+  barcode data through HTML data attributes.
+- A unittest-based temp-DB smoke suite now covers database safety and admin
+  security flows without adding dependencies. The current suite has 11 passing
+  tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
@@ -46,6 +53,13 @@
 - Confirmed the touch display works after cabling/port correction and added SDL finger-event normalization in `main.py`.
 - Reflashed the SD card on 2026-05-02 after verifying `/dev/disk5`, the Raspberry Pi OS image SHA256, the local flash helper patch, and a dry-run bootfs containing `systemctl mask userconfig.service`, `CAROLINS_KASSE_REPO_REF=codex/pi-firstboot-installer`, and the `systemd.run` first-boot hook.
 - Validated the freshly flashed Pi over SSH and manually started the kiosk service after the installer timed out at the final start step.
+- Added temp-DB unittest smoke coverage under `tests/` for database behavior and
+  admin safety without touching the runtime DB.
+- Protected admin mutating POST routes with the existing debug PIN/admin session
+  plus CSRF tokens, and made `/debug/unlock` validate CSRF before accepting a
+  PIN.
+- Reworked admin barcode modal wiring to use data attributes instead of inline
+  JavaScript string arguments.
 
 ## Verification Run Recently
 
@@ -64,25 +78,55 @@ Run after the Pi setup implementation:
 - `uv run python tools/pi_prepare_boot.py <temporary bootfs fixture>`
 - FastAPI admin smoke including `/debug`
 
+Run on 2026-07-04 CEST after the admin safety and temp-DB test work:
+
+- `uv run ruff check src/ tools/ tests/`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests`
+- `uv run python -m unittest discover -s tests`
+- `git diff --check`
+
 ## Open GitHub Issues
+
+Covered by the current local code batch and ready to close after review/commit:
+
+- #10 Protect admin write routes from unauthenticated POSTs
+- #15 Render admin barcode modal data without inline JavaScript strings
+- #21 Add temp-DB regression smoke suite
+
+Highest-priority follow-up issues:
+
+- #11 Make checkout and balance updates atomic
+- #12 Reset scene state between kiosk users
+- #13 Track recipe ingredient quantities instead of binary scans
+- #16 Enforce SQLite foreign key constraints
+- #22 Cache fonts and scaled assets for Pi Zero runtime
+- #23 Add rollback safety to Pi update script
+- #24 Show install, update, and backup status on debug page
+
+Other open app correctness issues from the latest triage:
+
+- #14 Refresh displayed balance after self-checkout
+- #17 Prevent inactive recipe ingredients from blocking completion
+- #18 Make PickerScene reachable from the kiosk flow
+- #19 Ignore barcode scanner input in math mode
+- #20 Award recipe bonus after successful recipe checkout
+
+Still open for validation or later structure work:
 
 - #1 Validate cashier UI with kids on touch display
 - #2 Validate recipe UI with kids on touch display
 - #4 Split database module for admin backend
 - #7 Validate automated Raspberry Pi first-boot setup
 - #8 Validate Pi Zero USB hub and OTG host path
-
-Closed in this phase:
-
-- #3 Demo database workflow
-- #5 Printable barcode workflow
-- #6 On-device Pygame admin mode
+- #9 Pi first-boot installer fails before installing services
 
 ## Known Risks
 
 - `src/utils/database.py` is still the largest mixed-responsibility module. Split it only when the next write path makes the boundary obvious.
 - Hardware behavior is not fully validated: scanner timing, touch target precision, fullscreen rendering, Pi performance, and child comprehension still need real tests.
-- Remote admin product/user/recipe pages still have no web login by design. Debug/update actions are protected by the generated local setup PIN.
+- Remote admin is still intended for the home WiFi. Mutating POST routes require
+  the debug PIN/admin session cookie plus CSRF, while the read surface remains
+  intentionally lightweight.
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer needs one more clean validation after the timeout fix: the current fresh install succeeded after manual service start, but `carolins-install.service` timed out just before the final kiosk start completed.
 - SEENGREAT hub behavior is validated with the corrected topology. The Pi Zero 2 W has one USB data bus, so using the Pi micro-USB data port and the shield pogo-pin upstream at the same time causes descriptor failures.
@@ -90,9 +134,10 @@ Closed in this phase:
 
 ## Next Best Steps
 
-1. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
-2. On the next clean install validation, confirm the updated installer no longer times out: `carolins-install.service` should disappear cleanly, `carolins-kasse.service` should start automatically, `userconfig.service` should stay masked, and `systemctl --failed` should be empty.
-3. Validate reboot behavior: after `sudo systemctl reboot`, the Pi should return directly to the kiosk without manual SSH recovery.
+1. Close or update #10, #15, and #21 after the current local code batch is reviewed and committed.
+2. Fix the data-safety follow-ups: atomic checkout/balance updates (#11), scene reset (#12), recipe quantities (#13), and SQLite foreign keys (#16).
+3. Improve Pi operations: update rollback safety (#23), debug observability (#24), and Pi Zero runtime performance (#22).
+4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, and #8.
 6. Add read-only transaction and earnings views before more write-heavy CRUD.
 7. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
