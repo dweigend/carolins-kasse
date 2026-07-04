@@ -52,8 +52,9 @@
   without adding dependencies. It also covers recipe quantities, inactive
   recipe ingredients, picker reachability, math scanner filtering, and recipe
   bonus timing, Pi update rollback safety with shell fixtures, Pi update
-  systemd unit installation, debug observability, and keypad keycode input. The
-  current pipeline suite has 65 passing tests.
+  systemd unit installation, debug observability, keypad keycode input, and
+  cashier feedback component render/state behavior. The current pipeline suite
+  has 73 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -187,6 +188,9 @@
   visible-row, and mousewheel helpers and added direct component tests. The
   final #26 follow-up split `RecipeScene._handle_barcode` into branch-specific
   scan helpers. Radon now reports no C/D findings in the full pipeline.
+- Local #25 coverage slice added direct cashier feedback component tests for
+  `BalanceBar`, `CheckoutReceipt`, and `InsufficientFundsPopup` without touching
+  production code or the runtime database.
 
 ## Verification Run Recently
 
@@ -278,6 +282,11 @@ Run on 2026-07-04 CEST for the local code-quality pipeline:
 - `uv run poe check` (65 tests, 46.32% coverage, 40% minimum)
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 
+Run on 2026-07-04 CEST for the local #25 cashier feedback coverage slice:
+
+- `uv run python -m unittest tests.test_cashier_feedback_components` (8 tests)
+- `uv run poe check` (73 tests, 50.35% coverage, 40% minimum)
+
 Final Pi deployment validation on 2026-07-04 CEST:
 
 - `/Users/davidweigend/.codex/skills/carolins-kasse-debug/scripts/kasse-debug.sh tests` (54 tests OK plus checks)
@@ -320,8 +329,6 @@ Open follow-up and validation backlog:
 - #9 Pi first-boot installer fails before installing services
 - #22 Cache fonts and scaled assets for Pi Zero runtime
 - #25 Raise coverage for UI components and operation scripts
-- #26 Reduce highest-complexity UI handlers; current Radon C/D findings are
-  removed, keep open only for future/manual complexity follow-up
 
 ## Known Risks
 
