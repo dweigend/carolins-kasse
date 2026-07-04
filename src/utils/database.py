@@ -20,6 +20,7 @@ from src.utils import (
     database_products,
     database_recipes,
     database_sessions,
+    database_transactions,
     database_users,
 )
 from src.utils.database_models import (
@@ -581,13 +582,4 @@ def process_checkout(
 def get_user_transactions(user_card_id: str, limit: int = 10) -> list[Transaction]:
     """Get recent transactions for a user."""
     with get_db() as conn:
-        rows = conn.execute(
-            """
-            SELECT * FROM transactions
-            WHERE user_card_id = ?
-            ORDER BY timestamp DESC
-            LIMIT ?
-            """,
-            (user_card_id, limit),
-        ).fetchall()
-        return [Transaction.from_row(row) for row in rows]
+        return database_transactions.get_user_transactions(conn, user_card_id, limit)

@@ -275,6 +275,26 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertIsNotNone(user_after_earnings)
         self.assertEqual(user_after_earnings.balance, 18.0)
 
+    def test_transaction_public_api_keeps_query_behavior(self) -> None:
+        with initialized_temporary_database() as database:
+            user = database.User(
+                card_id="2000000000015",
+                name="Carolin",
+                balance=10.0,
+            )
+            items = [{"barcode": "1000000000016", "name": "Milch", "price": 2}]
+
+            database.add_user(user)
+            transaction_id = database.save_transaction(user.card_id, 2, items)
+            transactions = database.get_user_transactions(user.card_id)
+
+        self.assertGreater(transaction_id, 0)
+        self.assertEqual(len(transactions), 1)
+        self.assertEqual(transactions[0].id, transaction_id)
+        self.assertEqual(transactions[0].user_card_id, user.card_id)
+        self.assertEqual(transactions[0].total, 2)
+        self.assertEqual(json.loads(transactions[0].items_json), items)
+
     def test_init_database_creates_schema_on_empty_temp_db(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "kasse.db"
