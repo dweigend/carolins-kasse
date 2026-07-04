@@ -14,6 +14,21 @@
 4. Run `gh issue list --limit 20`.
 5. Run `git status --short --branch` before editing files.
 
+## Operating Mode
+
+- The main agent is the orchestrator for debug, refactor, and optimization work:
+  communicate, delegate, review, and integrate.
+- Run concrete analysis, code changes, and larger documentation work through
+  focused subagents or subthreads when useful.
+- Debug by reproducing, isolating, and verifying. Keep refactors small,
+  behavior-preserving, and easy to review.
+- Track findings as clear GitHub issues with priority, risk, and a proposed
+  fix when follow-up is needed.
+- Remote Pi debugging uses SSH `kasse@carolins-kasse.local` and the local
+  helper skill at `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`.
+- Run tests before Pi updates. Update the Pi only after green checks and via
+  the configured safe service commands.
+
 ## Before Ending
 
 1. Run relevant checks.
