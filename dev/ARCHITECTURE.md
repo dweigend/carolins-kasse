@@ -61,18 +61,19 @@ SQLite tables:
 - `transactions`: purchases with JSON item payload
 - `balance_adjustments`: manual admin balance changes
 
-Current technical debt: `src/utils/database.py` still contains schema, balance,
-checkout, and other runtime persistence. Row dataclasses and checkout
-result/error types live in
+Current technical debt: `src/utils/database.py` still contains schema, checkout,
+and transaction boundaries. Row dataclasses and checkout result/error types live in
 `src/utils/database_models.py`; product query helpers live in
 `src/utils/database_products.py`; recipe query helpers live in
 `src/utils/database_recipes.py`; basic user CRUD query helpers live in
 `src/utils/database_users.py`; session query helpers live in
 `src/utils/database_sessions.py`; earning helpers live in
 `src/utils/database_earnings.py`; transaction helpers live in
-`src/utils/database_transactions.py`; read-only balance adjustment query helpers
+`src/utils/database_transactions.py`; balance adjustment query and write helpers
 live in `src/utils/database_balance_adjustments.py`. Public names are still
-re-exported or wrapped from `src/utils/database.py` for import compatibility.
+re-exported or wrapped from `src/utils/database.py` for import compatibility;
+the public `update_user_balance` wrapper stays there with `get_db()`,
+`BEGIN IMMEDIATE`, commit, and rollback.
 Continue splitting only in small behavior-preserving slices.
 
 SQLite connections enable foreign key checks and a short busy timeout. Checkout
@@ -171,7 +172,7 @@ Systemd units live under `systemd/`:
 | `src/components/` | Reusable pygame UI pieces |
 | `src/ui/` | Shell, paper texture, shared rendering helpers |
 | `src/admin/` | FastAPI app, templates, static CSS |
-| `src/utils/database.py` | Public SQLite API, connection, schema, commit, checkout, and transaction boundary |
+| `src/utils/database.py` | Public SQLite API, connection, schema, commit/rollback, checkout, and transaction boundaries |
 | `src/utils/database_models.py` | Database row dataclasses, column lists, and checkout result/error types |
 | `src/utils/database_products.py` | Product SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_recipes.py` | Recipe SQL helpers that receive an existing connection and do not commit |
@@ -179,7 +180,7 @@ Systemd units live under `systemd/`:
 | `src/utils/database_sessions.py` | Session SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_earnings.py` | Earning SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_transactions.py` | Transaction SQL helpers that receive an existing connection and do not commit |
-| `src/utils/database_balance_adjustments.py` | Read-only balance adjustment SQL helpers that receive an existing connection and do not commit |
+| `src/utils/database_balance_adjustments.py` | Balance adjustment SQL query/write helpers that receive an existing connection and do not commit |
 | `src/utils/barcodes.py` | Barcode rules and generated SVG paths |
 | `src/utils/admin_runtime.py` | Managed FastAPI server start/stop for pygame admin |
 | `src/utils/network.py` | Local IP and admin URL helpers |

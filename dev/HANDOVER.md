@@ -84,9 +84,9 @@
   was on `codex/pi-ops-safety` at `9c0d70b`; newer docs-only commits may be
   ahead on GitHub. The kiosk service is systemd managed and active.
 - The code-quality pipeline commit `df59ec5` is pushed to GitHub but not yet
-  deployed to the Pi. On the latest local check, `carolins-kasse.local` did not
-  resolve and `192.168.1.139` did not answer SSH, so the next Pi update needs a
-  fresh reachability check first.
+  deployed to the Pi. On the latest local checks, `carolins-kasse.local` did
+  not resolve, `192.168.1.139` timed out over SSH, ping had 100% packet loss,
+  and ARP stayed incomplete, so no Pi update was attempted.
 - Passwordless sudo is limited to the intended service operations:
   restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
   start `carolins-kasse-backup.service`.
@@ -238,12 +238,14 @@
   coordinates balance and transaction writes atomically.
 - Local #4 eighth split moved the read-only manual balance adjustment query
   helper into `src/utils/database_balance_adjustments.py`. The public balance
-  adjustment API and connection handling stay in `src/utils/database.py`;
-  `update_user_balance` remains there because it writes user balances and
-  adjustment rows in one transaction-sensitive path.
+  adjustment API and connection handling stay in `src/utils/database.py`.
 - Local #4 ninth split moved the standalone `add_earning` write helper into
   `src/utils/database_earnings.py`. The public earning API, connection
   handling, and commit boundary stay in `src/utils/database.py`.
+- Local #4 tenth split moved the SQL write helper behind `update_user_balance`
+  into `src/utils/database_balance_adjustments.py`. The public
+  `update_user_balance` wrapper, `get_db()`, `BEGIN IMMEDIATE`, commit, and
+  rollback boundary stay in `src/utils/database.py`.
 
 ## Verification Run Recently
 
@@ -354,6 +356,15 @@ Run on 2026-07-04 CEST for the local #4 earning write helper split:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `uv run python -m unittest tests.test_database_smoke tests.test_recipe_scene tests.test_scene_lifecycle` (28 tests)
 - `uv run poe check` (90 tests, 58.17% coverage, 40% minimum)
+
+Run on 2026-07-04 CEST for the local #4 balance adjustment write helper split:
+
+- `git diff --check`
+- `uv run ruff format --check src/ tools/ tests/ main.py`
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest tests.test_database_smoke tests.test_admin_safety tests.test_checkout_mixin` (20 tests)
+- `uv run poe check` (90 tests, 58.18% coverage, 40% minimum)
 
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 
@@ -509,8 +520,8 @@ Open follow-up and validation backlog:
 ## Known Risks
 
 - `src/utils/database.py` is still a mixed-responsibility SQLite boundary even
-  after the model and product-query splits. Further #4 slices should move one
-  query family at a time and keep transaction-sensitive checkout/balance code
+  after the current helper splits. Further #4 slices should move one query
+  family at a time and keep transaction-sensitive checkout/balance boundaries
   covered.
 - The new quality pipeline is intentionally a practical baseline: Ruff,
   `ty`, Vulture, Deptry, jscpd, and pytest-cov are strict, while Radon remains

@@ -292,34 +292,9 @@ def update_user_balance(
     with get_db() as conn:
         try:
             conn.execute("BEGIN IMMEDIATE")
-            row = conn.execute(
-                "SELECT balance FROM users WHERE card_id = ?", (card_id,)
-            ).fetchone()
-            if row is None:
-                raise ValueError(f"Unknown user card ID: {card_id}")
-
-            old_balance = float(row[0])
-            delta = new_balance - old_balance
-            update_cursor = conn.execute(
-                "UPDATE users SET balance = ? WHERE card_id = ?",
-                (new_balance, card_id),
+            database_balance_adjustments.update_user_balance(
+                conn, card_id, new_balance, note
             )
-            if update_cursor.rowcount != 1:
-                raise RuntimeError(f"Failed to update balance for user {card_id}")
-
-            adjustment_cursor = conn.execute(
-                """
-                INSERT INTO balance_adjustments (
-                    user_card_id, old_balance, new_balance, delta, note
-                )
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (card_id, old_balance, new_balance, delta, note),
-            )
-            if adjustment_cursor.rowcount != 1:
-                raise RuntimeError(
-                    f"Failed to record balance adjustment for user {card_id}"
-                )
             conn.commit()
         except Exception:
             conn.rollback()
