@@ -76,6 +76,19 @@ def get_raw(name: str) -> pygame.Surface:
     return original
 
 
+def get_scaled(name: str, size: tuple[int, int]) -> pygame.Surface:
+    """Load asset by category/name and cache an exact scaled size."""
+    width, height = size
+    cache_key = f"{name}@{width}x{height}"
+    if cache_key in _cache:
+        return _cache[cache_key]
+
+    original = get_raw(name)
+    scaled = pygame.transform.smoothscale(original, size)
+    _cache[cache_key] = scaled
+    return scaled
+
+
 def _resolve_asset_path(name: str) -> Path:
     """Resolve an asset name to an existing PNG path."""
     category, _, filename = name.partition("/")

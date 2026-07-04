@@ -1,36 +1,38 @@
-"""Paper texture generator for UI background.
+"""Lightweight paper texture generator for the kiosk background.
 
-Generates procedural noise on cream-colored background for organic feel.
+This stays on the kiosk cold path, so it avoids NumPy and per-pixel noise.
 """
 
-import numpy as np
 import pygame
+
 from src.constants import CREAM
+
+PAPER_LINE_COLOR = (247, 235, 210, 42)
+PAPER_SHADOW_COLOR = (238, 222, 194, 28)
+PAPER_DOT_COLOR = (242, 228, 201, 48)
+LINE_SPACING = 96
+SHADOW_LINE_SPACING = 128
+DOT_ROW_SPACING = 64
+DOT_COLUMN_SPACING = 84
+DOT_RADIUS = 1
 
 
 def generate_paper_texture(width: int, height: int) -> pygame.Surface:
-    """Generate a procedural paper texture.
+    """Generate a subtle deterministic paper texture without heavy imports."""
+    texture = pygame.Surface((width, height))
+    texture.fill(CREAM)
 
-    Creates subtle noise on a cream background for organic, handmade feel.
+    overlay = pygame.Surface((width, height), pygame.SRCALPHA)
+    for y in range(0, height, LINE_SPACING):
+        pygame.draw.line(overlay, PAPER_LINE_COLOR, (0, y), (width, y))
 
-    Args:
-        width: Surface width in pixels
-        height: Surface height in pixels
+    for x in range(SHADOW_LINE_SPACING // 2, width, SHADOW_LINE_SPACING):
+        pygame.draw.line(overlay, PAPER_SHADOW_COLOR, (x, 0), (x, height))
 
-    Returns:
-        pygame.Surface with noise texture applied
-    """
-    # Generate random noise: small variations (-12 to +12 per channel)
-    noise = np.random.randint(-12, 12, (height, width, 3), dtype=np.int16)
+    for row, y in enumerate(range(DOT_ROW_SPACING // 2, height, DOT_ROW_SPACING)):
+        offset = (row % 3) * 17
+        for x in range(24 + offset, width, DOT_COLUMN_SPACING):
+            pygame.draw.circle(overlay, PAPER_DOT_COLOR, (x, y), DOT_RADIUS)
 
-    # Start with cream base color, add noise to each channel
-    r, g, b = CREAM
-    pixels = np.clip(
-        np.full((height, width, 3), [r, g, b], dtype=np.int16) + noise,
-        0,
-        255,
-    ).astype(np.uint8)
-
-    # Convert numpy array to pygame surface
-    # Note: transpose needed because pygame uses (width, height) order
-    return pygame.surfarray.make_surface(pixels.transpose(1, 0, 2))
+    texture.blit(overlay, (0, 0))
+    return texture

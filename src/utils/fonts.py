@@ -3,6 +3,7 @@
 Initialize pygame fonts and provide semantic font sizes.
 """
 
+from functools import lru_cache
 import os
 
 import pygame
@@ -24,22 +25,22 @@ CAPTION_SIZE = 28  # Hints, labels, secondary text
 # ─── FONT GETTERS ─────────────────────────────────────────
 def heading() -> pygame.font.Font:
     """Get heading font (42pt)."""
-    return pygame.font.Font(FONT_PATH, HEADING_SIZE)
+    return _get_font(FONT_PATH, HEADING_SIZE)
 
 
 def bold() -> pygame.font.Font:
     """Get bold heading font (42pt, bold weight)."""
-    return pygame.font.Font(BOLD_FONT_PATH, HEADING_SIZE)
+    return _get_font(BOLD_FONT_PATH, HEADING_SIZE)
 
 
 def body() -> pygame.font.Font:
     """Get body font (36pt)."""
-    return pygame.font.Font(FONT_PATH, BODY_SIZE)
+    return _get_font(FONT_PATH, BODY_SIZE)
 
 
 def caption() -> pygame.font.Font:
     """Get caption font (28pt)."""
-    return pygame.font.Font(FONT_PATH, CAPTION_SIZE)
+    return _get_font(FONT_PATH, CAPTION_SIZE)
 
 
 def custom(size: int) -> pygame.font.Font:
@@ -51,7 +52,7 @@ def custom(size: int) -> pygame.font.Font:
     Returns:
         Font instance at specified size
     """
-    return pygame.font.Font(FONT_PATH, size)
+    return _get_font(FONT_PATH, size)
 
 
 def bold_custom(size: int) -> pygame.font.Font:
@@ -63,4 +64,15 @@ def bold_custom(size: int) -> pygame.font.Font:
     Returns:
         Bold font instance at specified size
     """
-    return pygame.font.Font(BOLD_FONT_PATH, size)
+    return _get_font(BOLD_FONT_PATH, size)
+
+
+def clear_cache() -> None:
+    """Clear cached fonts for focused tests or display resets."""
+    _get_font.cache_clear()
+
+
+@lru_cache(maxsize=None)
+def _get_font(font_path: str, size: int) -> pygame.font.Font:
+    """Load each immutable font size once per process."""
+    return pygame.font.Font(font_path, size)

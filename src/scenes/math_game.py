@@ -597,14 +597,16 @@ class MathGameScene(MessageMixin, Scene):
         reward = self._current_reward()
         coin = self._load_reward_coin(reward)
         if coin:
-            coin = self._scale_reward_coin_for_animation(coin)
+            coin = self._scale_reward_coin_for_animation(reward, coin)
             coin_rect = coin.get_rect(center=REWARD_BADGE_CENTER)
             screen.blit(coin, coin_rect)
             return
 
         self._render_fallback_reward_badge(screen, reward)
 
-    def _scale_reward_coin_for_animation(self, coin: pygame.Surface) -> pygame.Surface:
+    def _scale_reward_coin_for_animation(
+        self, reward: int, coin: pygame.Surface
+    ) -> pygame.Surface:
         """Pulse the reward coin while the transfer animation starts."""
         if self._success_timer <= 0:
             return coin
@@ -613,19 +615,43 @@ class MathGameScene(MessageMixin, Scene):
         pulse = max(0.0, 1.0 - elapsed / 12)
         scale = 1.0 + pulse * 0.18
         target_size = int(coin.get_width() * scale)
-        return pygame.transform.smoothscale(coin, (target_size, target_size))
+        if target_size == coin.get_width():
+            return coin
+        return self._load_scaled_reward_coin(
+            reward, target_size
+        ) or pygame.transform.smoothscale(coin, (target_size, target_size))
 
     def _load_reward_coin(self, reward: int) -> pygame.Surface | None:
         """Load the stable coin variant for the current problem."""
-        variants = REWARD_COIN_VARIANTS.get(reward)
-        if not variants:
+        asset_name = self._reward_coin_asset_name(reward)
+        if not asset_name:
             return None
 
-        asset_name = variants[self._reward_variant_index % len(variants)]
         try:
             return asset_loader.get(asset_name, REWARD_BADGE_SIZE)
         except FileNotFoundError:
             return None
+
+    def _load_scaled_reward_coin(
+        self, reward: int, target_size: int
+    ) -> pygame.Surface | None:
+        """Load a cached exact-size reward coin for repeated animations."""
+        asset_name = self._reward_coin_asset_name(reward)
+        if not asset_name:
+            return None
+
+        try:
+            return asset_loader.get_scaled(asset_name, (target_size, target_size))
+        except FileNotFoundError:
+            return None
+
+    def _reward_coin_asset_name(self, reward: int) -> str | None:
+        """Return the stable reward coin asset name for the current problem."""
+        variants = REWARD_COIN_VARIANTS.get(reward)
+        if not variants:
+            return None
+
+        return variants[self._reward_variant_index % len(variants)]
 
     def _render_fallback_reward_badge(
         self, screen: pygame.Surface, reward: int
@@ -740,7 +766,11 @@ class MathGameScene(MessageMixin, Scene):
         y = start_y + (target_y - start_y) * eased - math.sin(progress * math.pi) * 70
         scale = 0.7 - eased * 0.34
         size = max(28, int(coin.get_width() * scale))
-        moving_coin = pygame.transform.smoothscale(coin, (size, size)).copy()
+        cached_coin = self._load_scaled_reward_coin(self._success_reward, size)
+        if cached_coin:
+            moving_coin = cached_coin.copy()
+        else:
+            moving_coin = pygame.transform.smoothscale(coin, (size, size)).copy()
 
         if progress > 0.78:
             moving_coin.set_alpha(int(255 * (1.0 - (progress - 0.78) / 0.22)))

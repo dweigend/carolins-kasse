@@ -4,6 +4,7 @@ import pygame
 
 from src.utils.assets import get as get_asset
 from src.utils.assets import get_raw as get_raw_asset
+from src.utils.assets import get_scaled as get_scaled_asset
 from src.utils.database import Product
 from src.utils.fonts import bold_custom, caption, custom
 
@@ -145,8 +146,7 @@ class ProductDisplay:
         price_text = price_font.render(str(price), True, self.PRICE_COLOR)
 
         try:
-            coin = get_asset("products/taler", "M")
-            coin = pygame.transform.smoothscale(coin, (coin_size, coin_size))
+            coin = get_scaled_asset("products/taler", (coin_size, coin_size))
         except FileNotFoundError:
             coin = pygame.Surface((coin_size, coin_size), pygame.SRCALPHA)
             pygame.draw.circle(
