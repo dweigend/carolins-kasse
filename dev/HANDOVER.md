@@ -55,8 +55,9 @@
   systemd unit installation, debug observability, keypad keycode input,
   cashier feedback component render/state behavior, operation script
   generation against temporary output paths, Pi bootfs preparation, Pi debug CLI
-  output, database model import compatibility, and product/recipe/user/session
-  public API compatibility. The current pipeline suite has 87 passing tests.
+  output, database model import compatibility, and product, recipe, user,
+  session, and earning public API compatibility. The current pipeline suite has
+  88 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -226,6 +227,10 @@
   `src/utils/database_sessions.py`. The public session API, connection
   handling, and commits stay in `src/utils/database.py`; earnings and
   transactions were intentionally left in `database.py`.
+- Local #4 sixth split moved read-only earning query helpers into
+  `src/utils/database_earnings.py`. The public earning API and connection
+  handling stay in `src/utils/database.py`; `add_earning` remains there because
+  it writes earning rows and updates balances, and transactions stay untouched.
 
 ## Verification Run Recently
 
@@ -292,6 +297,14 @@ Run on 2026-07-04 CEST for the local #4 session query split:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `git diff --check`
 - `uv run poe check` (87 tests, 57.77% coverage, 40% minimum)
+
+Run on 2026-07-04 CEST for the local #4 read-only earning query split:
+
+- `git diff --check`
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest tests.test_database_smoke tests.test_recipe_scene tests.test_scene_lifecycle` (26 tests)
+- `uv run poe check` (88 tests, 57.94% coverage, 40% minimum)
 
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 

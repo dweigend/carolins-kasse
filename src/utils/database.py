@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from src.utils import (
+    database_earnings,
     database_products,
     database_recipes,
     database_sessions,
@@ -477,42 +478,19 @@ def add_earning(
 def get_today_earnings(user_card_id: str) -> list[Earning]:
     """Get all earnings for a user from today."""
     with get_db() as conn:
-        rows = conn.execute(
-            """
-            SELECT * FROM earnings
-            WHERE user_card_id = ?
-            AND date(earned_at) = date('now', 'localtime')
-            ORDER BY earned_at DESC
-            """,
-            (user_card_id,),
-        ).fetchall()
-        return [Earning.from_row(row) for row in rows]
+        return database_earnings.get_today_earnings(conn, user_card_id)
 
 
 def get_session_earnings(session_id: int) -> list[Earning]:
     """Get all earnings for a specific session."""
     with get_db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM earnings WHERE session_id = ? ORDER BY earned_at DESC",
-            (session_id,),
-        ).fetchall()
-        return [Earning.from_row(row) for row in rows]
+        return database_earnings.get_session_earnings(conn, session_id)
 
 
 def get_today_earnings_summary(user_card_id: str) -> dict[str, int]:
     """Get earnings summary grouped by source for today."""
     with get_db() as conn:
-        rows = conn.execute(
-            """
-            SELECT source, SUM(amount) as total
-            FROM earnings
-            WHERE user_card_id = ?
-            AND date(earned_at) = date('now', 'localtime')
-            GROUP BY source
-            """,
-            (user_card_id,),
-        ).fetchall()
-        return {row[0]: row[1] for row in rows}
+        return database_earnings.get_today_earnings_summary(conn, user_card_id)
 
 
 # --- Transactions ---

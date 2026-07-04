@@ -245,6 +245,36 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertEqual(ended_session.user_card_id, user.card_id)
         self.assertIsNotNone(ended_session.ended_at)
 
+    def test_earning_public_api_keeps_query_behavior(self) -> None:
+        with initialized_temporary_database() as database:
+            user = database.User(
+                card_id="2000000000015",
+                name="Carolin",
+                balance=10.0,
+            )
+
+            database.add_user(user)
+            session_id = database.start_session(user.card_id)
+            database.add_earning(session_id, user.card_id, "math", 3, "Aufgabe")
+            database.add_earning(session_id, user.card_id, "recipe", 5, "Rezept")
+
+            session_earnings = database.get_session_earnings(session_id)
+            today_earnings = database.get_today_earnings(user.card_id)
+            today_summary = database.get_today_earnings_summary(user.card_id)
+            user_after_earnings = database.get_user(user.card_id)
+
+        self.assertCountEqual(
+            [(earning.source, earning.amount) for earning in session_earnings],
+            [("math", 3), ("recipe", 5)],
+        )
+        self.assertCountEqual(
+            [(earning.source, earning.amount) for earning in today_earnings],
+            [("math", 3), ("recipe", 5)],
+        )
+        self.assertEqual(today_summary, {"math": 3, "recipe": 5})
+        self.assertIsNotNone(user_after_earnings)
+        self.assertEqual(user_after_earnings.balance, 18.0)
+
     def test_init_database_creates_schema_on_empty_temp_db(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "kasse.db"
