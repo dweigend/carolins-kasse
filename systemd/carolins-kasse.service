@@ -1,7 +1,5 @@
 [Unit]
 Description=Carolin's Kasse kiosk
-After=network-online.target
-Wants=network-online.target
 
 [Service]
 User=kasse
