@@ -30,35 +30,45 @@ close or update them after review/merge:
 
 ## Active Priorities
 
-1. **Pi performance**
+1. **Number pad reliability**
+   - Fix keypad digit handling when Pygame/SDL sends keypad keycodes with empty
+     unicode text (#27).
+   - Validate with the local raw keypad capture before and after the app fix.
+
+2. **Pi performance**
    - Cache fonts and scaled assets for Pi Zero runtime (#22).
+   - Avoid waiting on `network-online.target` for the kiosk cold path (#28).
+   - Remove NumPy paper texture generation from startup (#29).
+   - Lazy-load admin and non-start scenes outside the cold path (#30).
    - Keep changes measurable against the 1024x600 kiosk path.
 
-2. **Hardware and child validation**
+3. **Hardware and child validation**
    - Keep the validated SEENGREAT topology: leave the Pi USB data port empty while the shield is in Pi mode, then attach touch, scanner, and number pad downstream of the shield.
    - Validate cashier, recipe, scanner, number pad, checkout, Admin card, math mode, update, and QR flows on real hardware.
    - Record child and hardware observations in issues #1, #2, #7, #8, and #9.
 
-3. **Admin read-only history**
+4. **Admin read-only history**
    - Add transaction history view.
    - Add earnings/session overview.
    - Keep exports/statistics simple until parents actually need them.
 
-4. **Database boundary**
+5. **Database boundary**
    - Split `src/utils/database.py` only in a dedicated pass.
    - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
 
-5. **Regression coverage maintenance**
+6. **Regression coverage maintenance**
    - Keep the 39-test temp-DB and lifecycle unittest suite green.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
+   - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
+     local checks, and safe Pi update/restart/backup actions.
 
-6. **Later CRUD**
+7. **Later CRUD**
    - New products.
    - New users/cards.
    - Recipe creation/editing beyond active/name edits.
    - Image upload/copy workflow.
 
-7. **Polish**
+8. **Polish**
    - Sound effects.
    - Checkout/earning animations.
    - Error states on hardware.
@@ -91,6 +101,11 @@ close or update them after review/merge:
 - Hardware debugging uses SSH over WiFi so the Pi USB data bus can be isolated for OTG and hub tests.
 - When the SEENGREAT shield is in Pi Zero hub mode, the Pi micro-USB data port must stay unused; downstream USB devices should connect through the shield.
 - The shield topology is now validated on the Pi: QinHeng hub, QDTECH touch, M4 YX scanner, and SIGMACHIP number pad enumerate when all USB devices are connected through the shield.
+- Raw Linux input validation confirms the SIGMACHIP number pad sends `KP1`,
+  `KP2`, `KP3`, `NUMLOCK`, and `KPENTER`; the remaining issue is app-level
+  keypad keycode handling (#27).
+- Local repeatable Pi diagnostics live in the private Codex skill
+  `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`.
 - Print output target is A4 PDF sheets plus existing SVG barcode files.
 - Asset creation should reuse existing `assets/340er/`, `assets/680er/`, and `assets/ui/` before adding new files.
 

@@ -50,13 +50,27 @@
 - SEENGREAT hub works as a standalone Mac USB hub and exposes downstream HID/CP2102 devices there, so the hub chip and Mac-side cable path are basically functional.
 - The corrected SEENGREAT topology is validated: leave the Pi micro-USB data port empty, keep the shield in `SW1=0`, `SW2=1`, and attach touch, scanner, and number pad downstream of the shield. `lsusb` now shows the QinHeng hub, QDTECH MPI7002 touch, M4 YX scanner, and SIGMACHIP number pad.
 - Touch is now working again through the shield. Keep the current cabling/ports as the known-good setup. The app also normalizes SDL finger events into mouse events so touch-only SDL paths still drive the existing UI.
-- The Pi still has an incomplete first-boot install. `carolins-install.service` is failed, `kasse` is not in sudoers, root SSH is unavailable, and the SSH banner still reports the Raspberry Pi new-user warning. This cannot be fixed in-place without root access or SD-card recovery.
-- The current Pi has `/opt/carolins-kasse` checked out on `codex/pi-firstboot-installer` at local commit `400bf06`, while the remote branch was rewritten. A manual kiosk process is running over SSH as `kasse` with PID `1885`; log path: `/home/kasse/carolins-debug/manual-kiosk.log`. This is a temporary test workaround, not a systemd-managed install.
-- User-level helper scripts for this temporary Pi state live at `/home/kasse/carolins-debug/start-kiosk.sh` and `/home/kasse/carolins-debug/status-kiosk.sh`.
+- Earlier incomplete first-boot/manual-kiosk states were superseded by the fresh
+  SD-card install below.
 - The SD card was fully reflashed on 2026-05-02 through a Terminal sudo flow. The flash log reports `3229614080 bytes transferred`, bootfs preparation completed, and `/dev/disk5` was ejected.
 - Local ignored flash helper `dev/local-debug/scripts/flash_carolins_kasse_sd.sh` has been updated to mask `userconfig.service` during first boot, matching `tools/pi_prepare_boot.py`.
 - The fresh Pi is reachable over SSH at `carolins-kasse.local` / `192.168.1.139`. First-boot user setup worked; `kasse` is in `sudo`, `input`, `render`, `gpio`, `i2c`, and `spi`.
 - The installer completed its real work but hit the systemd start timeout at the final service-start step. Manual recovery via SSH started `carolins-kasse.service`; it is now `active` and `enabled`, `userconfig.service` is `masked`, and no failed units remain.
+- Remote debugging is available over SSH as `kasse@carolins-kasse.local`
+  (`192.168.1.139`). The current Pi checkout is `/opt/carolins-kasse` on
+  `codex/pi-firstboot-installer` at `fda1394`; the kiosk service is systemd
+  managed and active.
+- Passwordless sudo is limited to the intended service operations:
+  restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
+  start `carolins-kasse-backup.service`.
+- Live keypad validation on 2026-07-04 confirmed that the SIGMACHIP keypad is
+  visible as `/dev/input/event2` and emits raw Linux events for `KP1`, `KP2`,
+  `KP3`, `NUMLOCK`, and `KPENTER`; issue #27 tracks the app-side Pygame keycode
+  fix.
+- Local Codex debug helpers live outside the repo at
+  `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`. Its
+  `scripts/kasse-debug.sh` helper wraps status, USB, boot, logs, keypad,
+  tests, update, restart, and backup workflows.
 
 ## Recent Completed Work
 
@@ -184,6 +198,10 @@ review/merge:
 
 Highest-priority Pi operations follow-up:
 
+- #27 Accept keypad digit keycodes when unicode text is empty
+- #28 Start kiosk service without waiting for network-online
+- #29 Remove NumPy paper texture generation from kiosk cold start
+- #30 Lazy-load admin and non-start scenes outside the kiosk cold path
 - #22 Cache fonts and scaled assets for Pi Zero runtime
 
 Still open for validation or later structure work:
@@ -205,13 +223,19 @@ Still open for validation or later structure work:
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer needs one more clean validation after the timeout fix: the current fresh install succeeded after manual service start, but `carolins-install.service` timed out just before the final kiosk start completed.
 - SEENGREAT hub behavior is validated with the corrected topology. The Pi Zero 2 W has one USB data bus, so using the Pi micro-USB data port and the shield pogo-pin upstream at the same time causes descriptor failures.
-- The current Pi is usable over SSH and the kiosk is running manually, but it is not fully installed: no kiosk systemd service exists yet, `carolins-install.service` is failed, and `kasse` cannot run sudo. Rebooting this Pi will not reliably return to the kiosk until the installer/service issue is fixed by reflash or root/SD-card recovery.
+- The current Pi is systemd managed and reachable over SSH, but the direct IP
+  `192.168.1.139` has an old local SSH host-key conflict on the Mac. Use
+  `carolins-kasse.local` unless the stale known-host entry is intentionally
+  cleaned up.
 
 ## Next Best Steps
 
-1. Close or update #23 and #24 after the current branch is merged.
-2. Improve Pi Zero runtime performance by caching fonts and scaled assets (#22).
-3. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
-4. Add observations to issues #1, #2, #7, #8, and #9.
-5. Add read-only transaction and earnings views before more write-heavy CRUD.
-6. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
+1. Fix #27 and retest the number pad on the Pi.
+2. Measure and reduce startup with #28, #29, #30, and #22.
+3. Use the local `carolins-kasse-debug` skill for SSH diagnostics, tests, and
+   safe Pi service actions.
+4. Close or update #23 and #24 after the current branch is merged.
+5. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
+   product labels, number pad input, checkout, Admin card, recipe cards, math
+   mode, debug PIN, update, and remote admin QR.
+6. Add observations to issues #1, #2, #7, #8, and #9.
