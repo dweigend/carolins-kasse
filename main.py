@@ -99,7 +99,7 @@ def main() -> None:
                 ):
                     if manager.current_name in {"menu", "admin"}:
                         state.logout()
-                        manager.switch_to("login")
+                        manager.switch_to("login", reset_user_state=True)
                     else:
                         manager.switch_to("menu")
                     continue

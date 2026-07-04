@@ -108,8 +108,8 @@ class MathGameScene(MessageMixin, Scene):
 
     def __init__(self) -> None:
         """Initialize math game scene."""
-        user = state.get_current_user()
-        self._difficulty = user.difficulty if user else DEFAULT_DIFFICULTY
+        self._active_user_card_id = self._current_user_card_id()
+        self._difficulty = self._current_user_difficulty()
         self._current_problem: MathProblem | None = None
         self._current_answer: str = ""
         self._session_taler = 0
@@ -123,6 +123,46 @@ class MathGameScene(MessageMixin, Scene):
         self._success_timer = 0
         self._success_reward = REWARD_WITHOUT_HELP
         self._pending_reward = 0
+
+    def on_enter(self) -> None:
+        """Use the active user's difficulty when math mode becomes active."""
+        current_user_card_id = self._current_user_card_id()
+        current_difficulty = self._current_user_difficulty()
+        if (
+            current_user_card_id != self._active_user_card_id
+            or current_difficulty != self._difficulty
+        ):
+            self.reset_user_state()
+
+    def reset_user_state(self) -> None:
+        """Clear math progress and prepare a fresh problem for the active user."""
+        self._active_user_card_id = self._current_user_card_id()
+        self._difficulty = self._current_user_difficulty()
+        self._current_problem = None
+        self._current_answer = ""
+        self._session_taler = 0
+        self._session_complete = False
+        self._complete_timer = 0
+        self._hint_visible = False
+        self._wrong_attempts = 0
+        self._problem_sequence = 0
+        self._reward_variant_index = 0
+        self._success_timer = 0
+        self._success_reward = REWARD_WITHOUT_HELP
+        self._pending_reward = 0
+        self._initialized = False
+        self._message = ""
+        self._message_timer = 0
+
+    def _current_user_card_id(self) -> str | None:
+        """Return the current user identity for detecting user changes."""
+        user = state.get_current_user()
+        return user.card_id if user else None
+
+    def _current_user_difficulty(self) -> int:
+        """Return the current user's math difficulty."""
+        user = state.get_current_user()
+        return user.difficulty if user else DEFAULT_DIFFICULTY
 
     def _init_ui(self) -> None:
         """Initialize UI elements."""

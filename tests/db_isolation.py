@@ -13,6 +13,9 @@ DATABASE_ENV_VAR = "CAROLINS_KASSE_DB_PATH"
 DATABASE_MODULES = (
     "tools.seed_database",
     "src.scenes.checkout_mixin",
+    "src.scenes.math_game",
+    "src.scenes.recipe",
+    "src.scenes.scan",
     "src.utils.database",
     "src.utils.earnings",
     "src.utils.state",

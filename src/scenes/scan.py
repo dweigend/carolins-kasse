@@ -41,6 +41,34 @@ class ScanScene(CheckoutMixin, MessageMixin, Scene):
         self._product_display: ProductDisplay | None = None
         self._scrollable_cart: ScrollableCart | None = None
 
+    def on_enter(self) -> None:
+        """Clear partial scanner input when the scan scene becomes active."""
+        self._input_manager.clear_buffer()
+
+    def reset_user_state(self) -> None:
+        """Clear cart, input, and checkout overlays for a new kiosk user."""
+        self._input_manager.clear_buffer()
+        self._cart.clear()
+
+        if hasattr(self, "_checkout_mode"):
+            self._exit_checkout_mode()
+
+        checkout_receipt = getattr(self, "_checkout_receipt", None)
+        if checkout_receipt:
+            checkout_receipt.hide()
+
+        insufficient_funds_popup = getattr(self, "_insufficient_funds_popup", None)
+        if insufficient_funds_popup:
+            insufficient_funds_popup.hide()
+
+        if self._product_display:
+            self._product_display.clear()
+        if self._scrollable_cart:
+            self._scrollable_cart.rebuild_rows()
+
+        self._message = ""
+        self._message_timer = 0
+
     def _init_ui(self) -> None:
         """Initialize UI elements."""
         if self._initialized:

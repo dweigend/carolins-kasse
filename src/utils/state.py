@@ -66,9 +66,11 @@ def refresh_current_user() -> User | None:
 
 def logout() -> None:
     """Log out the current user and end session."""
-    global current_user, session_id, session_start, _last_time_bonus_count
+    global current_user, selected_product
+    global session_id, session_start, _last_time_bonus_count
     if session_id:
         db_end_session(session_id)
+    selected_product = None
     current_user = None
     session_id = None
     session_start = None
@@ -80,7 +82,9 @@ def logout() -> None:
 
 def start_session(user: User) -> int:
     """Start a new work session for user, return session ID."""
-    global current_user, session_id, session_start, _last_time_bonus_count
+    global current_user, selected_product
+    global session_id, session_start, _last_time_bonus_count
+    selected_product = None
     current_user = user
     session_id = db_start_session(user.card_id)
     session_start = datetime.now()

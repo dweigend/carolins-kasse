@@ -107,6 +107,34 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         self._pay_button: Button | None = None
         self._complete: bool = False
 
+    def on_enter(self) -> None:
+        """Clear partial scanner input when recipe mode becomes active."""
+        self._input_manager.clear_buffer()
+
+    def reset_user_state(self) -> None:
+        """Clear recipe progress, input, and checkout overlays for a new user."""
+        self._input_manager.clear_buffer()
+        self._recipe = None
+        self._ingredients.clear()
+        self._checked_barcodes.clear()
+        self._checklist_items.clear()
+        self._recipe_image = None
+        self._complete = False
+
+        if hasattr(self, "_checkout_mode"):
+            self._exit_checkout_mode()
+
+        checkout_receipt = getattr(self, "_checkout_receipt", None)
+        if checkout_receipt:
+            checkout_receipt.hide()
+
+        insufficient_funds_popup = getattr(self, "_insufficient_funds_popup", None)
+        if insufficient_funds_popup:
+            insufficient_funds_popup.hide()
+
+        self._message = ""
+        self._message_timer = 0
+
     def _init_ui(self) -> None:
         """Initialize UI elements."""
         if self._initialized:
