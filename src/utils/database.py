@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from src.utils import (
+    database_balance_adjustments,
     database_earnings,
     database_products,
     database_recipes,
@@ -337,25 +338,7 @@ def update_user_admin_fields(
 def get_recent_balance_adjustments(limit: int = 20) -> list[BalanceAdjustment]:
     """Get recent manual admin balance changes."""
     with get_db() as conn:
-        rows = conn.execute(
-            """
-            SELECT
-                ba.id,
-                ba.user_card_id,
-                u.name,
-                ba.old_balance,
-                ba.new_balance,
-                ba.delta,
-                ba.note,
-                ba.created_at
-            FROM balance_adjustments ba
-            JOIN users u ON ba.user_card_id = u.card_id
-            ORDER BY ba.created_at DESC, ba.id DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
-        return [BalanceAdjustment.from_row(row) for row in rows]
+        return database_balance_adjustments.get_recent_balance_adjustments(conn, limit)
 
 
 def delete_user(card_id: str) -> None:

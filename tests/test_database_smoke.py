@@ -221,6 +221,29 @@ class DatabaseSmokeTests(unittest.TestCase):
             [user.card_id for user in remaining_users], [active_user.card_id]
         )
 
+    def test_balance_adjustment_public_api_keeps_query_behavior(self) -> None:
+        with initialized_temporary_database() as database:
+            user = database.User(
+                card_id="2000000000015",
+                name="Carolin",
+                balance=10.0,
+            )
+
+            database.add_user(user)
+            database.update_user_balance(user.card_id, 12.5, note="Pocket money")
+            adjustments = database.get_recent_balance_adjustments()
+            updated_user = database.get_user(user.card_id)
+
+        self.assertIsNotNone(updated_user)
+        self.assertEqual(updated_user.balance, 12.5)
+        self.assertEqual(len(adjustments), 1)
+        self.assertEqual(adjustments[0].user_card_id, user.card_id)
+        self.assertEqual(adjustments[0].user_name, user.name)
+        self.assertEqual(adjustments[0].old_balance, 10.0)
+        self.assertEqual(adjustments[0].new_balance, 12.5)
+        self.assertEqual(adjustments[0].delta, 2.5)
+        self.assertEqual(adjustments[0].note, "Pocket money")
+
     def test_session_public_api_keeps_query_and_commit_behavior(self) -> None:
         with initialized_temporary_database() as database:
             user = database.User(

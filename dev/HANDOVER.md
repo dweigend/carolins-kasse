@@ -56,8 +56,8 @@
   cashier feedback component render/state behavior, operation script
   generation against temporary output paths, Pi bootfs preparation, Pi debug CLI
   output, database model import compatibility, and product, recipe, user,
-  session, earning, and transaction public API compatibility. The current
-  pipeline suite has 89 passing tests.
+  session, earning, transaction, and balance-adjustment public API
+  compatibility. The current pipeline suite has 90 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -236,6 +236,11 @@
   connection handling stay in `src/utils/database.py`; `save_transaction` and
   `process_checkout` remain there because they write transaction rows and
   coordinate balance changes.
+- Local #4 eighth split moved the read-only manual balance adjustment query
+  helper into `src/utils/database_balance_adjustments.py`. The public balance
+  adjustment API and connection handling stay in `src/utils/database.py`;
+  `update_user_balance` remains there because it writes user balances and
+  adjustment rows in one transaction-sensitive path.
 
 ## Verification Run Recently
 
@@ -319,6 +324,15 @@ Run on 2026-07-04 CEST for the local #4 read-only transaction query split:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `uv run python -m unittest tests.test_database_smoke tests.test_recipe_scene tests.test_checkout_mixin` (18 tests)
 - `uv run poe check` (89 tests, 58.09% coverage, 40% minimum)
+
+Run on 2026-07-04 CEST for the local #4 read-only balance adjustment query split:
+
+- `git diff --check`
+- `uv run ruff format --check src/ tools/ tests/ main.py`
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest tests.test_database_smoke tests.test_admin_safety` (19 tests)
+- `uv run poe check` (90 tests, 58.12% coverage, 40% minimum)
 
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 
