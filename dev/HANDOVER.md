@@ -14,6 +14,9 @@
 - Pygame admin mode opens with Admin card `2000000000046` and provides server status/QR, balance controls, account overview, and notes.
 - Database setup is KISS: one local `data/kasse.db`, fixed Carolin/Annelie initial setup, non-destructive seed script by default.
 - Raspberry Pi first-boot setup is automated with `tools/pi_prepare_boot.py`, `tools/pi_bootstrap.sh`, systemd units, and `docs/PI_SETUP.md`.
+- First-boot bootfs preparation keeps generated bootfs orchestration in Python
+  and the boot-time shell entrypoint in `tools/pi_firstboot.sh`;
+  `tools/pi_prepare_boot.py` copies that script instead of embedding shell text.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
 - The current `codex/pi-ops-safety` branch covers Pi operations issues #23
   and #24. `tools/pi_update.sh` records the previous commit and rolls back
@@ -35,8 +38,8 @@
   safety, admin security flows, atomic checkout, and user-state scene resets
   without adding dependencies. It also covers recipe quantities, inactive
   recipe ingredients, picker reachability, math scanner filtering, and recipe
-  bonus timing, Pi update rollback safety, and debug observability. The current
-  suite has 39 passing tests.
+  bonus timing, Pi update rollback safety with shell fixtures, and debug
+  observability. The current suite has 39 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
@@ -110,9 +113,17 @@
   service, systemd availability, install/update/backup service status, backup
   timer, failed units, and bounded log snippets are visible from the debug
   page; non-Pi/systemd-unavailable environments degrade gracefully.
-- The Pi/Ops review status is clean for #24, with no findings reported. The
-  current `codex/pi-ops-safety` branch covers #23 and #24 and is ready to close
-  those issues after review/merge.
+- Refactored Pi first-boot and update-test shell boundaries in `cd900a2`:
+  `tools/pi_firstboot.sh` is now a real shell file, `tools/pi_prepare_boot.py`
+  only copies it into the bootfs, and Pi update fakes live as executable shell
+  fixtures under `tests/fixtures/pi_update/` while Python tests orchestrate and
+  assert behavior.
+- Flattened `tests/test_recipe_scene.py` and `tests/test_scene_lifecycle.py`;
+  `tests/db_isolation.py` now holds the small temp-DB helpers needed by those
+  tests.
+- Review status for the Pi/Ops safety round is clean through `cd900a2`, with no
+  P0-P3 findings. The current `codex/pi-ops-safety` branch covers #23 and #24
+  and is ready to close those issues after merge.
 
 ## Verification Run Recently
 
@@ -143,7 +154,8 @@ Latest green checks on 2026-07-04 CEST for the Pi/Ops safety round:
 - `uv run ruff check src/ tools/ tests/`
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `uv run python -m unittest discover -s tests` (39 tests)
-- `bash -n tools/pi_update.sh`
+- `bash -n tools/pi_bootstrap.sh tools/pi_firstboot.sh tools/pi_update.sh tools/pi_backup.sh`
+- `bash -n tests/fixtures/pi_update/app_tools/pi_backup.sh tests/fixtures/pi_update/fake_bin/* tests/fixtures/pi_update/venv_bin/python`
 - `git diff --check`
 
 ## Open GitHub Issues
@@ -197,7 +209,7 @@ Still open for validation or later structure work:
 
 ## Next Best Steps
 
-1. Close or update #23 and #24 after the current branch is reviewed or merged.
+1. Close or update #23 and #24 after the current branch is merged.
 2. Improve Pi Zero runtime performance by caching fonts and scaled assets (#22).
 3. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
 4. Add observations to issues #1, #2, #7, #8, and #9.

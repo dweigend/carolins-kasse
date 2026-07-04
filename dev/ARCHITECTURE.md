@@ -119,6 +119,7 @@ tools/seed_database.py       -> initializes missing/empty data/kasse.db
 tools/generate_barcodes.py   -> writes SVG barcodes from DB contents
 tools/generate_printables.py -> writes A4 PDFs under data/print/
 tools/pi_prepare_boot.py     -> prepares Raspberry Pi bootfs for first install
+tools/pi_firstboot.sh        -> bootfs first-boot entrypoint copied by prepare
 tools/pi_bootstrap.sh        -> first Pi install into /opt/carolins-kasse
 tools/pi_update.sh           -> backup, pull, sync, verify, rollback, restart
 tools/pi_backup.sh           -> SQLite backup helper
@@ -168,6 +169,11 @@ dependencies unless there is a clear payoff. Current coverage focuses on
 database smoke behavior, atomic checkout safety, self-checkout balance refresh,
 admin POST/session/CSRF safety, Pi update rollback behavior, and debug status
 observability.
+
+Pi update rollback tests keep fake system tools and app hooks as executable
+shell fixtures under `tests/fixtures/pi_update/`. Python tests should assemble
+the fixture environment, run the real script, and assert behavior instead of
+embedding shell script bodies in test code.
 
 ## Refactor Rules
 
