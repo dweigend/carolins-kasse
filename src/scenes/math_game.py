@@ -20,6 +20,7 @@ from src.scenes.mixins import MessageMixin
 from src.utils import assets as asset_loader
 from src.utils import state
 from src.utils.fonts import bold_custom, body, heading
+from src.utils.input import digit_from_key_event, is_enter_key_event
 from src.utils.math_generator import MathProblem, generate_problem
 
 DEFAULT_DIFFICULTY = 1
@@ -290,9 +291,9 @@ class MathGameScene(MessageMixin, Scene):
 
     def _handle_keydown(self, event: pygame.event.Event) -> None:
         """Handle USB numpad and keyboard input."""
-        key_text = getattr(event, "unicode", "")
-        if key_text.isdigit():
-            self._handle_digit_key(key_text, self._event_timestamp_ms(event))
+        digit = digit_from_key_event(event)
+        if digit:
+            self._handle_digit_key(digit, self._event_timestamp_ms(event))
             return
 
         if event.key == pygame.K_BACKSPACE and (
@@ -307,7 +308,7 @@ class MathGameScene(MessageMixin, Scene):
             self._clear_keyboard_answer()
             return
 
-        if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+        if is_enter_key_event(event):
             self._handle_enter_key()
 
     def _event_timestamp_ms(self, event: pygame.event.Event) -> int:

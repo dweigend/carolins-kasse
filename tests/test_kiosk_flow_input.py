@@ -11,6 +11,8 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 import pygame
 
+from src.components.numpad import Numpad
+from src.utils.input import InputManager, InputType
 from tests.db_isolation import isolated_database_module
 
 
@@ -112,6 +114,51 @@ class KioskFlowInputTests(unittest.TestCase):
                     },
                 )
                 self.assertIsNone(state.get_and_clear_selected_product())
+
+    def test_input_manager_accepts_unicode_empty_keypad_digits(self) -> None:
+        for digit, key in KEYPAD_DIGITS.items():
+            with self.subTest(digit=digit):
+                input_manager = InputManager()
+
+                input_events = input_manager.process_event(self._key_event(key))
+
+                self.assertEqual(len(input_events), 1)
+                self.assertEqual(input_events[0].type, InputType.NUMPAD)
+                self.assertEqual(input_events[0].value, digit)
+                self.assertEqual(input_manager.buffer, digit)
+
+    def test_input_manager_keeps_barcode_scanner_flow(self) -> None:
+        input_manager = InputManager()
+        input_events = []
+
+        for digit in SCANNED_PRODUCT_BARCODE:
+            input_events.extend(input_manager.process_event(self._digit_event(digit)))
+        input_events.extend(
+            input_manager.process_event(self._key_event(pygame.K_RETURN))
+        )
+
+        self.assertEqual(input_events[-2].type, InputType.NUMPAD_ENTER)
+        self.assertEqual(input_events[-1].type, InputType.BARCODE)
+        self.assertEqual(input_events[-1].value, SCANNED_PRODUCT_BARCODE)
+        self.assertEqual(input_manager.buffer, "")
+
+    def test_numpad_accepts_unicode_empty_keypad_digit_and_enter(self) -> None:
+        changes: list[str] = []
+        submits: list[str] = []
+        numpad = Numpad(
+            0,
+            0,
+            on_change=changes.append,
+            on_enter=submits.append,
+            max_digits=2,
+        )
+
+        self.assertTrue(numpad.handle_event(self._key_event(pygame.K_KP5)))
+        self.assertEqual(numpad.value, "5")
+        self.assertEqual(changes, ["5"])
+
+        self.assertTrue(numpad.handle_event(self._key_event(pygame.K_KP_ENTER)))
+        self.assertEqual(submits, ["5"])
 
     def test_math_ignores_barcode_length_numeric_burst_with_enter(self) -> None:
         math_module = importlib.import_module("src.scenes.math_game")
@@ -219,6 +266,28 @@ class KioskFlowInputTests(unittest.TestCase):
 
         scene.handle_event(self._digit_event("1", keypad=True))
         scene.handle_event(self._digit_event("2", keypad=True))
+        scene.handle_event(self._key_event(pygame.K_KP_ENTER))
+
+        self.assertEqual(scene._current_answer, "12")
+        self.assertEqual(scene._wrong_attempts, 0)
+        self.assertEqual(
+            scene._success_timer,
+            math_module.SUCCESS_ANIMATION_FRAMES,
+        )
+
+    def test_math_accepts_unicode_empty_keypad_answer(self) -> None:
+        math_module = importlib.import_module("src.scenes.math_game")
+        math_generator = importlib.import_module("src.utils.math_generator")
+        scene = math_module.MathGameScene()
+        scene._current_problem = math_generator.MathProblem(
+            7,
+            5,
+            math_generator.Operation.ADD,
+        )
+        scene._initialized = True
+
+        scene.handle_event(self._key_event(pygame.K_KP1, timestamp=1000))
+        scene.handle_event(self._key_event(pygame.K_KP2, timestamp=1100))
         scene.handle_event(self._key_event(pygame.K_KP_ENTER))
 
         self.assertEqual(scene._current_answer, "12")

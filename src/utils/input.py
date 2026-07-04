@@ -9,6 +9,43 @@ from enum import Enum, auto
 
 import pygame
 
+KEY_DIGITS_BY_KEY: dict[int, str] = {
+    pygame.K_0: "0",
+    pygame.K_1: "1",
+    pygame.K_2: "2",
+    pygame.K_3: "3",
+    pygame.K_4: "4",
+    pygame.K_5: "5",
+    pygame.K_6: "6",
+    pygame.K_7: "7",
+    pygame.K_8: "8",
+    pygame.K_9: "9",
+}
+
+for _digit in range(10):
+    _keypad_key = getattr(pygame, f"K_KP{_digit}", None)
+    if _keypad_key is not None:
+        KEY_DIGITS_BY_KEY[_keypad_key] = str(_digit)
+
+ENTER_KEYS = {pygame.K_RETURN}
+_keypad_enter_key = getattr(pygame, "K_KP_ENTER", None)
+if _keypad_enter_key is not None:
+    ENTER_KEYS.add(_keypad_enter_key)
+
+
+def digit_from_key_event(event: pygame.event.Event) -> str:
+    """Return the numeric digit from a KEYDOWN event, including keypad keys."""
+    unicode_text = getattr(event, "unicode", "")
+    if isinstance(unicode_text, str) and unicode_text.isdigit():
+        return unicode_text
+
+    return KEY_DIGITS_BY_KEY.get(getattr(event, "key", None), "")
+
+
+def is_enter_key_event(event: pygame.event.Event) -> bool:
+    """Return whether a KEYDOWN event is a regular or keypad Enter key."""
+    return getattr(event, "key", None) in ENTER_KEYS
+
 
 class InputType(Enum):
     """Types of input events."""
@@ -75,7 +112,7 @@ class InputManager:
         events: list[InputEvent] = []
 
         # Enter key
-        if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+        if is_enter_key_event(event):
             # Emit numpad enter
             events.append(InputEvent(InputType.NUMPAD_ENTER, ""))
 
@@ -85,8 +122,14 @@ class InputManager:
                 self._barcode_buffer = ""
 
         # Character input
-        elif event.unicode:
-            char = event.unicode
+        else:
+            unicode_text = getattr(event, "unicode", "")
+            char = unicode_text if isinstance(unicode_text, str) else ""
+            if not char:
+                char = digit_from_key_event(event)
+
+            if not char:
+                return events
 
             # Buffer for potential barcode
             if char.isalnum():

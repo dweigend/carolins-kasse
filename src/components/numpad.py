@@ -6,6 +6,7 @@ import pygame
 
 from src.constants import BG_CARD, DANGER, GREY_LIGHT, PRIMARY, SUCCESS, WHITE
 from src.utils.fonts import bold_custom
+from src.utils.input import digit_from_key_event, is_enter_key_event
 
 
 class Numpad:
@@ -154,9 +155,10 @@ class Numpad:
 
         # Handle keyboard input as well
         if event.type == pygame.KEYDOWN:
-            if event.unicode.isdigit():
+            digit = digit_from_key_event(event)
+            if digit:
                 if len(self.value) < self.max_digits:
-                    self.value += event.unicode
+                    self.value += digit
                     if self.on_change:
                         self.on_change(self.value)
                     return True
@@ -166,7 +168,7 @@ class Numpad:
                     if self.on_change:
                         self.on_change(self.value)
                     return True
-            elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+            elif is_enter_key_event(event):
                 if self.on_enter:
                     self.on_enter(self.value)
                 return True
