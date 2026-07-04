@@ -49,6 +49,12 @@ SQLite tables:
 Current technical debt: `src/utils/database.py` contains schema, dataclasses,
 queries, and runtime persistence. Split this in a future dedicated pass.
 
+SQLite connections enable foreign key checks and a short busy timeout. Checkout
+writes use `BEGIN IMMEDIATE` so the transaction, balance update, earnings or
+transaction records, and runtime refresh succeed or fail together. The checkout
+API returns `CheckoutResult` for successful commits and `CheckoutError` for
+user-facing failure cases.
+
 ## Barcode Rules
 
 Internal EAN-13 prefixes:
@@ -141,7 +147,8 @@ Systemd units live under `systemd/`:
 Tests use the Python standard library `unittest` stack and temporary SQLite
 databases. They should not touch `data/kasse.db` and should avoid new test
 dependencies unless there is a clear payoff. Current coverage focuses on
-database smoke behavior and admin POST/session/CSRF safety.
+database smoke behavior, atomic checkout safety, self-checkout balance refresh,
+and admin POST/session/CSRF safety.
 
 ## Refactor Rules
 

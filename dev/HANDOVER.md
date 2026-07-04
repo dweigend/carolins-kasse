@@ -16,8 +16,13 @@
   `/debug/unlock` before PIN acceptance.
 - Browser admin barcode modals avoid inline JavaScript string arguments and pass
   barcode data through HTML data attributes.
+- Checkout and balance writes are atomic: SQLite connections enable foreign
+  keys and a busy timeout, checkout runs inside `BEGIN IMMEDIATE`, and callers
+  get `CheckoutResult` or `CheckoutError` instead of partial updates.
+- Self-checkout refreshes runtime state after a successful checkout so the
+  displayed balance matches the committed database state.
 - A unittest-based temp-DB smoke suite now covers database safety and admin
-  security flows without adding dependencies. The current suite has 11 passing
+  security flows without adding dependencies. The current suite has 15 passing
   tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
@@ -60,6 +65,11 @@
   PIN.
 - Reworked admin barcode modal wiring to use data attributes instead of inline
   JavaScript string arguments.
+- Made checkout updates atomic with SQLite foreign keys, per-connection busy
+  timeouts, `BEGIN IMMEDIATE`, `CheckoutResult`/`CheckoutError`, and
+  self-checkout runtime refresh.
+- Added regression coverage for atomic checkout, foreign key enforcement, and
+  self-checkout balance refresh.
 
 ## Verification Run Recently
 
@@ -78,38 +88,39 @@ Run after the Pi setup implementation:
 - `uv run python tools/pi_prepare_boot.py <temporary bootfs fixture>`
 - FastAPI admin smoke including `/debug`
 
-Run on 2026-07-04 CEST after the admin safety and temp-DB test work:
+Run on 2026-07-04 CEST after the admin safety, data integrity, and temp-DB test
+work:
 
 - `uv run ruff check src/ tools/ tests/`
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests`
-- `uv run python -m unittest discover -s tests`
+- `uv run python -m unittest discover -s tests` (15 tests)
 - `git diff --check`
 
 ## Open GitHub Issues
 
-Covered by the current local code batch and ready to close after review/commit:
+Covered by the current branch commits and ready to close after review/merge:
 
 - #10 Protect admin write routes from unauthenticated POSTs
+- #11 Make checkout and balance updates atomic
+- #14 Refresh displayed balance after self-checkout
 - #15 Render admin barcode modal data without inline JavaScript strings
+- #16 Enforce SQLite foreign key constraints
 - #21 Add temp-DB regression smoke suite
 
-Highest-priority follow-up issues:
+Next active scene-state and kiosk correctness issues:
 
-- #11 Make checkout and balance updates atomic
 - #12 Reset scene state between kiosk users
 - #13 Track recipe ingredient quantities instead of binary scans
-- #16 Enforce SQLite foreign key constraints
-- #22 Cache fonts and scaled assets for Pi Zero runtime
-- #23 Add rollback safety to Pi update script
-- #24 Show install, update, and backup status on debug page
-
-Other open app correctness issues from the latest triage:
-
-- #14 Refresh displayed balance after self-checkout
 - #17 Prevent inactive recipe ingredients from blocking completion
 - #18 Make PickerScene reachable from the kiosk flow
 - #19 Ignore barcode scanner input in math mode
 - #20 Award recipe bonus after successful recipe checkout
+
+Highest-priority Pi operations follow-ups:
+
+- #22 Cache fonts and scaled assets for Pi Zero runtime
+- #23 Add rollback safety to Pi update script
+- #24 Show install, update, and backup status on debug page
 
 Still open for validation or later structure work:
 
@@ -134,8 +145,8 @@ Still open for validation or later structure work:
 
 ## Next Best Steps
 
-1. Close or update #10, #15, and #21 after the current local code batch is reviewed and committed.
-2. Fix the data-safety follow-ups: atomic checkout/balance updates (#11), scene reset (#12), recipe quantities (#13), and SQLite foreign keys (#16).
+1. Close or update #10, #11, #14, #15, #16, and #21 after the current branch is reviewed or merged.
+2. Fix the next scene-state and kiosk correctness bugs: scene reset (#12), recipe quantities (#13), inactive recipe ingredients (#17), PickerScene reachability (#18), scanner input in math mode (#19), and recipe bonus timing (#20).
 3. Improve Pi operations: update rollback safety (#23), debug observability (#24), and Pi Zero runtime performance (#22).
 4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, and #8.

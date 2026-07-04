@@ -16,21 +16,29 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Done | Automated Lite install path, systemd services, debug/update hooks |
-| Regression tests | Started | unittest temp-DB smoke suite for database and admin safety |
+| Regression tests | Active | 15-test unittest temp-DB suite for database, admin safety, and atomic checkout |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 
 ## Active Priorities
 
-1. **Data safety and regression coverage**
-   - Keep the temp-DB unittest suite green and expand it around risky write paths.
-   - Fix atomic checkout/balance updates (#11).
+1. **Scene-state and kiosk correctness bugs**
    - Reset scene state between kiosk users (#12).
    - Track recipe ingredient quantities correctly (#13).
-   - Enforce SQLite foreign key constraints (#16).
-   - Fold the remaining kiosk correctness bugs into the same regression pass (#14, #17, #18, #19, #20).
+   - Prevent inactive recipe ingredients from blocking completion (#17).
+   - Make PickerScene reachable from the kiosk flow (#18).
+   - Ignore barcode scanner input in math mode (#19).
+   - Award recipe bonus only after successful recipe checkout (#20).
+   - Add focused regression coverage around each risky scene or checkout path.
 
-2. **Pi operations and hardware validation**
+2. **Regression coverage maintenance**
+   - Keep the 15-test temp-DB unittest suite green.
+   - Expand coverage when the next risky write or scene-state path changes.
+   - Treat atomic checkout/balance updates (#11), self-checkout balance refresh
+     (#14), and SQLite foreign key enforcement (#16) as implemented on the
+     current branch and ready to close after review/merge.
+
+3. **Pi operations and hardware validation**
    - Add rollback safety to the update script (#23).
    - Show install, update, and backup status on the debug page (#24).
    - Cache fonts and scaled assets for Pi Zero runtime (#22).
@@ -38,22 +46,22 @@ local data handling.
    - Validate cashier, recipe, scanner, number pad, checkout, Admin card, math mode, update, and QR flows on real hardware.
    - Record child and hardware observations in issues #1, #2, #7, and #8.
 
-3. **Admin read-only history**
+4. **Admin read-only history**
    - Add transaction history view.
    - Add earnings/session overview.
    - Keep exports/statistics simple until parents actually need them.
 
-4. **Database boundary**
+5. **Database boundary**
    - Split `src/utils/database.py` only in a dedicated pass.
    - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
 
-5. **Later CRUD**
+6. **Later CRUD**
    - New products.
    - New users/cards.
    - Recipe creation/editing beyond active/name edits.
    - Image upload/copy workflow.
 
-6. **Polish**
+7. **Polish**
    - Sound effects.
    - Checkout/earning animations.
    - Error states on hardware.
@@ -62,6 +70,9 @@ local data handling.
 
 - One local SQLite DB is used at runtime.
 - Pi installs keep the runtime DB at `/var/lib/carolins-kasse/kasse.db`.
+- SQLite connections enable foreign key checks and a busy timeout.
+- Checkout commits use an atomic `BEGIN IMMEDIATE` transaction and return a
+  `CheckoutResult` or `CheckoutError`.
 - `tools/seed_database.py` contains the fixed Carolin/Annelie setup and is non-destructive by default.
 - First-boot installation must not assume optional Linux groups exist, and it must install from the intended repo ref or carry required installer files from bootfs.
 - Kiosk admin protection stays KISS via physical Admin card.
