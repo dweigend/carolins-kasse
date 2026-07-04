@@ -441,6 +441,58 @@ class DatabaseSmokeTests(unittest.TestCase):
 
             self.assertTrue(EXPECTED_SCHEMA_TABLES.issubset(table_names))
 
+    def test_init_database_adds_active_to_legacy_tables(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "kasse.db"
+
+            with closing(sqlite3.connect(db_path)) as conn:
+                conn.execute("""
+                    CREATE TABLE products (
+                        barcode TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        name_de TEXT NOT NULL,
+                        price REAL NOT NULL,
+                        category TEXT NOT NULL,
+                        image_path TEXT,
+                        has_barcode BOOLEAN DEFAULT 1
+                    )
+                """)
+                conn.execute("""
+                    CREATE TABLE users (
+                        card_id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        balance REAL DEFAULT 10.0,
+                        color TEXT,
+                        difficulty INTEGER DEFAULT 1,
+                        is_admin BOOLEAN DEFAULT 0
+                    )
+                """)
+                conn.execute("""
+                    CREATE TABLE recipes (
+                        barcode TEXT PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        image_path TEXT
+                    )
+                """)
+                conn.commit()
+
+            with isolated_database_module(db_path) as database:
+                database.init_database()
+
+            with closing(sqlite3.connect(db_path)) as conn:
+                legacy_tables = ("products", "users", "recipes")
+                columns_by_table = {
+                    table_name: {
+                        row[1]
+                        for row in conn.execute(f"PRAGMA table_info({table_name})")
+                    }
+                    for table_name in legacy_tables
+                }
+
+            for table_name, column_names in columns_by_table.items():
+                with self.subTest(table_name=table_name):
+                    self.assertIn("active", column_names)
+
     def test_seed_database_refuses_existing_temp_data(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "kasse.db"

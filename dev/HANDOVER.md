@@ -55,10 +55,10 @@
   systemd unit installation, debug observability, keypad keycode input,
   cashier feedback component render/state behavior, operation script
   generation against temporary output paths, Pi bootfs preparation, Pi debug CLI
-  output, database model import compatibility, product, recipe, user, session,
-  earning, transaction, and balance-adjustment public API compatibility,
-  checkout rollback on transaction-save failure, and local-day earning boundary
-  behavior. The current pipeline suite has 92 passing tests.
+  output, database model import compatibility, legacy schema migration, product,
+  recipe, user, session, earning, transaction, and balance-adjustment public API
+  compatibility, checkout rollback on transaction-save failure, and local-day
+  earning boundary behavior. The current pipeline suite has 93 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -253,6 +253,10 @@
   `CheckoutResult`, while reusing
   `database_transactions.save_transaction(conn, card_id, total, items)`.
   Regression coverage now verifies rollback when `save_transaction` fails.
+- Local #4 schema split moved SQLite DDL and migration helpers into
+  `src/utils/database_schema.py`. The public `init_database()` wrapper stays in
+  `src/utils/database.py` with `get_db()` and the commit boundary; smoke
+  coverage now verifies legacy `active` column migration.
 - Local #32 fixed today's earning queries to compare
   `date(earned_at, 'localtime')` with `date('now', 'localtime')`, so
   UTC-stored `CURRENT_TIMESTAMP` earnings near local midnight count for the
@@ -377,14 +381,14 @@ Run on 2026-07-04 CEST for the local #4 balance adjustment write helper split:
 - `uv run python -m unittest tests.test_database_smoke tests.test_admin_safety tests.test_checkout_mixin` (20 tests)
 - `uv run poe check` (90 tests, 58.18% coverage, 40% minimum)
 
-Run on 2026-07-05 CEST for the local #4 checkout-dedupe and #32 earnings local-day fix:
+Run on 2026-07-05 CEST for the local #4 checkout-dedupe/schema split and #32 earnings local-day fix:
 
 - `git diff --check`
 - `uv run ruff format --check src/ tools/ tests/ main.py`
 - `uv run ruff check src/ tools/ tests/ main.py`
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
-- `uv run python -m unittest tests.test_database_smoke tests.test_checkout_mixin` (17 tests)
-- `uv run poe check` (92 passed, 58.17% coverage, 0 jscpd duplicates, Radon Average A)
+- `uv run python -m unittest tests.test_database_smoke` (17 tests)
+- `uv run poe check` (93 passed, 58.23% coverage, 0 jscpd duplicates, Radon Average A)
 
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 

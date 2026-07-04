@@ -61,9 +61,11 @@ SQLite tables:
 - `transactions`: purchases with JSON item payload
 - `balance_adjustments`: manual admin balance changes
 
-Current technical debt: `src/utils/database.py` still contains schema, checkout,
-and transaction boundaries. Row dataclasses and checkout result/error types live in
-`src/utils/database_models.py`; product query helpers live in
+Current split: `src/utils/database.py` remains the public SQLite API with
+connection helpers, `init_database()` commit handling, checkout, and
+transaction-sensitive balance boundaries. Schema DDL and migration helpers live
+in `src/utils/database_schema.py`. Row dataclasses and checkout result/error
+types live in `src/utils/database_models.py`; product query helpers live in
 `src/utils/database_products.py`; recipe query helpers live in
 `src/utils/database_recipes.py`; basic user CRUD query helpers live in
 `src/utils/database_users.py`; session query helpers live in
@@ -175,7 +177,8 @@ Systemd units live under `systemd/`:
 | `src/components/` | Reusable pygame UI pieces |
 | `src/ui/` | Shell, paper texture, shared rendering helpers |
 | `src/admin/` | FastAPI app, templates, static CSS |
-| `src/utils/database.py` | Public SQLite API, connection, schema, commit/rollback, checkout, and transaction boundaries |
+| `src/utils/database.py` | Public SQLite API, connection helpers, `init_database()` commit boundary, checkout, and transaction boundaries |
+| `src/utils/database_schema.py` | Schema DDL and migration helpers that receive an existing connection |
 | `src/utils/database_models.py` | Database row dataclasses, column lists, and checkout result/error types |
 | `src/utils/database_products.py` | Product SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_recipes.py` | Recipe SQL helpers that receive an existing connection and do not commit |
@@ -198,8 +201,8 @@ databases. They should not touch `data/kasse.db` and should avoid new test
 dependencies unless there is a clear payoff. Current coverage focuses on
 database smoke behavior, atomic checkout safety, checkout rollback on
 transaction-save failure, self-checkout balance refresh, local-day earning
-queries, admin POST/session/CSRF safety, Pi update rollback behavior, and debug
-status observability.
+queries, legacy schema migration, admin POST/session/CSRF safety, Pi update
+rollback behavior, and debug status observability.
 
 Pi update rollback tests keep fake system tools and app hooks as executable
 shell fixtures under `tests/fixtures/pi_update/`. Python tests should assemble

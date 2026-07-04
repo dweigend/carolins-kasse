@@ -16,9 +16,9 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 92-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, checkout rollback, local-day earnings, and product/recipe/user/session/earning/transaction/balance-adjustment public API compatibility |
+| Regression tests | Active | 93-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, legacy schema migration, checkout rollback, local-day earnings, and product/recipe/user/session/earning/transaction/balance-adjustment public API compatibility |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
-| Data module split | Active | #4 slices moved database models/types plus product, recipe, basic user CRUD, session, earning, transaction, and balance-adjustment query/write helpers; checkout now reuses the transaction write helper, while schema and transaction boundaries remain |
+| Data module split | Active | #4 slices moved database models/types plus schema, product, recipe, basic user CRUD, session, earning, transaction, and balance-adjustment helpers; `database.py` keeps the public init, connection, commit, checkout, and balance transaction boundaries |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
 | UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
@@ -47,8 +47,9 @@ local data handling.
   `database_sessions.py` owns session query helpers; `database_earnings.py`
   owns earning helpers; `database_transactions.py` owns transaction helpers,
   including `save_transaction`; `database_balance_adjustments.py` owns
-  balance-adjustment query and write helpers; schema and checkout transaction
-  boundaries remain.
+  balance-adjustment query and write helpers; `database_schema.py` owns schema
+  DDL and migration helpers; public init, commit, and checkout transaction
+  boundaries remain in `database.py`.
 
 ## Active Priorities
 
@@ -88,6 +89,8 @@ local data handling.
    - Continue #4 in small behavior-preserving slices.
    - `src/utils/database_models.py` now owns row dataclasses, checkout
      result/error types, and column-list constants.
+   - `src/utils/database_schema.py` owns schema DDL and migration helpers that
+     receive an existing connection and do not own the public commit boundary.
    - `src/utils/database_products.py` owns product SQL helpers that receive an
      existing connection and do not commit.
    - `src/utils/database_recipes.py` owns recipe SQL helpers that receive an
@@ -104,15 +107,15 @@ local data handling.
    - `src/utils/database_balance_adjustments.py` owns balance adjustment SQL
      query and write helpers that receive an existing connection and do not
      commit.
-   - Keep `src/utils/database.py` import-compatible while separating
-     schema/init, product/user/recipe/session/earning queries, transactions,
-     and admin balance SQL.
+   - Keep `src/utils/database.py` import-compatible as the public SQLite API,
+     including `init_database()`, connection helpers, commit/rollback,
+     checkout, and admin balance transaction boundaries.
    - Do not move `process_checkout` or the public `update_user_balance`
      transaction boundary out of `src/utils/database.py` without focused safety
      tests and a narrow review.
 
 6. **Regression coverage maintenance**
-   - Keep the 92-test pipeline suite green.
+   - Keep the 93-test pipeline suite green.
    - Add focused tests with the next risky scene, database, admin, or
      Pi-operations change instead of keeping a broad standing coverage issue.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
