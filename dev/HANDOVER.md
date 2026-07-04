@@ -38,8 +38,9 @@
   safety, admin security flows, atomic checkout, and user-state scene resets
   without adding dependencies. It also covers recipe quantities, inactive
   recipe ingredients, picker reachability, math scanner filtering, and recipe
-  bonus timing, Pi update rollback safety with shell fixtures, and debug
-  observability. The current suite has 39 passing tests.
+  bonus timing, Pi update rollback safety with shell fixtures, debug
+  observability, and keypad keycode input. The current suite has 44 passing
+  tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
@@ -65,8 +66,9 @@
   start `carolins-kasse-backup.service`.
 - Live keypad validation on 2026-07-04 confirmed that the SIGMACHIP keypad is
   visible as `/dev/input/event2` and emits raw Linux events for `KP1`, `KP2`,
-  `KP3`, `NUMLOCK`, and `KPENTER`; issue #27 tracks the app-side Pygame keycode
-  fix.
+  `KP3`, `NUMLOCK`, and `KPENTER`. The local #27 code fix maps empty-unicode
+  keypad digit keycodes in shared input, MathGameScene, and Numpad; Pi
+  validation of the app path is still pending.
 - Local Codex debug helpers live outside the repo at
   `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`. Its
   `scripts/kasse-debug.sh` helper wraps status, USB, boot, logs, keypad,
@@ -138,6 +140,12 @@
 - Review status for the Pi/Ops safety round is clean through `cd900a2`, with no
   P0-P3 findings. The current `codex/pi-ops-safety` branch covers #23 and #24
   and is ready to close those issues after merge.
+- Local #28 worker removed the kiosk service `network-online.target`
+  dependency so the pygame kiosk can start without waiting for NetworkManager
+  wait-online; Pi boot-chain validation is still needed.
+- Local #27 worker added shared keyboard digit normalization for top-row and
+  keypad digits with empty Unicode, reused by InputManager, MathGameScene, and
+  Numpad while preserving math scanner-burst filtering.
 
 ## Verification Run Recently
 
@@ -170,6 +178,24 @@ Latest green checks on 2026-07-04 CEST for the Pi/Ops safety round:
 - `uv run python -m unittest discover -s tests` (39 tests)
 - `bash -n tools/pi_bootstrap.sh tools/pi_firstboot.sh tools/pi_update.sh tools/pi_backup.sh`
 - `bash -n tests/fixtures/pi_update/app_tools/pi_backup.sh tests/fixtures/pi_update/fake_bin/* tests/fixtures/pi_update/venv_bin/python`
+- `git diff --check`
+
+Run on 2026-07-04 CEST for the local #28 systemd quick win:
+
+- `uv run ruff format tests/test_systemd_units.py`
+- `uv run python -m unittest tests.test_systemd_units`
+- `uv run ruff check src/ tools/ tests/`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest discover -s tests` (40 tests)
+- `git diff --check`
+
+Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
+
+- `uv run ruff format src/ tools/ tests/`
+- `uv run ruff check src/ tools/ tests/`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest tests.test_kiosk_flow_input` (11 tests)
+- `uv run python -m unittest discover -s tests` (44 tests)
 - `git diff --check`
 
 ## Open GitHub Issues
@@ -230,7 +256,7 @@ Still open for validation or later structure work:
 
 ## Next Best Steps
 
-1. Fix #27 and retest the number pad on the Pi.
+1. Retest the #27 number pad fix on the Pi with the SIGMACHIP keypad.
 2. Measure and reduce startup with #28, #29, #30, and #22.
 3. Use the local `carolins-kasse-debug` skill for SSH diagnostics, tests, and
    safe Pi service actions.
