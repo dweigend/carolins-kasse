@@ -16,16 +16,16 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 90-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, and product/recipe/user/session/earning/transaction/balance-adjustment public API compatibility |
+| Regression tests | Active | 92-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, checkout rollback, local-day earnings, and product/recipe/user/session/earning/transaction/balance-adjustment public API compatibility |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
-| Data module split | Active | #4 slices moved database models/types plus product, recipe, basic user CRUD, session, earning, transaction, and balance-adjustment query/write helpers; schema and checkout boundaries remain |
+| Data module split | Active | #4 slices moved database models/types plus product, recipe, basic user CRUD, session, earning, transaction, and balance-adjustment query/write helpers; checkout now reuses the transaction write helper, while schema and transaction boundaries remain |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
 | UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
 
 ## Open Issue Snapshot
 
-`gh issue list --limit 30` on 2026-07-04 shows these issues as open:
+`gh issue list --limit 30` on 2026-07-05 shows these issues as open:
 
 - #31 Pi unreachable over SSH for deployment validation: blocks safe Pi update
   and #27/#29/#30 hardware acceptance until power/WiFi/address is confirmed.
@@ -45,9 +45,10 @@ local data handling.
   owns product query helpers; `database_recipes.py` owns recipe query helpers;
   `database_users.py` owns basic user CRUD query helpers;
   `database_sessions.py` owns session query helpers; `database_earnings.py`
-  owns earning helpers; `database_transactions.py` owns
-  transaction helpers; `database_balance_adjustments.py` owns balance-adjustment
-  query and write helpers; schema and checkout boundaries remain.
+  owns earning helpers; `database_transactions.py` owns transaction helpers,
+  including `save_transaction`; `database_balance_adjustments.py` owns
+  balance-adjustment query and write helpers; schema and checkout transaction
+  boundaries remain.
 
 ## Active Priorities
 
@@ -97,8 +98,9 @@ local data handling.
      existing connection and do not commit.
    - `src/utils/database_earnings.py` owns earning SQL helpers that
      receive an existing connection and do not commit.
-   - `src/utils/database_transactions.py` owns transaction SQL helpers that
-     receive an existing connection and do not commit.
+   - `src/utils/database_transactions.py` owns transaction SQL helpers,
+     including `save_transaction`, that receive an existing connection and do
+     not commit.
    - `src/utils/database_balance_adjustments.py` owns balance adjustment SQL
      query and write helpers that receive an existing connection and do not
      commit.
@@ -110,7 +112,7 @@ local data handling.
      tests and a narrow review.
 
 6. **Regression coverage maintenance**
-   - Keep the 90-test pipeline suite green.
+   - Keep the 92-test pipeline suite green.
    - Add focused tests with the next risky scene, database, admin, or
      Pi-operations change instead of keeping a broad standing coverage issue.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.

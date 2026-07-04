@@ -8,7 +8,6 @@ Uses EAN-13 barcodes with prefixes:
 - 300: Recipes
 """
 
-import json
 import os
 import sqlite3
 from collections.abc import Generator
@@ -477,7 +476,6 @@ def process_checkout(
     Both operations happen in a single transaction - if either fails,
     neither change is committed.
     """
-    items_json = json.dumps(items, ensure_ascii=False)
     with get_db() as conn:
         try:
             conn.execute("BEGIN IMMEDIATE")
@@ -507,20 +505,17 @@ def process_checkout(
             if update_cursor.rowcount != 1:
                 raise RuntimeError(f"Failed to update checkout balance for {card_id}")
 
-            transaction_cursor = conn.execute(
-                """
-                INSERT INTO transactions (user_card_id, total, items_json)
-                VALUES (?, ?, ?)
-                """,
-                (card_id, total, items_json),
+            transaction_id = database_transactions.save_transaction(
+                conn,
+                card_id,
+                total,
+                items,
             )
-            if transaction_cursor.rowcount != 1 or transaction_cursor.lastrowid is None:
-                raise RuntimeError(f"Failed to save checkout transaction for {card_id}")
 
             user.balance -= total
             conn.commit()
             return CheckoutResult(
-                transaction_id=transaction_cursor.lastrowid,
+                transaction_id=transaction_id,
                 user=user,
             )
         except Exception:

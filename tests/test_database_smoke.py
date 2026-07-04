@@ -1,14 +1,19 @@
 """Temporary database regression smoke tests."""
 
-from contextlib import closing, redirect_stdout
+from collections.abc import Iterator
+from contextlib import closing, contextmanager, redirect_stdout
 import importlib
 import io
 import json
+import os
 import sqlite3
 import sys
 import tempfile
+import time
 from pathlib import Path
+from types import ModuleType
 import unittest
+from unittest.mock import patch
 
 from tests.db_isolation import initialized_temporary_database, isolated_database_module
 
@@ -23,6 +28,54 @@ EXPECTED_SCHEMA_TABLES = {
     "transactions",
     "users",
 }
+
+
+LOCAL_DAY_TEST_TIMEZONE = "UTC-2"
+CHECKOUT_USER_CARD_ID = "2000000000015"
+CHECKOUT_USER_NAME = "Carolin"
+CHECKOUT_STARTING_BALANCE = 10.0
+CHECKOUT_TOTAL = 3
+CHECKOUT_ITEM_BARCODE = "1000000000016"
+CHECKOUT_ITEM_NAME = "Milch"
+CHECKOUT_ITEM_PRICE = 1
+CHECKOUT_ITEM_QUANTITY = 3
+
+
+@contextmanager
+def temporary_timezone(timezone_name: str) -> Iterator[None]:
+    previous_timezone = os.environ.get("TZ")
+    os.environ["TZ"] = timezone_name
+    time.tzset()
+    try:
+        yield
+    finally:
+        if previous_timezone is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = previous_timezone
+        time.tzset()
+
+
+def create_checkout_items() -> list[dict]:
+    return [
+        {
+            "barcode": CHECKOUT_ITEM_BARCODE,
+            "name": CHECKOUT_ITEM_NAME,
+            "price": CHECKOUT_ITEM_PRICE,
+            "qty": CHECKOUT_ITEM_QUANTITY,
+        }
+    ]
+
+
+def initialize_checkout_user(database: ModuleType) -> None:
+    database.init_database()
+    database.add_user(
+        database.User(
+            card_id=CHECKOUT_USER_CARD_ID,
+            name=CHECKOUT_USER_NAME,
+            balance=CHECKOUT_STARTING_BALANCE,
+        )
+    )
 
 
 class DatabaseSmokeTests(unittest.TestCase):
@@ -298,6 +351,58 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertIsNotNone(user_after_earnings)
         self.assertEqual(user_after_earnings.balance, 18.0)
 
+    def test_today_earnings_use_local_day_for_utc_timestamps(self) -> None:
+        if not hasattr(time, "tzset"):
+            self.skipTest("time.tzset is required for localtime regression coverage")
+
+        with temporary_timezone(LOCAL_DAY_TEST_TIMEZONE):
+            with initialized_temporary_database() as database:
+                user = database.User(
+                    card_id="2000000000015",
+                    name="Carolin",
+                    balance=10.0,
+                )
+
+                database.add_user(user)
+                session_id = database.start_session(user.card_id)
+                database.add_earning(session_id, user.card_id, "math", 3, "Aufgabe")
+
+                with database.get_db() as conn:
+                    conn.execute(
+                        """
+                        UPDATE earnings
+                        SET earned_at = datetime(
+                            date('now', 'localtime'),
+                            '+30 minutes',
+                            'utc'
+                        )
+                        """
+                    )
+                    date_row = conn.execute(
+                        """
+                        SELECT
+                            date(earned_at),
+                            date(earned_at, 'localtime'),
+                            date('now', 'localtime')
+                        FROM earnings
+                        """
+                    ).fetchone()
+                    if date_row is None:
+                        raise AssertionError("Missing test earning")
+                    stored_utc_date, local_earning_date, local_today = date_row
+                    conn.commit()
+
+                today_earnings = database.get_today_earnings(user.card_id)
+                today_summary = database.get_today_earnings_summary(user.card_id)
+
+        self.assertNotEqual(stored_utc_date, local_today)
+        self.assertEqual(local_earning_date, local_today)
+        self.assertEqual(
+            [(earning.source, earning.amount) for earning in today_earnings],
+            [("math", 3)],
+        )
+        self.assertEqual(today_summary, {"math": 3})
+
     def test_transaction_public_api_keeps_query_behavior(self) -> None:
         with initialized_temporary_database() as database:
             user = database.User(
@@ -370,31 +475,20 @@ class DatabaseSmokeTests(unittest.TestCase):
             db_path = Path(temp_dir) / "kasse.db"
 
             with isolated_database_module(db_path) as database:
-                database.init_database()
-                database.add_user(
-                    database.User(
-                        card_id="2000000000015",
-                        name="Carolin",
-                        balance=10.0,
-                    )
-                )
-                items = [
-                    {
-                        "barcode": "1000000000016",
-                        "name": "Milch",
-                        "price": 1,
-                        "qty": 3,
-                    }
-                ]
+                initialize_checkout_user(database)
+                items = create_checkout_items()
 
                 transaction_id = database.process_checkout(
-                    "2000000000015",
-                    total=3,
+                    CHECKOUT_USER_CARD_ID,
+                    total=CHECKOUT_TOTAL,
                     items=items,
                 )
 
-                user = database.get_user("2000000000015")
-                transactions = database.get_user_transactions("2000000000015", limit=5)
+                user = database.get_user(CHECKOUT_USER_CARD_ID)
+                transactions = database.get_user_transactions(
+                    CHECKOUT_USER_CARD_ID,
+                    limit=5,
+                )
 
             self.assertGreater(transaction_id.transaction_id, 0)
             self.assertIsNotNone(user)
@@ -403,6 +497,56 @@ class DatabaseSmokeTests(unittest.TestCase):
             self.assertEqual(len(transactions), 1)
             self.assertEqual(transactions[0].total, 3)
             self.assertEqual(json.loads(transactions[0].items_json), items)
+
+    def test_process_checkout_rolls_back_when_transaction_insert_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "kasse.db"
+
+            with isolated_database_module(db_path) as database:
+                initialize_checkout_user(database)
+                items = create_checkout_items()
+                observed_balance: float | None = None
+
+                def fail_after_balance_update(
+                    conn: sqlite3.Connection,
+                    user_card_id: str,
+                    _total: int,
+                    _items: list[dict],
+                ) -> int:
+                    nonlocal observed_balance
+                    row = conn.execute(
+                        "SELECT balance FROM users WHERE card_id = ?",
+                        (user_card_id,),
+                    ).fetchone()
+                    if row is None:
+                        raise AssertionError(f"Missing test user {user_card_id}")
+                    observed_balance = row[0]
+                    raise RuntimeError("simulated transaction insert failure")
+
+                with (
+                    patch.object(
+                        database.database_transactions,
+                        "save_transaction",
+                        side_effect=fail_after_balance_update,
+                    ),
+                    self.assertRaisesRegex(RuntimeError, "simulated transaction"),
+                ):
+                    database.process_checkout(
+                        CHECKOUT_USER_CARD_ID,
+                        total=CHECKOUT_TOTAL,
+                        items=items,
+                    )
+
+                user = database.get_user(CHECKOUT_USER_CARD_ID)
+                transactions = database.get_user_transactions(
+                    CHECKOUT_USER_CARD_ID,
+                    limit=5,
+                )
+
+            self.assertEqual(observed_balance, 7.0)
+            self.assertIsNotNone(user)
+            self.assertEqual(user.balance, 10.0)
+            self.assertEqual(transactions, [])
 
     def test_foreign_key_enforcement_is_enabled_per_connection(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

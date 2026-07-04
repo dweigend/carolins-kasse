@@ -1,6 +1,6 @@
 # Session Handover
 
-**Last Updated:** 2026-07-04 CEST
+**Last Updated:** 2026-07-05 CEST
 
 ## Current State
 
@@ -55,9 +55,10 @@
   systemd unit installation, debug observability, keypad keycode input,
   cashier feedback component render/state behavior, operation script
   generation against temporary output paths, Pi bootfs preparation, Pi debug CLI
-  output, database model import compatibility, and product, recipe, user,
-  session, earning, transaction, and balance-adjustment public API
-  compatibility. The current pipeline suite has 90 passing tests.
+  output, database model import compatibility, product, recipe, user, session,
+  earning, transaction, and balance-adjustment public API compatibility,
+  checkout rollback on transaction-save failure, and local-day earning boundary
+  behavior. The current pipeline suite has 92 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -83,10 +84,10 @@
   (`192.168.1.139`). At the last live check, `/opt/carolins-kasse` on the Pi
   was on `codex/pi-ops-safety` at `9c0d70b`; newer docs-only commits may be
   ahead on GitHub. The kiosk service is systemd managed and active.
-- The code-quality pipeline commit `df59ec5` is pushed to GitHub but not yet
-  deployed to the Pi. On the latest local checks, `carolins-kasse.local` did
-  not resolve, `192.168.1.139` timed out over SSH, ping had 100% packet loss,
-  and ARP stayed incomplete, so no Pi update was attempted.
+- The current local code/test changes are not deployed to the Pi. On the latest
+  2026-07-05 read-only local checks, `carolins-kasse.local` did not resolve,
+  `192.168.1.139` timed out over SSH, ping had 100% packet loss, and ARP stayed
+  incomplete, so no Pi update was attempted.
 - Passwordless sudo is limited to the intended service operations:
   restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
   start `carolins-kasse-backup.service`.
@@ -246,6 +247,16 @@
   into `src/utils/database_balance_adjustments.py`. The public
   `update_user_balance` wrapper, `get_db()`, `BEGIN IMMEDIATE`, commit, and
   rollback boundary stay in `src/utils/database.py`.
+- Local #4 checkout-dedupe pass kept `process_checkout` in
+  `src/utils/database.py` for `get_db()`, `BEGIN IMMEDIATE`, commit/rollback,
+  user lookup, insufficient funds, guarded balance update, and
+  `CheckoutResult`, while reusing
+  `database_transactions.save_transaction(conn, card_id, total, items)`.
+  Regression coverage now verifies rollback when `save_transaction` fails.
+- Local #32 fixed today's earning queries to compare
+  `date(earned_at, 'localtime')` with `date('now', 'localtime')`, so
+  UTC-stored `CURRENT_TIMESTAMP` earnings near local midnight count for the
+  correct local day.
 
 ## Verification Run Recently
 
@@ -366,6 +377,15 @@ Run on 2026-07-04 CEST for the local #4 balance adjustment write helper split:
 - `uv run python -m unittest tests.test_database_smoke tests.test_admin_safety tests.test_checkout_mixin` (20 tests)
 - `uv run poe check` (90 tests, 58.18% coverage, 40% minimum)
 
+Run on 2026-07-05 CEST for the local #4 checkout-dedupe and #32 earnings local-day fix:
+
+- `git diff --check`
+- `uv run ruff format --check src/ tools/ tests/ main.py`
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest tests.test_database_smoke tests.test_checkout_mixin` (17 tests)
+- `uv run poe check` (92 passed, 58.17% coverage, 0 jscpd duplicates, Radon Average A)
+
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 
 - `uv run ruff format src/ tools/ tests/`
@@ -460,17 +480,15 @@ Run on 2026-07-04 CEST for the local #25 Pi bootfs-preparation coverage slice:
 - `git diff --check`
 - `uv run poe check` (81 tests, 56.40% coverage, 40% minimum)
 
-Pi reachability check on 2026-07-04 CEST before attempting another update:
+Pi read-only reachability check on 2026-07-05 CEST before attempting another update:
 
-- `kasse-debug.sh status` could not resolve `carolins-kasse.local`.
+- `carolins-kasse.local` did not resolve.
 - `KASSE_HOST=kasse@192.168.1.139 kasse-debug.sh status` timed out on SSH.
 - `ping -c 2 -W 1000 192.168.1.139` had 100% packet loss.
 - `arp -a` showed `192.168.1.139` as incomplete on `en1`.
 - The local Mac is on `192.168.1.199` via gateway `192.168.1.1`.
 - No Pi update was attempted because the target was not reachable.
-- A repeated read-only check after the latest GitHub sync had the same result.
-  `arp-scan` is installed locally, but requires sudo capture permissions; no
-  interactive password was attempted. Track the deployment blocker in #31.
+- Track the deployment blocker in #31.
 
 Final Pi deployment validation on 2026-07-04 CEST:
 
@@ -490,7 +508,7 @@ Final Pi deployment validation on 2026-07-04 CEST:
 
 ## Open GitHub Issues
 
-`gh issue list --limit 30` on 2026-07-04 shows these issues as open:
+`gh issue list --limit 30` on 2026-07-05 shows these issues as open:
 
 Acceptance still missing:
 

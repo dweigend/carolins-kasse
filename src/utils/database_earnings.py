@@ -33,7 +33,7 @@ def get_today_earnings(conn: sqlite3.Connection, user_card_id: str) -> list[Earn
         """
         SELECT * FROM earnings
         WHERE user_card_id = ?
-        AND date(earned_at) = date('now', 'localtime')
+        AND date(earned_at, 'localtime') = date('now', 'localtime')
         ORDER BY earned_at DESC
         """,
         (user_card_id,),
@@ -59,7 +59,7 @@ def get_today_earnings_summary(
         SELECT source, SUM(amount) as total
         FROM earnings
         WHERE user_card_id = ?
-        AND date(earned_at) = date('now', 'localtime')
+        AND date(earned_at, 'localtime') = date('now', 'localtime')
         GROUP BY source
         """,
         (user_card_id,),

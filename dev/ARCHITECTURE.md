@@ -68,19 +68,22 @@ and transaction boundaries. Row dataclasses and checkout result/error types live
 `src/utils/database_recipes.py`; basic user CRUD query helpers live in
 `src/utils/database_users.py`; session query helpers live in
 `src/utils/database_sessions.py`; earning helpers live in
-`src/utils/database_earnings.py`; transaction helpers live in
-`src/utils/database_transactions.py`; balance adjustment query and write helpers
-live in `src/utils/database_balance_adjustments.py`. Public names are still
-re-exported or wrapped from `src/utils/database.py` for import compatibility;
-the public `update_user_balance` wrapper stays there with `get_db()`,
-`BEGIN IMMEDIATE`, commit, and rollback.
+`src/utils/database_earnings.py`; transaction helpers, including
+`save_transaction`, live in `src/utils/database_transactions.py`; balance
+adjustment query and write helpers live in
+`src/utils/database_balance_adjustments.py`. Public names are still re-exported
+or wrapped from `src/utils/database.py` for import compatibility; the public
+`process_checkout` and `update_user_balance` wrappers stay there with
+`get_db()`, `BEGIN IMMEDIATE`, commit, and rollback.
 Continue splitting only in small behavior-preserving slices.
 
 SQLite connections enable foreign key checks and a short busy timeout. Checkout
 writes use `BEGIN IMMEDIATE` so the transaction, balance update, earnings or
 transaction records, and runtime refresh succeed or fail together. The checkout
 API returns `CheckoutResult` for successful commits and `CheckoutError` for
-user-facing failure cases.
+user-facing failure cases. `process_checkout` delegates the transaction row
+write to `database_transactions.save_transaction()` inside the same SQLite
+transaction.
 
 ## Barcode Rules
 
@@ -179,7 +182,7 @@ Systemd units live under `systemd/`:
 | `src/utils/database_users.py` | Basic user CRUD SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_sessions.py` | Session SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_earnings.py` | Earning SQL helpers that receive an existing connection and do not commit |
-| `src/utils/database_transactions.py` | Transaction SQL helpers that receive an existing connection and do not commit |
+| `src/utils/database_transactions.py` | Transaction SQL helpers, including `save_transaction`, that receive an existing connection and do not commit |
 | `src/utils/database_balance_adjustments.py` | Balance adjustment SQL query/write helpers that receive an existing connection and do not commit |
 | `src/utils/barcodes.py` | Barcode rules and generated SVG paths |
 | `src/utils/admin_runtime.py` | Managed FastAPI server start/stop for pygame admin |
@@ -193,9 +196,10 @@ Systemd units live under `systemd/`:
 Tests use the Python standard library `unittest` stack and temporary SQLite
 databases. They should not touch `data/kasse.db` and should avoid new test
 dependencies unless there is a clear payoff. Current coverage focuses on
-database smoke behavior, atomic checkout safety, self-checkout balance refresh,
-admin POST/session/CSRF safety, Pi update rollback behavior, and debug status
-observability.
+database smoke behavior, atomic checkout safety, checkout rollback on
+transaction-save failure, self-checkout balance refresh, local-day earning
+queries, admin POST/session/CSRF safety, Pi update rollback behavior, and debug
+status observability.
 
 Pi update rollback tests keep fake system tools and app hooks as executable
 shell fixtures under `tests/fixtures/pi_update/`. Python tests should assemble
