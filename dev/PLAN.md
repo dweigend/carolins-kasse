@@ -87,7 +87,10 @@ local data handling.
    - Run `uv run poe check` as the single local quality command before review.
 
 7. **UI handler complexity**
-   - Reduce the highest-complexity UI handlers in a focused #26 pass.
+   - `Numpad.handle_event` has been reduced from Radon D to A with direct
+     component tests.
+   - Continue with the remaining Radon C hotspots: `ScrollableCart.handle_event`
+     and `RecipeScene._handle_barcode`.
    - Keep refactors behavior-preserving and covered by targeted smoke tests.
 
 8. **Later CRUD**

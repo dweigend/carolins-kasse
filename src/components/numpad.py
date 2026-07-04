@@ -115,22 +115,91 @@ class Numpad:
         if self.on_change:
             self.on_change(self.value)
 
-    def _handle_button(self, label: str) -> None:
-        """Handle a button press."""
+    def _append_digit(self, digit: str) -> bool:
+        """Append a digit when the current input still has room."""
+        if len(self.value) >= self.max_digits:
+            return False
+
+        self.value += digit
+        if self.on_change:
+            self.on_change(self.value)
+        return True
+
+    def _remove_last_digit(self) -> bool:
+        """Remove the last entered digit when one exists."""
+        if not self.value:
+            return False
+
+        self.value = self.value[:-1]
+        if self.on_change:
+            self.on_change(self.value)
+        return True
+
+    def _dispatch_button_action(self, label: str) -> None:
+        """Run the action attached to a numpad button label."""
         if label == "C":
             self.clear()
-        elif label == "✓":
+            return
+
+        if label == "✓":
             if self.on_enter:
                 self.on_enter(self.value)
-        else:
-            # Digit
-            if len(self.value) < self.max_digits:
-                self.value += label
-                if self.on_change:
-                    self.on_change(self.value)
+            return
+
+        self._append_digit(label)
+
+    def _handle_pointer_down(self, event: pygame.event.Event) -> bool:
+        """Track the pressed touch/mouse button without dispatching yet."""
+        if event.button != 1:
+            return False
+
+        for rect, label, _ in self._buttons:
+            if rect.collidepoint(event.pos):
+                self._pressed_button = label
+                return False
+
+        return False
+
+    def _handle_pointer_up(self, event: pygame.event.Event) -> bool:
+        """Dispatch a pressed button only when release matches press target."""
+        if event.button != 1:
+            return False
+
+        if not self._pressed_button:
+            return False
+
+        pressed_button = self._pressed_button
+        self._pressed_button = None
+
+        for rect, label, _ in self._buttons:
+            if label == pressed_button and rect.collidepoint(event.pos):
+                self._dispatch_button_action(label)
+                return True
+
+        return False
+
+    def _handle_keyboard(self, event: pygame.event.Event) -> bool:
+        """Handle keyboard input for digit entry and control actions."""
+        digit = digit_from_key_event(event)
+        if digit:
+            return self._append_digit(digit)
+
+        if event.key == pygame.K_BACKSPACE:
+            return self._remove_last_digit()
+
+        if is_enter_key_event(event):
+            if self.on_enter:
+                self.on_enter(self.value)
+            return True
+
+        if event.key == pygame.K_ESCAPE:
+            self.clear()
+            return True
+
+        return False
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        """Handle mouse events.
+        """Handle touch, mouse, and keyboard events.
 
         Args:
             event: pygame event
@@ -138,43 +207,14 @@ class Numpad:
         Returns:
             True if a button was clicked, False otherwise
         """
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for rect, label, _ in self._buttons:
-                if rect.collidepoint(event.pos):
-                    self._pressed_button = label
-                    return False
-
-        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            if self._pressed_button:
-                for rect, label, _ in self._buttons:
-                    if rect.collidepoint(event.pos) and label == self._pressed_button:
-                        self._handle_button(label)
-                        self._pressed_button = None
-                        return True
-                self._pressed_button = None
-
-        # Handle keyboard input as well
         if event.type == pygame.KEYDOWN:
-            digit = digit_from_key_event(event)
-            if digit:
-                if len(self.value) < self.max_digits:
-                    self.value += digit
-                    if self.on_change:
-                        self.on_change(self.value)
-                    return True
-            elif event.key == pygame.K_BACKSPACE:
-                if self.value:
-                    self.value = self.value[:-1]
-                    if self.on_change:
-                        self.on_change(self.value)
-                    return True
-            elif is_enter_key_event(event):
-                if self.on_enter:
-                    self.on_enter(self.value)
-                return True
-            elif event.key == pygame.K_ESCAPE:
-                self.clear()
-                return True
+            return self._handle_keyboard(event)
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            return self._handle_pointer_down(event)
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            return self._handle_pointer_up(event)
 
         return False
 

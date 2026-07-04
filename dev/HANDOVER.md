@@ -181,6 +181,10 @@
   cold path, removed the now-unused NumPy dependency, cached central font
   objects by path and size, and added exact-size scaled asset caching for the
   repeated ProductDisplay coin and MathGame reward-coin animation hotspots.
+- Local #26 follow-up split `Numpad.handle_event` into focused keyboard,
+  pointer, and action helpers. Radon now reports that method as A instead of D;
+  the remaining complexity findings are `ScrollableCart.handle_event` and
+  `RecipeScene._handle_barcode`, both C.
 
 ## Verification Run Recently
 
@@ -269,7 +273,7 @@ Run on 2026-07-04 CEST for the local code-quality pipeline:
 - `uv lock`
 - `uv lock --check`
 - `uv run poe --help`
-- `uv run poe check` (60 tests, 45.69% coverage, 40% minimum)
+- `uv run poe check` (60 tests, 45.71% coverage, 40% minimum)
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 
 Final Pi deployment validation on 2026-07-04 CEST:
@@ -321,7 +325,7 @@ Open follow-up and validation backlog:
 - `src/utils/database.py` is still the largest mixed-responsibility module. Split it only when the next write path makes the boundary obvious.
 - The new quality pipeline is intentionally a practical baseline: Ruff,
   `ty`, Vulture, Deptry, jscpd, and pytest-cov are strict, while Radon reports
-  the existing C/D hotspots for the focused #26 cleanup pass.
+  the remaining C hotspots for the focused #26 cleanup pass.
 - Hardware behavior is not fully validated: scanner timing, touch target precision, fullscreen rendering, Pi performance, and child comprehension still need real tests.
 - Remote admin is still intended for the home WiFi. Mutating POST routes require
   the debug PIN/admin session cookie plus CSRF, while the read surface remains
