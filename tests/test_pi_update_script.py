@@ -12,8 +12,15 @@ import unittest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPO_ROOT / "tools" / "pi_update.sh"
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "pi_update"
+SYSTEMD_SOURCE_DIR = REPO_ROOT / "systemd"
 OLD_COMMIT = "1111111111111111111111111111111111111111"
 NEW_COMMIT = "2222222222222222222222222222222222222222"
+PERMANENT_SYSTEMD_UNITS = (
+    "carolins-kasse-backup.service",
+    "carolins-kasse-backup.timer",
+    "carolins-kasse-update.service",
+    "carolins-kasse.service",
+)
 
 
 @dataclass(frozen=True)
@@ -29,6 +36,7 @@ class PiUpdateRun:
     event_log: str
     current_commit: str
     worktree_dirty: bool
+    installed_systemd_units: tuple[str, ...]
 
     @property
     def combined_output(self) -> str:
@@ -47,8 +55,11 @@ class PiUpdateScriptTests(unittest.TestCase):
         self.assertEqual(run.current_commit, NEW_COMMIT)
         self.assertNotIn("git reset", run.git_log)
         self.assertIn("systemctl stop carolins-kasse.service", run.systemctl_log)
+        self.assertIn("systemctl daemon-reload", run.systemctl_log)
         self.assertIn("systemctl restart carolins-kasse.service", run.systemctl_log)
         self.assertIn("backup", run.backup_log)
+        self.assertEqual(run.installed_systemd_units, PERMANENT_SYSTEMD_UNITS)
+        self.assertNotIn("carolins-install.service", run.installed_systemd_units)
         self.assertIn("Update finished", run.stdout)
         self.assert_events_in_order(
             run,
@@ -58,6 +69,7 @@ class PiUpdateScriptTests(unittest.TestCase):
                 "git pull --ff-only",
                 "uv sync --frozen --no-dev",
                 "python tools/generate_printables.py",
+                "systemctl daemon-reload",
                 "systemctl restart carolins-kasse.service",
             ],
         )
@@ -130,6 +142,24 @@ class PiUpdateScriptTests(unittest.TestCase):
         self.assertNotIn("systemctl restart carolins-kasse.service", run.systemctl_log)
         self.assertNotIn("systemctl restart carolins-kasse.service", run.events)
 
+    def test_systemd_reload_failure_rolls_back_before_restart(self) -> None:
+        run = run_pi_update_script(fail_step="daemon-reload")
+
+        self.assertNotEqual(run.returncode, 0)
+        self.assertEqual(run.current_commit, OLD_COMMIT)
+        self.assertIn(f"git reset --hard {OLD_COMMIT}", run.git_log)
+        self.assertIn("systemctl daemon-reload", run.systemctl_log)
+        self.assertIn("systemctl restart carolins-kasse.service", run.systemctl_log)
+        self.assert_events_in_order(
+            run,
+            [
+                "python tools/generate_printables.py",
+                "systemctl daemon-reload",
+                f"git reset --hard {OLD_COMMIT}",
+                "systemctl restart carolins-kasse.service",
+            ],
+        )
+
     def assert_events_in_order(
         self, run: PiUpdateRun, expected_events: list[str]
     ) -> None:
@@ -156,14 +186,18 @@ def run_pi_update_script(
         temp_root = Path(temp_dir)
         fake_bin = temp_root / "bin"
         app_dir = temp_root / "app"
+        app_systemd_dir = app_dir / "systemd"
         tools_dir = app_dir / "tools"
         venv_bin = app_dir / ".venv" / "bin"
+        systemd_unit_dir = temp_root / "systemd-units"
         state_dir = temp_root / "state"
         log_dir = temp_root / "logs"
 
         fake_bin.mkdir()
+        app_systemd_dir.mkdir(parents=True)
         tools_dir.mkdir(parents=True)
         venv_bin.mkdir(parents=True)
+        systemd_unit_dir.mkdir()
         state_dir.mkdir()
         log_dir.mkdir()
         (state_dir / "current_commit").write_text(OLD_COMMIT)
@@ -171,6 +205,7 @@ def run_pi_update_script(
         copy_executable_fixtures(FIXTURE_ROOT / "fake_bin", fake_bin)
         copy_executable_fixtures(FIXTURE_ROOT / "app_tools", tools_dir)
         copy_executable_fixtures(FIXTURE_ROOT / "venv_bin", venv_bin)
+        copy_systemd_units(SYSTEMD_SOURCE_DIR, app_systemd_dir)
 
         env = os.environ.copy()
         env.update(
@@ -181,6 +216,7 @@ def run_pi_update_script(
                 "CAROLINS_KASSE_DB_PATH": str(temp_root / "kasse.db"),
                 "CAROLINS_KASSE_BACKUP_DIR": str(temp_root / "backups"),
                 "CAROLINS_KASSE_UV_BIN": str(fake_bin / "uv"),
+                "CAROLINS_KASSE_SYSTEMD_UNIT_DIR": str(systemd_unit_dir),
                 "FAKE_LOG_DIR": str(log_dir),
                 "FAKE_STATE_DIR": str(state_dir),
                 "FAKE_NEW_COMMIT": new_commit,
@@ -212,6 +248,9 @@ def run_pi_update_script(
             event_log=read_log(log_dir / "events.log"),
             current_commit=(state_dir / "current_commit").read_text().strip(),
             worktree_dirty=(state_dir / "worktree_dirty").exists(),
+            installed_systemd_units=tuple(
+                sorted(path.name for path in systemd_unit_dir.iterdir())
+            ),
         )
 
 
@@ -220,6 +259,12 @@ def copy_executable_fixtures(source_dir: Path, target_dir: Path) -> None:
         target_path = target_dir / source_path.name
         shutil.copyfile(source_path, target_path)
         target_path.chmod(0o755)
+
+
+def copy_systemd_units(source_dir: Path, target_dir: Path) -> None:
+    for source_path in sorted(source_dir.iterdir()):
+        if source_path.is_file():
+            shutil.copyfile(source_path, target_dir / source_path.name)
 
 
 def read_log(path: Path) -> str:

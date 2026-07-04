@@ -3,3 +3,7 @@ set -euo pipefail
 
 echo "systemctl $*" >> "${FAKE_LOG_DIR}/systemctl.log"
 echo "systemctl $*" >> "${FAKE_LOG_DIR}/events.log"
+
+if [ "${FAIL_STEP:-}" = "daemon-reload" ] && [ "${1:-}" = "daemon-reload" ]; then
+    exit 47
+fi

@@ -6,6 +6,13 @@ APP_DIR="${CAROLINS_KASSE_APP_DIR:-/opt/carolins-kasse}"
 DB_PATH="${CAROLINS_KASSE_DB_PATH:-/var/lib/carolins-kasse/kasse.db}"
 BACKUP_DIR="${CAROLINS_KASSE_BACKUP_DIR:-/var/backups/carolins-kasse}"
 UV_BIN="${CAROLINS_KASSE_UV_BIN:-/usr/local/bin/uv}"
+SYSTEMD_UNIT_DIR="${CAROLINS_KASSE_SYSTEMD_UNIT_DIR:-/etc/systemd/system}"
+SYSTEMD_UNITS=(
+    "carolins-kasse.service"
+    "carolins-kasse-update.service"
+    "carolins-kasse-backup.service"
+    "carolins-kasse-backup.timer"
+)
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "Update must run as root."
@@ -32,6 +39,27 @@ run_app_python() {
     runuser -u "${APP_USER}" -- env CAROLINS_KASSE_DB_PATH="${DB_PATH}" bash -c \
         'cd "$1" && shift && .venv/bin/python "$@"' \
         bash "${APP_DIR}" "$@"
+}
+
+install_systemd_units() {
+    local source_path
+    local unit_name
+
+    for unit_name in "${SYSTEMD_UNITS[@]}"; do
+        source_path="${APP_DIR}/systemd/${unit_name}"
+        if [ ! -f "${source_path}" ]; then
+            echo "Missing systemd unit: ${source_path}" >&2
+            return 1
+        fi
+    done
+
+    echo "Installing systemd units."
+    install -d -m 0755 "${SYSTEMD_UNIT_DIR}"
+    for unit_name in "${SYSTEMD_UNITS[@]}"; do
+        install -m 0644 "${APP_DIR}/systemd/${unit_name}" \
+            "${SYSTEMD_UNIT_DIR}/${unit_name}"
+    done
+    systemctl daemon-reload
 }
 
 restart_kiosk() {
@@ -123,6 +151,7 @@ fi
 
 run_app_python tools/generate_barcodes.py
 run_app_python tools/generate_printables.py
+install_systemd_units
 
 rollback_on_failure=0
 echo "Update finished at $(date --iso-8601=seconds)"

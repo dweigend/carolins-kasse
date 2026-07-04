@@ -29,6 +29,10 @@
   PIN-protected debug page now reports service, install/update/backup, timer,
   failed-unit, and log-snippet status while degrading gracefully when Pi or
   systemd access is unavailable.
+- `tools/pi_update.sh` now installs the permanent systemd units from
+  `systemd/` and runs `systemctl daemon-reload` after successful validation and
+  generated-output steps, so kiosk/update/backup unit changes take effect during
+  normal Pi updates.
 - Browser admin has a PIN-protected admin session for mutating POST routes. The
   existing debug PIN cookie/session is paired with CSRF tokens, including
   `/debug/unlock` before PIN acceptance.
@@ -43,9 +47,9 @@
   safety, admin security flows, atomic checkout, and user-state scene resets
   without adding dependencies. It also covers recipe quantities, inactive
   recipe ingredients, picker reachability, math scanner filtering, and recipe
-  bonus timing, Pi update rollback safety with shell fixtures, debug
-  observability, and keypad keycode input. The current suite has 53 passing
-  tests.
+  bonus timing, Pi update rollback safety with shell fixtures, Pi update
+  systemd unit installation, debug observability, and keypad keycode input. The
+  current suite has 54 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
@@ -148,6 +152,9 @@
 - Local #28 worker removed the kiosk service `network-online.target`
   dependency so the pygame kiosk can start without waiting for NetworkManager
   wait-online; Pi boot-chain validation is still needed.
+- Local Pi update worker taught `tools/pi_update.sh` to install the permanent
+  kiosk/update/backup systemd units and daemon-reload after successful update
+  validation, while excluding the first-boot-only `carolins-install.service`.
 - Local #27 worker added shared keyboard digit normalization for top-row and
   keypad digits with empty Unicode, reused by InputManager, MathGameScene, and
   Numpad while preserving math scanner-burst filtering.
@@ -231,6 +238,17 @@ Run on 2026-07-04 CEST for the local #29/#22 rendering performance pass:
 - `uv run ruff format --check src/ tools/ tests/`
 - `git diff --check`
 
+Run on 2026-07-04 CEST for the Pi update systemd unit installation fix:
+
+- `uv run python -m unittest tests.test_pi_update_script` (5 tests)
+- `uv run python -m unittest discover -s tests` (54 tests)
+- `uv run ruff format tests/test_pi_update_script.py`
+- `uv run ruff check src/ tools/ tests/`
+- `uv run ruff format --check src/ tools/ tests/`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `bash -n tools/pi_update.sh tests/fixtures/pi_update/fake_bin/systemctl`
+- `git diff --check`
+
 ## Open GitHub Issues
 
 Covered by earlier correctness branch commits and ready to close after
@@ -268,7 +286,8 @@ follow-up measurement and remaining hotspots:
 Highest-priority Pi operations follow-up:
 
 - #27 Accept keypad digit keycodes when unicode text is empty
-- #28 Start kiosk service without waiting for network-online
+- #28 Deploy and validate the kiosk unit without `network-online.target` on the
+  Pi via the normal update service
 - #22 Continue cache work beyond the initial font/ProductDisplay/MathGame pass
 
 Still open for validation or later structure work:
