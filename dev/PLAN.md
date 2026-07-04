@@ -16,9 +16,9 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 86-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, and product/recipe/user public API compatibility |
+| Regression tests | Active | 87-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, and product/recipe/user/session public API compatibility |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
-| Data module split | Active | #4 first slices moved database models/types plus product, recipe, and basic user CRUD query helpers; other SQL/query families remain |
+| Data module split | Active | #4 first slices moved database models/types plus product, recipe, basic user CRUD, and session query helpers; other SQL/query families remain |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
 | UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
@@ -43,8 +43,9 @@ local data handling.
 - #4 database module split has started: `database_models.py` owns row models,
   checkout result/error types, and column-list constants; `database_products.py`
   owns product query helpers; `database_recipes.py` owns recipe query helpers;
-  `database_users.py` owns basic user CRUD query helpers; other query-family
-  splits remain.
+  `database_users.py` owns basic user CRUD query helpers;
+  `database_sessions.py` owns session query helpers; other query-family splits
+  remain.
 
 ## Active Priorities
 
@@ -90,14 +91,16 @@ local data handling.
      existing connection and do not commit.
    - `src/utils/database_users.py` owns basic user CRUD SQL helpers that receive
      an existing connection and do not commit.
+   - `src/utils/database_sessions.py` owns session SQL helpers that receive an
+     existing connection and do not commit.
    - Keep `src/utils/database.py` import-compatible while separating
-     schema/init, product/user/recipe queries, sessions, earnings,
-     transactions, and admin balance changes.
+     schema/init, product/user/recipe/session queries, earnings, transactions,
+     and admin balance changes.
    - Do not move `process_checkout`, `update_user_balance`, or transaction
      writes without focused safety tests and a narrow review.
 
 6. **Regression coverage maintenance**
-   - Keep the 86-test pipeline suite green.
+   - Keep the 87-test pipeline suite green.
    - Add focused tests with the next risky scene, database, admin, or
      Pi-operations change instead of keeping a broad standing coverage issue.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.

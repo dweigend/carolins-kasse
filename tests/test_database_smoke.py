@@ -221,6 +221,30 @@ class DatabaseSmokeTests(unittest.TestCase):
             [user.card_id for user in remaining_users], [active_user.card_id]
         )
 
+    def test_session_public_api_keeps_query_and_commit_behavior(self) -> None:
+        with initialized_temporary_database() as database:
+            user = database.User(
+                card_id="2000000000015",
+                name="Carolin",
+                balance=10.0,
+            )
+
+            database.add_user(user)
+            session_id = database.start_session(user.card_id)
+            started_session = database.get_session(session_id)
+
+            database.end_session(session_id)
+            ended_session = database.get_session(session_id)
+
+        self.assertIsNotNone(started_session)
+        self.assertEqual(started_session.id, session_id)
+        self.assertEqual(started_session.user_card_id, user.card_id)
+        self.assertIsNone(started_session.ended_at)
+        self.assertIsNotNone(ended_session)
+        self.assertEqual(ended_session.id, session_id)
+        self.assertEqual(ended_session.user_card_id, user.card_id)
+        self.assertIsNotNone(ended_session.ended_at)
+
     def test_init_database_creates_schema_on_empty_temp_db(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "kasse.db"

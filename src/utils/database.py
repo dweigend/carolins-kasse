@@ -15,7 +15,12 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from src.utils import database_products, database_recipes, database_users
+from src.utils import (
+    database_products,
+    database_recipes,
+    database_sessions,
+    database_users,
+)
 from src.utils.database_models import (
     PRODUCT_COLUMNS as PRODUCT_COLUMNS,
     RECIPE_COLUMNS as RECIPE_COLUMNS,
@@ -423,31 +428,22 @@ def clear_recipe_ingredients(recipe_barcode: str) -> None:
 def start_session(user_card_id: str) -> int:
     """Start a new work session, return session ID."""
     with get_db() as conn:
-        cursor = conn.execute(
-            "INSERT INTO sessions (user_card_id) VALUES (?)",
-            (user_card_id,),
-        )
+        session_id = database_sessions.start_session(conn, user_card_id)
         conn.commit()
-        return cursor.lastrowid  # type: ignore
+        return session_id
 
 
 def end_session(session_id: int) -> None:
     """End a work session by setting ended_at."""
     with get_db() as conn:
-        conn.execute(
-            "UPDATE sessions SET ended_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (session_id,),
-        )
+        database_sessions.end_session(conn, session_id)
         conn.commit()
 
 
 def get_session(session_id: int) -> Session | None:
     """Get a session by ID."""
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT * FROM sessions WHERE id = ?", (session_id,)
-        ).fetchone()
-        return Session.from_row(row) if row else None
+        return database_sessions.get_session(conn, session_id)
 
 
 # --- Earnings ---

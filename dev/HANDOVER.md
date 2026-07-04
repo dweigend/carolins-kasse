@@ -55,8 +55,8 @@
   systemd unit installation, debug observability, keypad keycode input,
   cashier feedback component render/state behavior, operation script
   generation against temporary output paths, Pi bootfs preparation, Pi debug CLI
-  output, database model import compatibility, and product/recipe/user public
-  API compatibility. The current pipeline suite has 86 passing tests.
+  output, database model import compatibility, and product/recipe/user/session
+  public API compatibility. The current pipeline suite has 87 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -222,6 +222,10 @@
   `src/utils/database_users.py`. The public user API, connection handling, and
   commits stay in `src/utils/database.py`; balance adjustments and checkout
   user writes were intentionally left in `database.py`.
+- Local #4 fifth split moved session SQL helpers into
+  `src/utils/database_sessions.py`. The public session API, connection
+  handling, and commits stay in `src/utils/database.py`; earnings and
+  transactions were intentionally left in `database.py`.
 
 ## Verification Run Recently
 
@@ -280,6 +284,14 @@ Run on 2026-07-04 CEST for the local #4 user CRUD query split:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `git diff --check`
 - `uv run poe check` (86 tests, 57.62% coverage, 40% minimum)
+
+Run on 2026-07-04 CEST for the local #4 session query split:
+
+- `uv run python -m unittest tests.test_database_smoke tests.test_scene_lifecycle tests.test_recipe_scene` (25 tests)
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `git diff --check`
+- `uv run poe check` (87 tests, 57.77% coverage, 40% minimum)
 
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 
