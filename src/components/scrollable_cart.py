@@ -106,26 +106,41 @@ class ScrollableCart:
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         """Handle cart row and scroll events."""
+        if self._handle_scroll_arrow_event(event):
+            return True
+        if self._handle_visible_row_event(event):
+            return True
+
+        return self._handle_mousewheel_event(event)
+
+    def _handle_scroll_arrow_event(self, event: pygame.event.Event) -> bool:
+        """Handle scroll arrow events when the matching direction is available."""
         if self.can_scroll_up() and self._up_arrow.handle_event(event):
             return True
         if self.can_scroll_down() and self._down_arrow.handle_event(event):
             return True
+        return False
 
+    def _handle_visible_row_event(self, event: pygame.event.Event) -> bool:
+        """Handle events for rows currently visible in the cart viewport."""
         for index, row in enumerate(self._rows):
             if self._scroll_offset <= index < self._scroll_offset + self.VISIBLE_ITEMS:
                 if row.handle_event(event):
                     return True
-
-        if event.type == pygame.MOUSEWHEEL and self.rect.collidepoint(
-            pygame.mouse.get_pos()
-        ):
-            if event.y > 0:
-                self.scroll_up()
-            elif event.y < 0:
-                self.scroll_down()
-            return True
-
         return False
+
+    def _handle_mousewheel_event(self, event: pygame.event.Event) -> bool:
+        """Handle mousewheel scrolling while the pointer is over the cart."""
+        if event.type != pygame.MOUSEWHEEL:
+            return False
+        if not self.rect.collidepoint(pygame.mouse.get_pos()):
+            return False
+
+        if event.y > 0:
+            self.scroll_up()
+        elif event.y < 0:
+            self.scroll_down()
+        return True
 
     def render(self, surface: pygame.Surface) -> None:
         """Render the scrollable cart."""

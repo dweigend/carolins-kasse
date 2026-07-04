@@ -16,7 +16,7 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 60-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, and Pi update unit installation |
+| Regression tests | Active | 65-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, and Pi update unit installation |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
@@ -79,7 +79,7 @@ local data handling.
    - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
 
 6. **Regression coverage maintenance**
-   - Keep the 60-test pipeline suite green.
+   - Keep the 65-test pipeline suite green.
    - Raise UI component and operation-script coverage in a focused #25 pass.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
    - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
@@ -89,8 +89,9 @@ local data handling.
 7. **UI handler complexity**
    - `Numpad.handle_event` has been reduced from Radon D to A with direct
      component tests.
-   - Continue with the remaining Radon C hotspots: `ScrollableCart.handle_event`
-     and `RecipeScene._handle_barcode`.
+   - `ScrollableCart.handle_event` has been reduced out of the Radon C list
+     with direct component tests.
+   - Continue with the remaining Radon C hotspot: `RecipeScene._handle_barcode`.
    - Keep refactors behavior-preserving and covered by targeted smoke tests.
 
 8. **Later CRUD**
