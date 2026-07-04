@@ -19,24 +19,27 @@ local data handling.
 | Regression tests | Active | 54-test unittest temp-DB and lifecycle suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, and Pi update unit installation |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
+| Test coverage | Open | Raise UI component and operation-script coverage in issue #25 |
+| UI handler complexity | Open | Reduce highest-complexity handlers in issue #26 |
 
-## Current Branch Coverage
+## Open Issue Snapshot
 
-The current `codex/pi-ops-safety` branch covers these open issues and should
-close or update them after review/merge:
+`gh issue list --limit 30` on 2026-07-04 shows these issues as open:
 
-- #23 Add rollback safety to Pi update script.
-- #24 Show install, update, and backup status on debug page.
 - #27 Accept keypad digit keycodes when unicode text is empty: deployed, but
-  still needs physical app validation with the SIGMACHIP keypad.
-- #28 Start the kiosk service without waiting for `network-online.target`:
-  deployed and validated on the Pi.
+  still needs physical app-path validation with the SIGMACHIP keypad.
 - #29 Remove NumPy paper texture generation from kiosk cold start: deployed,
-  but still needs first-screen measurement and admin smoke.
+  but still needs clean power-cycle first-screen timing and admin smoke.
 - #30 Lazy-load admin and non-start scenes outside the kiosk cold path:
-  deployed, but still needs first-screen measurement and admin smoke.
+  deployed, but still needs clean power-cycle first-screen timing and admin
+  smoke.
 - #22 Cache fonts and scaled assets for Pi Zero runtime: partially covered;
   keep the remaining work as a profiling backlog.
+- #25 Raise coverage for UI components and operation scripts.
+- #26 Reduce highest-complexity UI handlers.
+- #1, #2, #7, #8, and #9 remain hardware, child, and first-boot validation
+  issues.
+- #4 remains the database module split backlog item.
 
 ## Active Priorities
 
@@ -46,8 +49,8 @@ close or update them after review/merge:
      disagree.
 
 2. **Pi performance**
-   - Measure the deployed #29/#30 cold-start changes on the first visible
-     1024x600 screen.
+   - Clean power-cycle the Pi and measure the deployed #29/#30 cold-start
+     changes on the first visible 1024x600 screen.
    - Smoke the admin flow after lazy loading, especially Admin card, server QR,
      and remote admin launch.
    - Continue #22 only where profiling still shows repeated font, scale, or
@@ -71,17 +74,22 @@ close or update them after review/merge:
 
 6. **Regression coverage maintenance**
    - Keep the 54-test temp-DB and lifecycle unittest suite green.
+   - Raise UI component and operation-script coverage in a focused #25 pass.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
    - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
      local checks, and safe Pi update/restart/backup actions.
 
-7. **Later CRUD**
+7. **UI handler complexity**
+   - Reduce the highest-complexity UI handlers in a focused #26 pass.
+   - Keep refactors behavior-preserving and covered by targeted smoke tests.
+
+8. **Later CRUD**
    - New products.
    - New users/cards.
    - Recipe creation/editing beyond active/name edits.
    - Image upload/copy workflow.
 
-8. **Polish**
+9. **Polish**
    - Sound effects.
    - Checkout/earning animations.
    - Error states on hardware.

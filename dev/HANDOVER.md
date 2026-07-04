@@ -24,9 +24,9 @@
   `tools/pi_prepare_boot.py` copies that script instead of embedding shell text.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
 - The `codex/pi-ops-safety` branch is pushed to GitHub. Runtime code changes
-  through `4fef3ac` cover Pi operations issues #23, #24, and the deployed #28
-  startup dependency fix; the latest verified Pi sync before this handover
-  refresh was the docs-only `b009ebe` commit. `tools/pi_update.sh` records the
+  through `4fef3ac` cover the now-closed Pi operations issues #23, #24, and
+  #28; the latest verified Pi sync before this handover refresh was the
+  docs-only `b009ebe` commit. `tools/pi_update.sh` records the
   previous commit and rolls back after post-pull failures, including no-op pull
   failure paths. The
   PIN-protected debug page now reports service, install/update/backup, timer,
@@ -150,8 +150,8 @@
   `tests/db_isolation.py` now holds the small temp-DB helpers needed by those
   tests.
 - Review status for the Pi/Ops safety round is clean through `cd900a2`, with no
-  P0-P3 findings. The current `codex/pi-ops-safety` branch now covers #23, #24,
-  and the validated #28 service dependency fix.
+  P0-P3 findings. Issues #23, #24, and #28 are closed and remain recorded here
+  as completed Pi/Ops work.
 - #28 is deployed and validated on the Pi: the update service installed the
   permanent systemd units, `carolins-kasse.service` no longer depends on
   `network-online.target`, and its critical chain now reaches `basic.target`.
@@ -263,51 +263,26 @@ Final Pi deployment validation on 2026-07-04 CEST:
 - A later docs-only sync pulled `b009ebe` on the Pi at
   `2026-07-04T21:30:34+02:00`; the kiosk restarted cleanly and stayed active.
   The same boot journal shows the first kiosk service start at monotonic
-  `37.176s` and the first Pygame log at `39.434s`. A physical first-screen
-  stopwatch check is still needed for #29/#30.
+  `37.176s` and the first Pygame log at `39.434s`. A clean power-cycle
+  first-screen timing check and admin smoke are still needed for #29/#30.
 
 ## Open GitHub Issues
 
-Covered by earlier correctness branch commits and ready to close after
-review/merge:
+`gh issue list --limit 30` on 2026-07-04 shows these issues as open:
 
-- #10 Protect admin write routes from unauthenticated POSTs
-- #11 Make checkout and balance updates atomic
-- #12 Reset scene state between kiosk users
-- #13 Track recipe ingredient quantities instead of binary scans
-- #14 Refresh displayed balance after self-checkout
-- #15 Render admin barcode modal data without inline JavaScript strings
-- #16 Enforce SQLite foreign key constraints
-- #17 Prevent inactive recipe ingredients from blocking completion
-- #18 Make PickerScene reachable from the kiosk flow
-- #19 Ignore barcode scanner input in math mode
-- #20 Award recipe bonus after successful recipe checkout
-- #21 Add temp-DB regression smoke suite
+Acceptance still missing:
 
-Covered by the current `codex/pi-ops-safety` branch and ready to close or
-update after review/merge:
+- #27 Accept keypad digit keycodes when unicode text is empty: code is
+  deployed, but the physical SIGMACHIP keypad still needs validation through
+  the real kiosk app path.
+- #29 Remove NumPy paper texture generation from kiosk cold start: code is
+  deployed, but still needs clean power-cycle first-screen timing and admin
+  smoke.
+- #30 Lazy-load admin and non-start scenes outside the kiosk cold path: code is
+  deployed, but still needs clean power-cycle first-screen timing and admin
+  smoke.
 
-- #23 Add rollback safety to Pi update script
-- #24 Show install, update, and backup status on debug page
-- #28 Deploy and validate the kiosk unit without `network-online.target` on the Pi
-
-Covered by the current `codex/pi-ops-safety` branch and deployed to the Pi for
-validation:
-
-- #29 Remove NumPy paper texture generation from kiosk cold start
-- #30 Lazy-load admin and non-start scenes outside the kiosk cold path
-
-Partially covered by local performance working tree changes; keep open for
-follow-up measurement and remaining hotspots:
-
-- #22 Cache fonts and scaled assets for Pi Zero runtime
-
-Highest-priority Pi operations follow-up:
-
-- #27 Accept keypad digit keycodes when unicode text is empty
-- #22 Continue cache work beyond the initial font/ProductDisplay/MathGame pass
-
-Still open for validation or later structure work:
+Open follow-up and validation backlog:
 
 - #1 Validate cashier UI with kids on touch display
 - #2 Validate recipe UI with kids on touch display
@@ -315,6 +290,9 @@ Still open for validation or later structure work:
 - #7 Validate automated Raspberry Pi first-boot setup
 - #8 Validate Pi Zero USB hub and OTG host path
 - #9 Pi first-boot installer fails before installing services
+- #22 Cache fonts and scaled assets for Pi Zero runtime
+- #25 Raise coverage for UI components and operation scripts
+- #26 Reduce highest-complexity UI handlers
 
 ## Known Risks
 
@@ -334,12 +312,15 @@ Still open for validation or later structure work:
 ## Next Best Steps
 
 1. Retest the #27 number pad fix on the Pi with the SIGMACHIP keypad.
-2. Measure the #29/#30/#22 startup and rendering changes on the Pi, then
-   continue #22 only where timing still shows repeated scale/render cost.
+2. Clean power-cycle the Pi, measure first-screen timing for #29/#30, and
+   smoke the admin path: Admin card, server QR, and remote admin launch.
 3. Use the local `carolins-kasse-debug` skill for SSH diagnostics, tests, and
    safe Pi service actions.
-4. Close or update #23 and #24 after the current branch is merged.
+4. Continue #22 only where profiling still shows repeated font, scale, or
+   render cost.
 5. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
    product labels, number pad input, checkout, Admin card, recipe cards, math
    mode, debug PIN, update, and remote admin QR.
 6. Add observations to issues #1, #2, #7, #8, and #9.
+7. Keep #25 and #26 as focused follow-up passes, not part of the current Pi
+   acceptance loop.
