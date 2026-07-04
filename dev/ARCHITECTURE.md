@@ -25,6 +25,10 @@ Active scenes:
 - `recipe`: recipe card and ingredient scanning
 - `math_game`: math rewards
 
+ScanScene can route to PickerScene for touch product selection without losing
+the current cart. MathGameScene filters fast scanner-style digit bursts,
+including unterminated bursts, so barcode input does not become a math answer.
+
 ## Render Boundary
 
 Scenes render only their content. The shared shell renders around them:

@@ -27,7 +27,9 @@
   displayed balance matches the committed database state.
 - A unittest-based temp-DB and lifecycle smoke suite now covers database
   safety, admin security flows, atomic checkout, and user-state scene resets
-  without adding dependencies. The current suite has 21 passing tests.
+  without adding dependencies. It also covers recipe quantities, inactive
+  recipe ingredients, picker reachability, math scanner filtering, and recipe
+  bonus timing. The current suite has 32 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
@@ -81,10 +83,21 @@
   resets: scan keeps its normal picker/cart flow on ordinary entry, recipe
   clears selections/scans/completion/checkout state on user reset, and math
   refreshes for the current user/difficulty without per-frame resets.
-- Added `tests/test_scene_lifecycle.py`; the full unittest suite now has 21
-  passing tests.
-- Review pass found no P0-P3 findings for the current #12 work. PickerScene
-  reachability remains tracked separately as #18.
+- Added `tests/test_scene_lifecycle.py` during the #12 work; the full unittest
+  suite later expanded to 32 passing tests for the kiosk-correctness round.
+- Review passes found no P0-P3 findings for `ef654b8` (#12) or `3b8d932`
+  (#13/#17/#20).
+- Added recipe correctness for #13, #17, and #20: ingredients track required
+  quantities, inactive products no longer block recipe completion, and recipe
+  bonuses are awarded only after successful checkout.
+- Made PickerScene reachable from ScanScene for #18 while preserving the normal
+  scan/cart flow.
+- Made MathGameScene ignore scanner bursts for #19. The first review of
+  `aa81366` found a P2 issue where scanner bursts without Enter could leak
+  into math input; `a4ebbf4` now discards unterminated bursts, clears them on
+  Backspace/Escape, and keeps normal one- to three-digit math entry covered.
+- The current `codex/kiosk-correctness` branch covers #12, #13, #17, #18, #19,
+  and #20 and is ready for review/merge after the latest follow-up fix.
 
 ## Verification Run Recently
 
@@ -103,12 +116,11 @@ Run after the Pi setup implementation:
 - `uv run python tools/pi_prepare_boot.py <temporary bootfs fixture>`
 - FastAPI admin smoke including `/debug`
 
-Run on 2026-07-04 CEST after the admin safety, data integrity, temp-DB test,
-and scene-lifecycle work:
+Run on 2026-07-04 CEST after the full kiosk-correctness round:
 
 - `uv run ruff check src/ tools/ tests/`
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
-- `uv run python -m unittest discover -s tests` (21 tests)
+- `uv run python -m unittest discover -s tests` (32 tests)
 - `git diff --check`
 
 ## Open GitHub Issues
@@ -117,25 +129,22 @@ Covered by the current branch commits and ready to close after review/merge:
 
 - #10 Protect admin write routes from unauthenticated POSTs
 - #11 Make checkout and balance updates atomic
+- #12 Reset scene state between kiosk users
+- #13 Track recipe ingredient quantities instead of binary scans
 - #14 Refresh displayed balance after self-checkout
 - #15 Render admin barcode modal data without inline JavaScript strings
 - #16 Enforce SQLite foreign key constraints
-- #21 Add temp-DB regression smoke suite
-- #12 Reset scene state between kiosk users
-
-Next active kiosk correctness issues:
-
-- #13 Track recipe ingredient quantities instead of binary scans
 - #17 Prevent inactive recipe ingredients from blocking completion
 - #18 Make PickerScene reachable from the kiosk flow
 - #19 Ignore barcode scanner input in math mode
 - #20 Award recipe bonus after successful recipe checkout
+- #21 Add temp-DB regression smoke suite
 
 Highest-priority Pi operations follow-ups:
 
-- #22 Cache fonts and scaled assets for Pi Zero runtime
 - #23 Add rollback safety to Pi update script
 - #24 Show install, update, and backup status on debug page
+- #22 Cache fonts and scaled assets for Pi Zero runtime
 
 Still open for validation or later structure work:
 
@@ -160,10 +169,9 @@ Still open for validation or later structure work:
 
 ## Next Best Steps
 
-1. Close or update #10, #11, #12, #14, #15, #16, and #21 after the current branch is reviewed or merged.
-2. Fix the next kiosk correctness bugs: recipe quantities (#13), inactive recipe ingredients (#17), PickerScene reachability (#18), scanner input in math mode (#19), and recipe bonus timing (#20).
-3. Improve Pi operations: update rollback safety (#23), debug observability (#24), and Pi Zero runtime performance (#22).
-4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
-5. Add observations to issues #1, #2, #7, and #8.
-6. Add read-only transaction and earnings views before more write-heavy CRUD.
-7. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
+1. Close or update #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, and #21 after the current branch is reviewed or merged.
+2. Improve Pi operations: update rollback safety (#23), debug observability (#24), and Pi Zero runtime performance (#22).
+3. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
+4. Add observations to issues #1, #2, #7, #8, and #9.
+5. Add read-only transaction and earnings views before more write-heavy CRUD.
+6. Split `src/utils/database.py` in a separate refactor pass when adding the next admin data path.
