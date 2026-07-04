@@ -54,8 +54,8 @@
   bonus timing, Pi update rollback safety with shell fixtures, Pi update
   systemd unit installation, debug observability, keypad keycode input,
   cashier feedback component render/state behavior, operation script
-  generation against temporary output paths, and Pi bootfs preparation. The
-  current pipeline suite has 81 passing tests.
+  generation against temporary output paths, Pi bootfs preparation, and Pi
+  debug CLI output. The current pipeline suite has 82 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -201,6 +201,9 @@
   first-boot files, install environment handling, idempotence, and foreign
   `systemd.run` hook behavior without embedding shell script bodies in Python
   tests.
+- Local #25 Pi debug CLI slice added direct `tools/pi_debug.py` main coverage
+  with a patched debug snapshot and captured stdout, without touching
+  production code or the runtime database.
 
 ## Verification Run Recently
 
@@ -261,6 +264,14 @@ Run on 2026-07-04 CEST for the local #30 lazy-scene startup pass:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `uv run python -m unittest discover -s tests` (53 tests)
 - `git diff --check`
+
+Run on 2026-07-04 CEST for the local #25 Pi debug CLI coverage slice:
+
+- `uv run python -m unittest tests/test_pi_debug.py` (1 test)
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `git diff --check`
+- `uv run poe check` (82 tests, 56.81% coverage, 40% minimum)
 
 Run on 2026-07-04 CEST for the local #29/#22 rendering performance pass:
 
