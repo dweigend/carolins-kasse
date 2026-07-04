@@ -9,6 +9,11 @@
   lifecycle hooks. Login changes and shell logout reset user-bound scene state
   between kiosk users without wiping normal in-scene state on ordinary scene
   entry.
+- SceneManager now also accepts lazy scene factories and caches each scene after
+  first construction. `main.py` eagerly creates only `StartScene`; login, admin,
+  menu, scan, recipe, math, and picker scenes are constructed on first entry so
+  admin QR/qrcode/Pillow work stays out of the kiosk import and first-frame
+  path.
 - The shell-based 1024x600 UI is in place. Cashier and recipe UIs have had local screenshot/smoke validation, but still need real Pi/touch/scanner/kid testing.
 - FastAPI remote admin is usable on the home network for products, users, recipes, balances, barcode downloads, and A4 print PDFs.
 - Pygame admin mode opens with Admin card `2000000000046` and provides server status/QR, balance controls, account overview, and notes.
@@ -39,7 +44,7 @@
   without adding dependencies. It also covers recipe quantities, inactive
   recipe ingredients, picker reachability, math scanner filtering, and recipe
   bonus timing, Pi update rollback safety with shell fixtures, debug
-  observability, and keypad keycode input. The current suite has 44 passing
+  observability, and keypad keycode input. The current suite has 53 passing
   tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
@@ -146,6 +151,14 @@
 - Local #27 worker added shared keyboard digit normalization for top-row and
   keypad digits with empty Unicode, reused by InputManager, MathGameScene, and
   Numpad while preserving math scanner-burst filtering.
+- Local #30 worker added lazy scene construction for kiosk startup: scene package
+  exports no longer import every scene eagerly, `main.py` registers non-start
+  scenes as factories, and SceneManager preserves cached scene instances so
+  cart, picker, recipe, and math lifecycle behavior remains intentional.
+- Local #29/#22 performance worker removed NumPy from the kiosk paper texture
+  cold path, removed the now-unused NumPy dependency, cached central font
+  objects by path and size, and added exact-size scaled asset caching for the
+  repeated ProductDisplay coin and MathGame reward-coin animation hotspots.
 
 ## Verification Run Recently
 
@@ -198,6 +211,26 @@ Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 - `uv run python -m unittest discover -s tests` (44 tests)
 - `git diff --check`
 
+Run on 2026-07-04 CEST for the local #30 lazy-scene startup pass:
+
+- `uv run python -m unittest tests.test_scene_lifecycle tests.test_main_lazy_imports` (11 tests)
+- `uv run ruff format src/ tools/ tests/ main.py`
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest discover -s tests` (53 tests)
+- `git diff --check`
+
+Run on 2026-07-04 CEST for the local #29/#22 rendering performance pass:
+
+- `uv run python -m unittest tests.test_render_caching` (4 tests)
+- `uv lock --check`
+- `uv run ruff format src/ui/texture.py src/utils/fonts.py src/utils/assets.py src/components/product_display.py src/scenes/math_game.py tests/test_render_caching.py`
+- `uv run ruff check src/ tools/ tests/`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest discover -s tests` (53 tests)
+- `uv run ruff format --check src/ tools/ tests/`
+- `git diff --check`
+
 ## Open GitHub Issues
 
 Covered by earlier correctness branch commits and ready to close after
@@ -222,13 +255,21 @@ review/merge:
 - #23 Add rollback safety to Pi update script
 - #24 Show install, update, and backup status on debug page
 
+Covered by local performance working tree changes and ready for review/merge:
+
+- #29 Remove NumPy paper texture generation from kiosk cold start
+- #30 Lazy-load admin and non-start scenes outside the kiosk cold path
+
+Partially covered by local performance working tree changes; keep open for
+follow-up measurement and remaining hotspots:
+
+- #22 Cache fonts and scaled assets for Pi Zero runtime
+
 Highest-priority Pi operations follow-up:
 
 - #27 Accept keypad digit keycodes when unicode text is empty
 - #28 Start kiosk service without waiting for network-online
-- #29 Remove NumPy paper texture generation from kiosk cold start
-- #30 Lazy-load admin and non-start scenes outside the kiosk cold path
-- #22 Cache fonts and scaled assets for Pi Zero runtime
+- #22 Continue cache work beyond the initial font/ProductDisplay/MathGame pass
 
 Still open for validation or later structure work:
 
@@ -257,7 +298,8 @@ Still open for validation or later structure work:
 ## Next Best Steps
 
 1. Retest the #27 number pad fix on the Pi with the SIGMACHIP keypad.
-2. Measure and reduce startup with #28, #29, #30, and #22.
+2. Measure the #28/#29/#30/#22 startup and rendering changes on the Pi, then
+   continue #22 only where timing still shows repeated scale/render cost.
 3. Use the local `carolins-kasse-debug` skill for SSH diagnostics, tests, and
    safe Pi service actions.
 4. Close or update #23 and #24 after the current branch is merged.
