@@ -23,7 +23,7 @@
   and the boot-time shell entrypoint in `tools/pi_firstboot.sh`;
   `tools/pi_prepare_boot.py` copies that script instead of embedding shell text.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
-- The current `codex/pi-ops-safety` branch is pushed through `caff492` and
+- The current `codex/pi-ops-safety` branch is pushed through `4fef3ac` and
   covers Pi operations issues #23, #24, and the deployed #28 startup dependency
   fix. `tools/pi_update.sh` records the previous commit and rolls back
   after post-pull failures, including no-op pull failure paths. The
@@ -33,7 +33,7 @@
 - `tools/pi_update.sh` now installs the permanent systemd units from
   `systemd/` and runs `systemctl daemon-reload` after successful validation and
   generated-output steps, so kiosk/update/backup unit changes take effect during
-  normal Pi updates.
+  normal Pi updates. The unit-install fix commit is `caff492`.
 - Browser admin has a PIN-protected admin session for mutating POST routes. The
   existing debug PIN cookie/session is paired with CSRF tokens, including
   `/debug/unlock` before PIN acceptance.
@@ -69,7 +69,7 @@
 - The installer completed its real work but hit the systemd start timeout at the final service-start step. Manual recovery via SSH started `carolins-kasse.service`; it is now `active` and `enabled`, `userconfig.service` is `masked`, and no failed units remain.
 - Remote debugging is available over SSH as `kasse@carolins-kasse.local`
   (`192.168.1.139`). The current Pi checkout is `/opt/carolins-kasse` on
-  `codex/pi-ops-safety` at `caff492`; the kiosk service is systemd managed and
+  `codex/pi-ops-safety` at `4fef3ac`; the kiosk service is systemd managed and
   active.
 - Passwordless sudo is limited to the intended service operations:
   restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
@@ -255,7 +255,7 @@ Final Pi deployment validation on 2026-07-04 CEST:
 - `/Users/davidweigend/.codex/skills/carolins-kasse-debug/scripts/kasse-debug.sh tests` (54 tests OK plus checks)
 - Pi update service ran twice; the second run installed systemd units and
   finished at `2026-07-04T21:12:31+02:00`.
-- Pi `/opt/carolins-kasse` is on `codex/pi-ops-safety` at `caff492`;
+- Pi `/opt/carolins-kasse` is on `codex/pi-ops-safety` at `4fef3ac`;
   `carolins-kasse.service` is active and `systemd-analyze critical-chain` now
   shows `carolins-kasse.service -> basic.target`.
 

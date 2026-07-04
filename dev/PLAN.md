@@ -15,7 +15,7 @@ local data handling.
 | UI shell | Done | Shared frame, footer, user colors, asset-based scene direction |
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
-| Pi first-boot setup | Done | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability |
+| Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
 | Regression tests | Active | 54-test unittest temp-DB and lifecycle suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, and Pi update unit installation |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
@@ -27,25 +27,37 @@ close or update them after review/merge:
 
 - #23 Add rollback safety to Pi update script.
 - #24 Show install, update, and backup status on debug page.
-- #28 Start the kiosk service without waiting for `network-online.target`.
+- #27 Accept keypad digit keycodes when unicode text is empty: deployed, but
+  still needs physical app validation with the SIGMACHIP keypad.
+- #28 Start the kiosk service without waiting for `network-online.target`:
+  deployed and validated on the Pi.
+- #29 Remove NumPy paper texture generation from kiosk cold start: deployed,
+  but still needs first-screen measurement and admin smoke.
+- #30 Lazy-load admin and non-start scenes outside the kiosk cold path:
+  deployed, but still needs first-screen measurement and admin smoke.
+- #22 Cache fonts and scaled assets for Pi Zero runtime: partially covered;
+  keep the remaining work as a profiling backlog.
 
 ## Active Priorities
 
 1. **Number pad reliability**
-   - Fix keypad digit handling when Pygame/SDL sends keypad keycodes with empty
-     unicode text (#27).
-   - Validate with the local raw keypad capture before and after the app fix.
+   - Validate the deployed keypad digit fix with the physical app path (#27).
+   - Reuse the local raw keypad capture when app behavior and Linux events
+     disagree.
 
 2. **Pi performance**
-   - Cache fonts and scaled assets for Pi Zero runtime (#22).
-   - Remove NumPy paper texture generation from startup (#29).
-   - Lazy-load admin and non-start scenes outside the cold path (#30).
-   - Keep the deployed #28 systemd dependency fix validated on the Pi.
-   - Keep changes measurable against the 1024x600 kiosk path.
+   - Measure the deployed #29/#30 cold-start changes on the first visible
+     1024x600 screen.
+   - Smoke the admin flow after lazy loading, especially Admin card, server QR,
+     and remote admin launch.
+   - Continue #22 only where profiling still shows repeated font, scale, or
+     render cost.
 
 3. **Hardware and child validation**
    - Keep the validated SEENGREAT topology: leave the Pi USB data port empty while the shield is in Pi mode, then attach touch, scanner, and number pad downstream of the shield.
    - Validate cashier, recipe, scanner, number pad, checkout, Admin card, math mode, update, and QR flows on real hardware.
+   - Run one clean first-boot validation; the implementation is in place, but
+     the prior fresh install still needed manual service-start recovery.
    - Record child and hardware observations in issues #1, #2, #7, #8, and #9.
 
 4. **Admin read-only history**
@@ -91,7 +103,7 @@ close or update them after review/merge:
 - Checkout commits use an atomic `BEGIN IMMEDIATE` transaction and return a
   `CheckoutResult` or `CheckoutError`.
 - `tools/seed_database.py` contains the fixed Carolin/Annelie setup and is non-destructive by default.
-- First-boot installation must not assume optional Linux groups exist, and it must install from the intended repo ref or carry required installer files from bootfs.
+- First-boot installation must not assume optional Linux groups exist, and it must install from the intended repo ref or carry required installer files from bootfs. The implementation is in place, but #7/#9 stay open until one clean first boot completes without manual service-start recovery.
 - Kiosk admin protection stays KISS via physical Admin card.
 - Browser mutating POST routes require the locally generated setup PIN/admin
   session plus CSRF tokens.
@@ -103,8 +115,8 @@ close or update them after review/merge:
 - When the SEENGREAT shield is in Pi Zero hub mode, the Pi micro-USB data port must stay unused; downstream USB devices should connect through the shield.
 - The shield topology is now validated on the Pi: QinHeng hub, QDTECH touch, M4 YX scanner, and SIGMACHIP number pad enumerate when all USB devices are connected through the shield.
 - Raw Linux input validation confirms the SIGMACHIP number pad sends `KP1`,
-  `KP2`, `KP3`, `NUMLOCK`, and `KPENTER`; the remaining issue is app-level
-  keypad keycode handling (#27).
+  `KP2`, `KP3`, `NUMLOCK`, and `KPENTER`; the app-level keypad fix is deployed
+  and still needs physical app validation (#27).
 - Local repeatable Pi diagnostics live in the private Codex skill
   `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`.
 - Print output target is A4 PDF sheets plus existing SVG barcode files.
