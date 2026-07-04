@@ -340,8 +340,9 @@ async def _parse_form(request: Request) -> dict[str, str]:
 def _template_response(request: Request, template_name: str, context: dict):
     csrf_token, refresh_cookie = _csrf_token_for_request(request)
     response = templates.TemplateResponse(
-        template_name,
-        {"request": request, "csrf_token": csrf_token, **context},
+        request=request,
+        name=template_name,
+        context={"csrf_token": csrf_token, **context},
     )
     if refresh_cookie:
         _set_csrf_cookie(response, csrf_token)

@@ -55,13 +55,27 @@
         <h2>Dienste</h2>
         <dl class="debug-list">
             <dt>Kasse</dt>
-            <dd>{{ snapshot.kiosk_service.active }} · {{ snapshot.kiosk_service.enabled }}</dd>
-            <dt>Update</dt>
-            <dd>{{ snapshot.update_service.active }} · {{ snapshot.update_service.enabled }}</dd>
-            <dt>Backup</dt>
-            <dd>{{ snapshot.backup_service.active }} · {{ snapshot.backup_service.enabled }}</dd>
+            <dd>{{ snapshot.kiosk_service.status }}</dd>
+            <dt>systemd</dt>
+            <dd>{{ snapshot.systemd_state }}</dd>
+            <dt>Fehler</dt>
+            <dd>{{ snapshot.failed_units.summary }}</dd>
             <dt>PIN</dt>
             <dd>{% if snapshot.pin_configured %}eingerichtet{% else %}fehlt{% endif %}</dd>
+        </dl>
+    </section>
+
+    <section class="admin-card">
+        <h2>Pi-Ops</h2>
+        <dl class="debug-list">
+            <dt>Install</dt>
+            <dd>{{ snapshot.install_service.status }}</dd>
+            <dt>Update</dt>
+            <dd>{{ snapshot.update_service.status }}</dd>
+            <dt>Backup</dt>
+            <dd>{{ snapshot.backup_service.status }}</dd>
+            <dt>Timer</dt>
+            <dd>{{ snapshot.backup_timer.status }}</dd>
         </dl>
     </section>
 
@@ -90,6 +104,32 @@
 <section class="admin-card debug-log">
     <h2>Letzte Kassen-Logs</h2>
     <pre>{{ snapshot.logs }}</pre>
+</section>
+
+<section class="admin-card debug-log">
+    <h2>Install-Log</h2>
+    <pre>{{ snapshot.install_service.logs }}</pre>
+</section>
+
+<section class="admin-card debug-log">
+    <h2>Update-Log</h2>
+    <pre>{{ snapshot.update_service.logs }}</pre>
+</section>
+
+<section class="admin-card debug-log">
+    <h2>Backup-Log</h2>
+    <pre>{{ snapshot.backup_service.logs }}</pre>
+</section>
+
+<section class="admin-card debug-log">
+    <h2>Backup-Timer-Log</h2>
+    <pre>{{ snapshot.backup_timer.logs }}</pre>
+</section>
+
+<section class="admin-card debug-log">
+    <h2>Fehlgeschlagene Units</h2>
+    <p class="muted">{{ snapshot.failed_units.summary }}</p>
+    <pre>{{ snapshot.failed_units.output }}</pre>
 </section>
 {% endif %}
 {% endblock %}

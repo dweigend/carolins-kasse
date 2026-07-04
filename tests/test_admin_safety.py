@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from urllib.parse import urlencode, urlsplit
 import unittest
 
@@ -303,6 +303,35 @@ class AdminSafetyTests(unittest.TestCase):
                 ADMIN_PIN,
             )
 
+    def test_debug_page_shows_pi_ops_status_only_after_unlock(self) -> None:
+        with admin_test_context() as context:
+            collected = False
+
+            def fake_collect_debug_snapshot():
+                nonlocal collected
+                collected = True
+                return fake_debug_snapshot()
+
+            context.server.collect_debug_snapshot = fake_collect_debug_snapshot
+
+            locked_response = context.client.get("/debug")
+
+            self.assertEqual(locked_response.status_code, 200)
+            self.assertFalse(collected)
+            self.assertNotIn("Pi-Ops", locked_response.text)
+
+            context.client.cookies[context.server.DEBUG_COOKIE] = ADMIN_PIN
+            unlocked_response = context.client.get("/debug")
+
+            self.assertEqual(unlocked_response.status_code, 200)
+            self.assertTrue(collected)
+            self.assertIn("Pi-Ops", unlocked_response.text)
+            self.assertIn("Install-Log", unlocked_response.text)
+            self.assertIn("Update-Log", unlocked_response.text)
+            self.assertIn("Backup-Timer-Log", unlocked_response.text)
+            self.assertIn("2 fehlgeschlagene Units.", unlocked_response.text)
+            self.assertIn("install log line", unlocked_response.text)
+
     def assertSecurityRedirect(self, response: AsgiResponse) -> None:
         self.assertEqual(response.status_code, 303)
         self.assertIsNotNone(response.location)
@@ -348,6 +377,39 @@ def admin_test_context() -> Iterator[AdminTestContext]:
                     database=database,
                     server=server,
                 )
+
+
+def fake_debug_snapshot() -> SimpleNamespace:
+    service_status = {
+        "kiosk_service": fake_service("aktiv", "kiosk log line"),
+        "install_service": fake_service("fehlgeschlagen", "install log line"),
+        "update_service": fake_service("inaktiv", "update log line"),
+        "backup_service": fake_service("inaktiv", "backup log line"),
+        "backup_timer": fake_service("aktiv", "timer log line"),
+    }
+    return SimpleNamespace(
+        hostname="carolins-kasse",
+        ip_address="192.168.1.139",
+        admin_url="http://192.168.1.139:8080",
+        git_branch="codex/pi-ops-safety",
+        git_commit="abc1234",
+        db_path="/tmp/kasse.db",
+        db_exists=True,
+        latest_backup="kasse-20260704.db",
+        pin_configured=True,
+        systemd_state="eingeschränkt",
+        failed_units=SimpleNamespace(
+            summary="2 fehlgeschlagene Units.",
+            output="carolins-install.service loaded failed failed install",
+        ),
+        logs="kiosk log line",
+        ssh_command="ssh kasse@carolins-kasse.local",
+        **service_status,
+    )
+
+
+def fake_service(status: str, logs: str) -> SimpleNamespace:
+    return SimpleNamespace(status=status, logs=logs)
 
 
 if __name__ == "__main__":
