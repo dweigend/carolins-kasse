@@ -79,6 +79,10 @@
   (`192.168.1.139`). At the last live check, `/opt/carolins-kasse` on the Pi
   was on `codex/pi-ops-safety` at `9c0d70b`; newer docs-only commits may be
   ahead on GitHub. The kiosk service is systemd managed and active.
+- The code-quality pipeline commit `df59ec5` is pushed to GitHub but not yet
+  deployed to the Pi. On the latest local check, `carolins-kasse.local` did not
+  resolve and `192.168.1.139` did not answer SSH, so the next Pi update needs a
+  fresh reachability check first.
 - Passwordless sudo is limited to the intended service operations:
   restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
   start `carolins-kasse-backup.service`.
