@@ -15,6 +15,12 @@
 - Database setup is KISS: one local `data/kasse.db`, fixed Carolin/Annelie initial setup, non-destructive seed script by default.
 - Raspberry Pi first-boot setup is automated with `tools/pi_prepare_boot.py`, `tools/pi_bootstrap.sh`, systemd units, and `docs/PI_SETUP.md`.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
+- The current `codex/pi-ops-safety` branch covers Pi operations issues #23
+  and #24. `tools/pi_update.sh` records the previous commit and rolls back
+  after post-pull failures, including no-op pull failure paths. The
+  PIN-protected debug page now reports service, install/update/backup, timer,
+  failed-unit, and log-snippet status while degrading gracefully when Pi or
+  systemd access is unavailable.
 - Browser admin has a PIN-protected admin session for mutating POST routes. The
   existing debug PIN cookie/session is paired with CSRF tokens, including
   `/debug/unlock` before PIN acceptance.
@@ -29,7 +35,8 @@
   safety, admin security flows, atomic checkout, and user-state scene resets
   without adding dependencies. It also covers recipe quantities, inactive
   recipe ingredients, picker reachability, math scanner filtering, and recipe
-  bonus timing. The current suite has 32 passing tests.
+  bonus timing, Pi update rollback safety, and debug observability. The current
+  suite has 39 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
@@ -96,8 +103,16 @@
   `aa81366` found a P2 issue where scanner bursts without Enter could leak
   into math input; `a4ebbf4` now discards unterminated bursts, clears them on
   Backspace/Escape, and keeps normal one- to three-digit math entry covered.
-- The current `codex/kiosk-correctness` branch covers #12, #13, #17, #18, #19,
-  and #20 and is ready for review/merge after the latest follow-up fix.
+- Added Pi update rollback safety for #23 in `3747108`, with follow-up
+  coverage in `d9e6b96` for post-pull rollback, kiosk restart after successful
+  rollback, and the no-op pull failure case.
+- Expanded PIN-protected debug observability for #24 in `959dbaf`: kiosk
+  service, systemd availability, install/update/backup service status, backup
+  timer, failed units, and bounded log snippets are visible from the debug
+  page; non-Pi/systemd-unavailable environments degrade gracefully.
+- The Pi/Ops review status is clean for #24, with no findings reported. The
+  current `codex/pi-ops-safety` branch covers #23 and #24 and is ready to close
+  those issues after review/merge.
 
 ## Verification Run Recently
 
@@ -123,9 +138,18 @@ Run on 2026-07-04 CEST after the full kiosk-correctness round:
 - `uv run python -m unittest discover -s tests` (32 tests)
 - `git diff --check`
 
+Latest green checks on 2026-07-04 CEST for the Pi/Ops safety round:
+
+- `uv run ruff check src/ tools/ tests/`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest discover -s tests` (39 tests)
+- `bash -n tools/pi_update.sh`
+- `git diff --check`
+
 ## Open GitHub Issues
 
-Covered by the current branch commits and ready to close after review/merge:
+Covered by earlier correctness branch commits and ready to close after
+review/merge:
 
 - #10 Protect admin write routes from unauthenticated POSTs
 - #11 Make checkout and balance updates atomic
@@ -140,10 +164,14 @@ Covered by the current branch commits and ready to close after review/merge:
 - #20 Award recipe bonus after successful recipe checkout
 - #21 Add temp-DB regression smoke suite
 
-Highest-priority Pi operations follow-ups:
+Covered by the current `codex/pi-ops-safety` branch and ready to close after
+review/merge:
 
 - #23 Add rollback safety to Pi update script
 - #24 Show install, update, and backup status on debug page
+
+Highest-priority Pi operations follow-up:
+
 - #22 Cache fonts and scaled assets for Pi Zero runtime
 
 Still open for validation or later structure work:
@@ -169,8 +197,8 @@ Still open for validation or later structure work:
 
 ## Next Best Steps
 
-1. Close or update #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, and #21 after the current branch is reviewed or merged.
-2. Improve Pi operations: update rollback safety (#23), debug observability (#24), and Pi Zero runtime performance (#22).
+1. Close or update #23 and #24 after the current branch is reviewed or merged.
+2. Improve Pi Zero runtime performance by caching fonts and scaled assets (#22).
 3. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner product labels, number pad input, checkout, Admin card, recipe cards, math mode, debug PIN, update, and remote admin QR.
 4. Add observations to issues #1, #2, #7, #8, and #9.
 5. Add read-only transaction and earnings views before more write-heavy CRUD.

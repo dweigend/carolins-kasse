@@ -95,6 +95,7 @@ Phone/browser on same WiFi
        ├─ recipes
        ├─ barcode downloads
        ├─ CSRF-protected mutating POST routes
+       ├─ PIN-protected debug and operations status
        └─ A4 printable PDFs
 ```
 
@@ -106,6 +107,11 @@ the locally generated debug PIN/admin session cookie plus a CSRF token.
 Admin templates should pass dynamic barcode modal data through HTML data
 attributes rather than inline JavaScript string arguments.
 
+The PIN-protected debug page is the browser-facing operations dashboard. It
+reports kiosk service state, systemd availability, install/update/backup
+service state, backup timer state, failed units, and bounded log snippets. It
+should degrade gracefully when running off-Pi or without systemd access.
+
 ## Setup And Generated Outputs
 
 ```text
@@ -114,7 +120,7 @@ tools/generate_barcodes.py   -> writes SVG barcodes from DB contents
 tools/generate_printables.py -> writes A4 PDFs under data/print/
 tools/pi_prepare_boot.py     -> prepares Raspberry Pi bootfs for first install
 tools/pi_bootstrap.sh        -> first Pi install into /opt/carolins-kasse
-tools/pi_update.sh           -> backup, pull, sync, verify, restart
+tools/pi_update.sh           -> backup, pull, sync, verify, rollback, restart
 tools/pi_backup.sh           -> SQLite backup helper
 tools/pi_debug.py            -> read-only SSH diagnostics
 ```
@@ -126,6 +132,10 @@ treated as source-of-truth code changes.
 Pi installations set `CAROLINS_KASSE_DB_PATH=/var/lib/carolins-kasse/kasse.db`
 so balances and sessions survive Git updates outside the source checkout.
 Local development keeps the default `data/kasse.db` path.
+
+`tools/pi_update.sh` records the previous Git commit before pulling. If a
+post-pull step fails, including the no-op pull failure path, it resets back to
+that commit and restarts the kiosk only after a successful rollback.
 
 Systemd units live under `systemd/`:
 
@@ -156,7 +166,8 @@ Tests use the Python standard library `unittest` stack and temporary SQLite
 databases. They should not touch `data/kasse.db` and should avoid new test
 dependencies unless there is a clear payoff. Current coverage focuses on
 database smoke behavior, atomic checkout safety, self-checkout balance refresh,
-and admin POST/session/CSRF safety.
+admin POST/session/CSRF safety, Pi update rollback behavior, and debug status
+observability.
 
 ## Refactor Rules
 

@@ -15,55 +15,50 @@ local data handling.
 | UI shell | Done | Shared frame, footer, user colors, asset-based scene direction |
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
-| Pi first-boot setup | Done | Automated Lite install path, systemd services, debug/update hooks |
-| Regression tests | Active | 32-test unittest temp-DB and lifecycle suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, and math scanner filtering |
+| Pi first-boot setup | Done | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability |
+| Regression tests | Active | 39-test unittest temp-DB and lifecycle suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, and debug status |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 
+## Current Branch Coverage
+
+The current `codex/pi-ops-safety` branch covers these open issues and should
+close or update them after review/merge:
+
+- #23 Add rollback safety to Pi update script.
+- #24 Show install, update, and backup status on debug page.
+
 ## Active Priorities
 
-1. **Pi operations**
-   - Add rollback safety to the update script (#23).
-   - Show install, update, and backup status on the debug page (#24).
-   - Keep operational scripts simple and recoverable before more kiosk feature work.
-
-2. **Pi performance**
+1. **Pi performance**
    - Cache fonts and scaled assets for Pi Zero runtime (#22).
    - Keep changes measurable against the 1024x600 kiosk path.
 
-3. **Hardware and child validation**
+2. **Hardware and child validation**
    - Keep the validated SEENGREAT topology: leave the Pi USB data port empty while the shield is in Pi mode, then attach touch, scanner, and number pad downstream of the shield.
    - Validate cashier, recipe, scanner, number pad, checkout, Admin card, math mode, update, and QR flows on real hardware.
    - Record child and hardware observations in issues #1, #2, #7, #8, and #9.
 
-4. **Regression coverage maintenance**
-   - Keep the 32-test temp-DB and lifecycle unittest suite green.
-   - Expand coverage when the next risky write or scene-state path changes.
-   - Treat scene reset between kiosk users (#12), atomic checkout/balance
-     updates (#11), self-checkout balance refresh (#14), and SQLite foreign key
-     enforcement (#16) as implemented on the current branch and ready to close
-     after review/merge.
-   - Treat recipe quantities (#13), inactive recipe ingredients (#17),
-     PickerScene reachability (#18), math scanner filtering (#19), and recipe
-     bonus timing (#20) as covered by `codex/kiosk-correctness` and ready to
-     close after review/merge.
-
-5. **Admin read-only history**
+3. **Admin read-only history**
    - Add transaction history view.
    - Add earnings/session overview.
    - Keep exports/statistics simple until parents actually need them.
 
-6. **Database boundary**
+4. **Database boundary**
    - Split `src/utils/database.py` only in a dedicated pass.
    - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
 
-7. **Later CRUD**
+5. **Regression coverage maintenance**
+   - Keep the 39-test temp-DB and lifecycle unittest suite green.
+   - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
+
+6. **Later CRUD**
    - New products.
    - New users/cards.
    - Recipe creation/editing beyond active/name edits.
    - Image upload/copy workflow.
 
-8. **Polish**
+7. **Polish**
    - Sound effects.
    - Checkout/earning animations.
    - Error states on hardware.
@@ -79,6 +74,8 @@ local data handling.
   scanner checkout and cart state intact.
 - MathGameScene filters fast scanner-style digit bursts, including unterminated
   bursts, so scanner input does not leak into answer entry.
+- `tools/pi_update.sh` records the previous commit before pulling and rolls
+  back to it after post-pull failures before restarting the kiosk.
 - SQLite connections enable foreign key checks and a busy timeout.
 - Checkout commits use an atomic `BEGIN IMMEDIATE` transaction and return a
   `CheckoutResult` or `CheckoutError`.
@@ -87,6 +84,9 @@ local data handling.
 - Kiosk admin protection stays KISS via physical Admin card.
 - Browser mutating POST routes require the locally generated setup PIN/admin
   session plus CSRF tokens.
+- The PIN-protected debug page is the lightweight Pi operations dashboard for
+  service state, install/update/backup state, backup timer, failed units, and
+  short logs.
 - The Pi stays on the home WiFi; no hotspot in v1.
 - Hardware debugging uses SSH over WiFi so the Pi USB data bus can be isolated for OTG and hub tests.
 - When the SEENGREAT shield is in Pi Zero hub mode, the Pi micro-USB data port must stay unused; downstream USB devices should connect through the shield.
