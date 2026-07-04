@@ -7,7 +7,7 @@ main.py
   ├─ FrameShell renders paper background, user frame, title, close button, footer
   ├─ SceneManager owns the active pygame scene and lazy scene factories
   ├─ src/utils/state.py owns current user/session/cart runtime state
-  └─ src/utils/database.py persists SQLite data using src/utils/database_models.py
+  └─ src/utils/database.py persists SQLite data using focused database helper modules
 ```
 
 SceneManager calls optional scene lifecycle hooks. `on_enter()` runs when a
@@ -61,11 +61,12 @@ SQLite tables:
 - `transactions`: purchases with JSON item payload
 - `balance_adjustments`: manual admin balance changes
 
-Current technical debt: `src/utils/database.py` still contains schema, queries,
-and runtime persistence. Row dataclasses and checkout result/error types now
-live in `src/utils/database_models.py` and are re-exported from
-`src/utils/database.py` for import compatibility. Continue splitting only in
-small behavior-preserving slices.
+Current technical debt: `src/utils/database.py` still contains schema,
+non-product queries, and runtime persistence. Row dataclasses and checkout
+result/error types live in `src/utils/database_models.py`; product query helpers
+live in `src/utils/database_products.py`. Public names are still re-exported or
+wrapped from `src/utils/database.py` for import compatibility. Continue
+splitting only in small behavior-preserving slices.
 
 SQLite connections enable foreign key checks and a short busy timeout. Checkout
 writes use `BEGIN IMMEDIATE` so the transaction, balance update, earnings or
@@ -163,8 +164,9 @@ Systemd units live under `systemd/`:
 | `src/components/` | Reusable pygame UI pieces |
 | `src/ui/` | Shell, paper texture, shared rendering helpers |
 | `src/admin/` | FastAPI app, templates, static CSS |
-| `src/utils/database.py` | Current SQLite connection, schema, query, checkout, and transaction boundary |
+| `src/utils/database.py` | Public SQLite API, connection, schema, commit, checkout, and transaction boundary |
 | `src/utils/database_models.py` | Database row dataclasses, column lists, and checkout result/error types |
+| `src/utils/database_products.py` | Product SQL helpers that receive an existing connection and do not commit |
 | `src/utils/barcodes.py` | Barcode rules and generated SVG paths |
 | `src/utils/admin_runtime.py` | Managed FastAPI server start/stop for pygame admin |
 | `src/utils/network.py` | Local IP and admin URL helpers |

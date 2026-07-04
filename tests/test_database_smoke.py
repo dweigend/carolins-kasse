@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 import unittest
 
-from tests.db_isolation import isolated_database_module
+from tests.db_isolation import initialized_temporary_database, isolated_database_module
 
 
 EXPECTED_SCHEMA_TABLES = {
@@ -53,6 +53,52 @@ class DatabaseSmokeTests(unittest.TestCase):
                     getattr(database, exported_name),
                     getattr(database_models, exported_name),
                 )
+
+    def test_product_public_api_keeps_query_and_commit_behavior(self) -> None:
+        with initialized_temporary_database() as database:
+            scanned_product = database.Product(
+                barcode="1000000000016",
+                name="milk",
+                name_de="Milch",
+                price=1.5,
+                category="food",
+                image_path="assets/milk.png",
+                has_barcode=True,
+            )
+            picker_product = database.Product(
+                barcode="1000000000023",
+                name="apple",
+                name_de="Apfel",
+                price=0.5,
+                category="food",
+                has_barcode=False,
+            )
+
+            database.add_product(scanned_product)
+            database.add_product(picker_product)
+
+            database.update_product_admin_fields(
+                scanned_product.barcode,
+                name_de="Frische Milch",
+                price=1.75,
+                active=True,
+            )
+            updated_product = database.get_product(scanned_product.barcode)
+            picker_products = database.get_picker_products()
+            food_products = database.get_products_by_category("food")
+
+            database.delete_product(scanned_product.barcode)
+            deleted_product = database.get_product(scanned_product.barcode)
+
+        self.assertIsNotNone(updated_product)
+        self.assertEqual(updated_product.name_de, "Frische Milch")
+        self.assertEqual(updated_product.price, 1.75)
+        self.assertEqual(picker_products, {"food": [picker_product]})
+        self.assertEqual(
+            [product.barcode for product in food_products],
+            [picker_product.barcode, scanned_product.barcode],
+        )
+        self.assertIsNone(deleted_product)
 
     def test_init_database_creates_schema_on_empty_temp_db(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

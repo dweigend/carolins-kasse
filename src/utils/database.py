@@ -15,6 +15,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from src.utils import database_products
 from src.utils.database_models import (
     PRODUCT_COLUMNS,
     RECIPE_COLUMNS,
@@ -201,109 +202,38 @@ def _ensure_column(
 def get_product(barcode: str) -> Product | None:
     """Get an active product by barcode."""
     with get_db() as conn:
-        row = conn.execute(
-            f"SELECT {PRODUCT_COLUMNS} FROM products WHERE barcode = ? AND active = 1",
-            (barcode,),
-        ).fetchone()
-        return Product.from_row(row) if row else None
+        return database_products.get_product(conn, barcode)
 
 
 def get_all_products(include_inactive: bool = False) -> list[Product]:
     """Get all products."""
     with get_db() as conn:
-        where_clause = "" if include_inactive else "WHERE active = 1"
-        rows = conn.execute(
-            f"""
-            SELECT {PRODUCT_COLUMNS}
-            FROM products
-            {where_clause}
-            ORDER BY category, name
-            """
-        ).fetchall()
-        return [Product.from_row(row) for row in rows]
+        return database_products.get_all_products(conn, include_inactive)
 
 
 def get_products_by_category(category: str) -> list[Product]:
     """Get active products by category."""
     with get_db() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT {PRODUCT_COLUMNS}
-            FROM products
-            WHERE category = ? AND active = 1
-            ORDER BY name
-            """,
-            (category,),
-        ).fetchall()
-        return [Product.from_row(row) for row in rows]
+        return database_products.get_products_by_category(conn, category)
 
 
 def get_picker_products() -> dict[str, list[Product]]:
     """Get products without barcodes, grouped by category for picker."""
     with get_db() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT {PRODUCT_COLUMNS}
-            FROM products
-            WHERE has_barcode = 0 AND active = 1
-            ORDER BY category, name_de
-            """
-        ).fetchall()
-
-    products = [Product.from_row(row) for row in rows]
-    grouped: dict[str, list[Product]] = {}
-    for product in products:
-        if product.category not in grouped:
-            grouped[product.category] = []
-        grouped[product.category].append(product)
-    return grouped
+        return database_products.get_picker_products(conn)
 
 
 def add_product(product: Product) -> None:
     """Add a new product."""
     with get_db() as conn:
-        conn.execute(
-            """
-            INSERT INTO products (
-                barcode, name, name_de, price, category, image_path, has_barcode, active
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                product.barcode,
-                product.name,
-                product.name_de,
-                product.price,
-                product.category,
-                product.image_path,
-                product.has_barcode,
-                product.active,
-            ),
-        )
+        database_products.add_product(conn, product)
         conn.commit()
 
 
 def update_product(product: Product) -> None:
     """Update an existing product."""
     with get_db() as conn:
-        conn.execute(
-            """
-            UPDATE products
-            SET name = ?, name_de = ?, price = ?, category = ?, image_path = ?,
-                has_barcode = ?, active = ?
-            WHERE barcode = ?
-            """,
-            (
-                product.name,
-                product.name_de,
-                product.price,
-                product.category,
-                product.image_path,
-                product.has_barcode,
-                product.active,
-                product.barcode,
-            ),
-        )
+        database_products.update_product(conn, product)
         conn.commit()
 
 
@@ -312,13 +242,8 @@ def update_product_admin_fields(
 ) -> None:
     """Update parent-facing product fields."""
     with get_db() as conn:
-        conn.execute(
-            """
-            UPDATE products
-            SET name_de = ?, price = ?, active = ?
-            WHERE barcode = ?
-            """,
-            (name_de, price, active, barcode),
+        database_products.update_product_admin_fields(
+            conn, barcode, name_de, price, active
         )
         conn.commit()
 
@@ -326,7 +251,7 @@ def update_product_admin_fields(
 def delete_product(barcode: str) -> None:
     """Delete a product."""
     with get_db() as conn:
-        conn.execute("DELETE FROM products WHERE barcode = ?", (barcode,))
+        database_products.delete_product(conn, barcode)
         conn.commit()
 
 

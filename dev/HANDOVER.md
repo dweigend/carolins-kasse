@@ -55,8 +55,8 @@
   systemd unit installation, debug observability, keypad keycode input,
   cashier feedback component render/state behavior, operation script
   generation against temporary output paths, Pi bootfs preparation, Pi debug CLI
-  output, and database model import compatibility. The current pipeline suite
-  has 83 passing tests.
+  output, database model import compatibility, and product public API
+  compatibility. The current pipeline suite has 84 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -212,6 +212,9 @@
   types, and column-list constants into `src/utils/database_models.py`.
   `src/utils/database.py` re-exports those names so existing imports keep
   working; SQL, schema, checkout, balance, and transaction logic were not moved.
+- Local #4 second split moved product SQL helpers into
+  `src/utils/database_products.py`. The public product API, connection handling,
+  commits, and import compatibility stay in `src/utils/database.py`.
 
 ## Verification Run Recently
 
@@ -290,6 +293,14 @@ Run on 2026-07-04 CEST for the local #4 database model split:
 - `uv run poe check` (83 tests, 56.82% coverage, 40% minimum)
 - `git diff --check`
 
+Run on 2026-07-04 CEST for the local #4 product query split:
+
+- `uv run python -m unittest tests.test_database_smoke` (8 tests)
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run poe check` (84 tests, 57.11% coverage, 40% minimum)
+- `git diff --check`
+
 Run on 2026-07-04 CEST for the local #29/#22 rendering performance pass:
 
 - `uv run python -m unittest tests.test_render_caching` (4 tests)
@@ -349,6 +360,9 @@ Pi reachability check on 2026-07-04 CEST before attempting another update:
 - `arp -a` showed `192.168.1.139` as incomplete on `en1`.
 - The local Mac is on `192.168.1.199` via gateway `192.168.1.1`.
 - No Pi update was attempted because the target was not reachable.
+- A repeated read-only check after the latest GitHub sync had the same result.
+  `arp-scan` is installed locally, but requires sudo capture permissions; no
+  interactive password was attempted. Track the deployment blocker in #31.
 
 Final Pi deployment validation on 2026-07-04 CEST:
 
@@ -372,6 +386,9 @@ Final Pi deployment validation on 2026-07-04 CEST:
 
 Acceptance still missing:
 
+- #31 Pi unreachable over SSH for deployment validation: blocks safe update and
+  #27/#29/#30 acceptance until power, WiFi, DHCP address, and SSH reachability
+  are confirmed.
 - #27 Accept keypad digit keycodes when unicode text is empty: code is
   deployed, but the physical SIGMACHIP keypad still needs validation through
   the real kiosk app path.
@@ -395,8 +412,9 @@ Open follow-up and validation backlog:
 ## Known Risks
 
 - `src/utils/database.py` is still a mixed-responsibility SQLite boundary even
-  after the model split. Further #4 slices should move one query family at a
-  time and keep transaction-sensitive checkout/balance code covered.
+  after the model and product-query splits. Further #4 slices should move one
+  query family at a time and keep transaction-sensitive checkout/balance code
+  covered.
 - The new quality pipeline is intentionally a practical baseline: Ruff,
   `ty`, Vulture, Deptry, jscpd, and pytest-cov are strict, while Radon remains
   reporting-only. The focused #26 pass removed the current Radon C/D findings.
@@ -407,25 +425,28 @@ Open follow-up and validation backlog:
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer needs one more clean validation after the timeout fix: the current fresh install succeeded after manual service start, but `carolins-install.service` timed out just before the final kiosk start completed.
 - SEENGREAT hub behavior is validated with the corrected topology. The Pi Zero 2 W has one USB data bus, so using the Pi micro-USB data port and the shield pogo-pin upstream at the same time causes descriptor failures.
-- The current Pi was systemd managed and previously reachable over SSH, but the
-  latest local checks could not resolve `carolins-kasse.local`, timed out on
-  `192.168.1.139`, and showed incomplete ARP for that address. Recheck network
-  reachability before the next Pi update.
+- The current Pi was systemd managed and previously reachable over SSH, but
+  repeated latest local checks could not resolve `carolins-kasse.local`, timed
+  out on `192.168.1.139`, and showed incomplete ARP for that address. #31 must
+  be resolved before the next Pi update.
 
 ## Next Best Steps
 
-1. Run `kasse-debug.sh acceptance` for the short #27/#29/#30 hardware
+1. Resolve #31: confirm Pi power, home WiFi, DHCP address, and SSH
+   reachability. If the address changed, use
+   `KASSE_HOST=kasse@<new-ip> kasse-debug.sh status`.
+2. Once reachable, run `kasse-debug.sh acceptance` for the short #27/#29/#30 hardware
    sign-off: SIGMACHIP number pad app path, clean power-cycle first-screen
    timing, and admin smoke.
-2. If that baseline fails, use the detailed helper diagnostics: `status`,
+3. If that baseline fails, use the detailed helper diagnostics: `status`,
    `usb`, `boot`, `logs`, or `keypad`.
-3. Continue #22 only where profiling still shows repeated font, scale, or
+4. Continue #22 only where profiling still shows repeated font, scale, or
    render cost.
-4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
+5. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
    product labels, number pad input, checkout, Admin card, recipe cards, math
    mode, debug PIN, update, and remote admin QR.
-5. Add observations to issues #1, #2, #7, #8, and #9.
-6. Add focused regression coverage with the next risky scene, database, admin,
+6. Add observations to issues #1, #2, #7, #8, #9, and #31.
+7. Add focused regression coverage with the next risky scene, database, admin,
    or Pi-operations change instead of keeping a broad standing coverage issue.
-7. Keep future #26-style complexity findings as focused follow-up passes, not
+8. Keep future #26-style complexity findings as focused follow-up passes, not
    part of the current Pi acceptance loop.

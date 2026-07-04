@@ -16,9 +16,9 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 83-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, and database import compatibility |
+| Regression tests | Active | 84-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, and product public API compatibility |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
-| Data module split | Active | #4 first slice moved database models/types; SQL/query families remain |
+| Data module split | Active | #4 first slices moved database models/types and product query helpers; other SQL/query families remain |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
 | UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
@@ -27,6 +27,8 @@ local data handling.
 
 `gh issue list --limit 30` on 2026-07-04 shows these issues as open:
 
+- #31 Pi unreachable over SSH for deployment validation: blocks safe Pi update
+  and #27/#29/#30 hardware acceptance until power/WiFi/address is confirmed.
 - #27 Accept keypad digit keycodes when unicode text is empty: deployed, but
   still needs physical app-path validation with the SIGMACHIP keypad.
 - #29 Remove NumPy paper texture generation from kiosk cold start: deployed,
@@ -39,8 +41,8 @@ local data handling.
 - #1, #2, #7, #8, and #9 remain hardware, child, and first-boot validation
   issues.
 - #4 database module split has started: `database_models.py` owns row models,
-  checkout result/error types, and column-list constants; query-family splits
-  remain.
+  checkout result/error types, and column-list constants; `database_products.py`
+  owns product query helpers; other query-family splits remain.
 
 ## Active Priorities
 
@@ -58,6 +60,8 @@ local data handling.
      render cost.
 
 3. **Hardware and child validation**
+   - Resolve #31 before attempting Pi update or acceptance: confirm power,
+     WiFi, DHCP address, and SSH reachability.
    - Use `kasse-debug.sh acceptance` as the short read-only hardware sign-off
      path for #27/#29/#30: number pad app test, clean power-cycle first-screen
      timing, and admin smoke.
@@ -78,6 +82,8 @@ local data handling.
    - Continue #4 in small behavior-preserving slices.
    - `src/utils/database_models.py` now owns row dataclasses, checkout
      result/error types, and column-list constants.
+   - `src/utils/database_products.py` owns product SQL helpers that receive an
+     existing connection and do not commit.
    - Keep `src/utils/database.py` import-compatible while separating
      schema/init, product/user/recipe queries, sessions, earnings,
      transactions, and admin balance changes.
@@ -85,7 +91,7 @@ local data handling.
      writes without focused safety tests and a narrow review.
 
 6. **Regression coverage maintenance**
-   - Keep the 83-test pipeline suite green.
+   - Keep the 84-test pipeline suite green.
    - Add focused tests with the next risky scene, database, admin, or
      Pi-operations change instead of keeping a broad standing coverage issue.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
