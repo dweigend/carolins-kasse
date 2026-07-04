@@ -159,6 +159,68 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertEqual(cleared_ingredients, [])
         self.assertEqual(deleted_recipes, [])
 
+    def test_user_public_api_keeps_query_and_commit_behavior(self) -> None:
+        with initialized_temporary_database() as database:
+            active_user = database.User(
+                card_id="2000000000015",
+                name="Carolin",
+                balance=10.0,
+                color="pink",
+                difficulty=1,
+            )
+            inactive_user = database.User(
+                card_id="2000000000022",
+                name="Annelie",
+                balance=8.0,
+                color="blue",
+                difficulty=2,
+                active=False,
+            )
+
+            database.add_user(active_user)
+            database.add_user(inactive_user)
+
+            visible_users = database.get_all_users()
+            all_users = database.get_all_users(include_inactive=True)
+            inactive_lookup = database.get_user(inactive_user.card_id)
+            inactive_lookup_with_flag = database.get_user(
+                inactive_user.card_id,
+                include_inactive=True,
+            )
+
+            database.update_user_admin_fields(
+                active_user.card_id,
+                name="Carolin Update",
+                difficulty=3,
+                active=False,
+            )
+            hidden_after_update = database.get_user(active_user.card_id)
+            updated_with_flag = database.get_user(
+                active_user.card_id,
+                include_inactive=True,
+            )
+
+            database.delete_user(inactive_user.card_id)
+            remaining_users = database.get_all_users(include_inactive=True)
+
+        self.assertEqual(
+            [user.card_id for user in visible_users], [active_user.card_id]
+        )
+        self.assertEqual(
+            [user.card_id for user in all_users],
+            [inactive_user.card_id, active_user.card_id],
+        )
+        self.assertIsNone(inactive_lookup)
+        self.assertEqual(inactive_lookup_with_flag, inactive_user)
+        self.assertIsNone(hidden_after_update)
+        self.assertIsNotNone(updated_with_flag)
+        self.assertEqual(updated_with_flag.name, "Carolin Update")
+        self.assertEqual(updated_with_flag.difficulty, 3)
+        self.assertFalse(updated_with_flag.active)
+        self.assertEqual(
+            [user.card_id for user in remaining_users], [active_user.card_id]
+        )
+
     def test_init_database_creates_schema_on_empty_temp_db(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "kasse.db"

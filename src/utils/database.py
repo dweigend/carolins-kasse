@@ -15,7 +15,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from src.utils import database_products, database_recipes
+from src.utils import database_products, database_recipes, database_users
 from src.utils.database_models import (
     PRODUCT_COLUMNS as PRODUCT_COLUMNS,
     RECIPE_COLUMNS as RECIPE_COLUMNS,
@@ -261,53 +261,19 @@ def delete_product(barcode: str) -> None:
 def get_user(card_id: str, include_inactive: bool = False) -> User | None:
     """Get a user by card ID."""
     with get_db() as conn:
-        active_clause = "" if include_inactive else "AND active = 1"
-        row = conn.execute(
-            f"""
-            SELECT {USER_COLUMNS}
-            FROM users
-            WHERE card_id = ? {active_clause}
-            """,
-            (card_id,),
-        ).fetchone()
-        return User.from_row(row) if row else None
+        return database_users.get_user(conn, card_id, include_inactive)
 
 
 def get_all_users(include_inactive: bool = False) -> list[User]:
     """Get all users."""
     with get_db() as conn:
-        where_clause = "" if include_inactive else "WHERE active = 1"
-        rows = conn.execute(
-            f"""
-            SELECT {USER_COLUMNS}
-            FROM users
-            {where_clause}
-            ORDER BY name
-            """
-        ).fetchall()
-        return [User.from_row(row) for row in rows]
+        return database_users.get_all_users(conn, include_inactive)
 
 
 def add_user(user: User) -> None:
     """Add a new user."""
     with get_db() as conn:
-        conn.execute(
-            """
-            INSERT INTO users (
-                card_id, name, balance, color, difficulty, is_admin, active
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                user.card_id,
-                user.name,
-                user.balance,
-                user.color,
-                user.difficulty,
-                user.is_admin,
-                user.active,
-            ),
-        )
+        database_users.add_user(conn, user)
         conn.commit()
 
 
@@ -357,14 +323,7 @@ def update_user_admin_fields(
 ) -> None:
     """Update parent-facing user fields."""
     with get_db() as conn:
-        conn.execute(
-            """
-            UPDATE users
-            SET name = ?, difficulty = ?, active = ?
-            WHERE card_id = ?
-            """,
-            (name, difficulty, active, card_id),
-        )
+        database_users.update_user_admin_fields(conn, card_id, name, difficulty, active)
         conn.commit()
 
 
@@ -395,7 +354,7 @@ def get_recent_balance_adjustments(limit: int = 20) -> list[BalanceAdjustment]:
 def delete_user(card_id: str) -> None:
     """Delete a user."""
     with get_db() as conn:
-        conn.execute("DELETE FROM users WHERE card_id = ?", (card_id,))
+        database_users.delete_user(conn, card_id)
         conn.commit()
 
 
