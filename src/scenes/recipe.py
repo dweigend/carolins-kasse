@@ -26,6 +26,7 @@ from src.utils.database import (
     get_recipe,
     get_recipe_ingredients,
 )
+from src.utils.earnings import award_recipe_bonus
 from src.utils.fonts import body, bold_custom, custom
 from src.utils.input import InputManager, InputType
 from src.utils.text_utils import render_multiline, wrap_text
@@ -101,11 +102,12 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         self._input_manager = InputManager()
         self._recipe: Recipe | None = None
         self._ingredients: list[tuple[Product, int]] = []
-        self._checked_barcodes: set[str] = set()
+        self._scanned_quantities: dict[str, int] = {}
         self._checklist_items: list[ChecklistItem] = []
         self._recipe_image: pygame.Surface | None = None
         self._pay_button: Button | None = None
         self._complete: bool = False
+        self._pending_recipe_bonus_name: str | None = None
 
     def on_enter(self) -> None:
         """Clear partial scanner input when recipe mode becomes active."""
@@ -116,10 +118,11 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         self._input_manager.clear_buffer()
         self._recipe = None
         self._ingredients.clear()
-        self._checked_barcodes.clear()
+        self._scanned_quantities.clear()
         self._checklist_items.clear()
         self._recipe_image = None
         self._complete = False
+        self._pending_recipe_bonus_name = None
 
         if hasattr(self, "_checkout_mode"):
             self._exit_checkout_mode()
@@ -173,9 +176,13 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
 
     def _on_checkout_complete(self) -> None:
         """Reset recipe state after successful checkout."""
+        if self._pending_recipe_bonus_name:
+            award_recipe_bonus(self._pending_recipe_bonus_name)
+            self._pending_recipe_bonus_name = None
+
         self._recipe = None
         self._ingredients.clear()
-        self._checked_barcodes.clear()
+        self._scanned_quantities.clear()
         self._checklist_items.clear()
         self._recipe_image = None
         self._complete = False
@@ -190,9 +197,14 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
             return False
 
         self._recipe = recipe
-        self._ingredients = get_recipe_ingredients(barcode)
-        self._checked_barcodes.clear()
+        self._ingredients = [
+            (product, quantity)
+            for product, quantity in get_recipe_ingredients(barcode)
+            if product.active
+        ]
+        self._scanned_quantities.clear()
         self._complete = False
+        self._pending_recipe_bonus_name = None
 
         self._recipe_image = None
         if recipe.image_path:
@@ -211,7 +223,7 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
             y = LAYOUT.checklist_y + index * (
                 ChecklistItem.HEIGHT + LAYOUT.checklist_gap
             )
-            checked = product.barcode in self._checked_barcodes
+            checked = self._scanned_quantities.get(product.barcode, 0) >= quantity
             item = ChecklistItem(
                 LAYOUT.checklist_x,
                 y,
@@ -222,6 +234,33 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
                 checked=checked,
             )
             self._checklist_items.append(item)
+
+    def _find_ingredient(self, barcode: str) -> tuple[Product, int] | None:
+        """Return the active recipe ingredient for a scanned barcode."""
+        for product, quantity in self._ingredients:
+            if product.barcode == barcode:
+                return product, quantity
+        return None
+
+    def _scanned_ingredient_count(self) -> int:
+        """Return the number of collected ingredient units."""
+        return sum(
+            min(self._scanned_quantities.get(product.barcode, 0), quantity)
+            for product, quantity in self._ingredients
+        )
+
+    def _required_ingredient_count(self) -> int:
+        """Return the number of ingredient units needed for the current recipe."""
+        return sum(quantity for _, quantity in self._ingredients)
+
+    def _all_ingredients_collected(self) -> bool:
+        """Return whether every active ingredient reached its required quantity."""
+        if not self._ingredients:
+            return False
+        return all(
+            self._scanned_quantities.get(product.barcode, 0) >= quantity
+            for product, quantity in self._ingredients
+        )
 
     def _handle_barcode(self, barcode: str) -> None:
         """Process a scanned barcode."""
@@ -249,21 +288,32 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
             self._show_message("Produkt nicht gefunden!")
             return
 
-        is_ingredient = any(p.barcode == barcode for p, _ in self._ingredients)
-        if not is_ingredient:
+        ingredient = self._find_ingredient(barcode)
+        if not ingredient:
             self._show_message(f"{product.name_de} ist nicht im Rezept!")
             return
 
-        if barcode in self._checked_barcodes:
+        ingredient_product, required_quantity = ingredient
+        scanned_quantity = self._scanned_quantities.get(barcode, 0)
+        if scanned_quantity >= required_quantity:
             self._show_message(f"{product.name_de} schon gescannt!")
             return
 
-        self._checked_barcodes.add(barcode)
+        scanned_quantity += 1
+        self._scanned_quantities[barcode] = scanned_quantity
         self._rebuild_checklist()
-        self._show_message(f"✓ {product.name_de}")
+        if scanned_quantity < required_quantity:
+            self._show_message(
+                f"✓ {ingredient_product.name_de} ({scanned_quantity}/{required_quantity})"
+            )
+        else:
+            self._show_message(f"✓ {ingredient_product.name_de}")
 
-        if len(self._checked_barcodes) == len(self._ingredients):
+        if self._all_ingredients_collected():
             self._complete = True
+            self._pending_recipe_bonus_name = (
+                self._recipe.name if self._recipe else None
+            )
             self._show_message("Alle Zutaten gesammelt! Jetzt bezahlen.")
 
     def _handle_pay(self) -> None:
@@ -368,8 +418,8 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         )
 
         if self._ingredients:
-            checked = len(self._checked_barcodes)
-            total = len(self._ingredients)
+            checked = self._scanned_ingredient_count()
+            total = self._required_ingredient_count()
             progress_center_y = max(name_y + name_height + 30, panel_rect.y + 332)
             self._render_progress_value(
                 screen, panel_rect.centerx, progress_center_y, checked, total

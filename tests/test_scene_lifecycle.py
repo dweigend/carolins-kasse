@@ -61,7 +61,7 @@ class SceneLifecycleTests(unittest.TestCase):
         recipe_scene = RecipeScene()
         recipe_scene._recipe = Recipe("3000000000014", "Waffeln")
         recipe_scene._ingredients = [(product, 1)]
-        recipe_scene._checked_barcodes = {product.barcode}
+        recipe_scene._scanned_quantities = {product.barcode: 1}
         recipe_scene._complete = True
         recipe_scene._input_manager._barcode_buffer = "300"
 
@@ -90,7 +90,7 @@ class SceneLifecycleTests(unittest.TestCase):
         self.assertEqual(scan_scene._input_manager.buffer, "")
         self.assertIsNone(recipe_scene._recipe)
         self.assertEqual(recipe_scene._ingredients, [])
-        self.assertEqual(recipe_scene._checked_barcodes, set())
+        self.assertEqual(recipe_scene._scanned_quantities, {})
         self.assertFalse(recipe_scene._complete)
         self.assertEqual(recipe_scene._input_manager.buffer, "")
         self.assertEqual(math_scene._difficulty, 3)
@@ -124,7 +124,7 @@ class SceneLifecycleTests(unittest.TestCase):
         recipe_scene = RecipeScene()
         recipe_scene._recipe = Recipe("3000000000014", "Waffeln")
         recipe_scene._ingredients = [(product, 1)]
-        recipe_scene._checked_barcodes = {product.barcode}
+        recipe_scene._scanned_quantities = {product.barcode: 1}
         recipe_scene._complete = True
         manager = SceneManager(
             {
@@ -141,7 +141,7 @@ class SceneLifecycleTests(unittest.TestCase):
         self.assertEqual(manager.current_name, "login")
         self.assertTrue(scan_scene._cart.is_empty)
         self.assertIsNone(recipe_scene._recipe)
-        self.assertEqual(recipe_scene._checked_barcodes, set())
+        self.assertEqual(recipe_scene._scanned_quantities, {})
         self.assertFalse(recipe_scene._complete)
 
     def test_math_scene_resets_when_entered_by_a_different_user(self) -> None:
