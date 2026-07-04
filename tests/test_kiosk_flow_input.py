@@ -124,8 +124,7 @@ class KioskFlowInputTests(unittest.TestCase):
         )
         scene._initialized = True
 
-        for digit in "1000000000016":
-            scene.handle_event(self._digit_event(digit))
+        self._send_digit_burst(scene, "1000000000016")
         scene.handle_event(self._key_event(pygame.K_RETURN))
 
         self.assertEqual(scene._wrong_attempts, 0)
@@ -133,6 +132,79 @@ class KioskFlowInputTests(unittest.TestCase):
         self.assertEqual(scene._current_answer, "")
         self.assertEqual(scene._success_timer, 0)
         self.assertEqual(scene._keyboard_digit_buffer, "")
+        self.assertFalse(scene._barcode_digit_burst_active)
+
+    def test_math_accepts_keypad_answer_after_unterminated_barcode_burst(self) -> None:
+        math_module = importlib.import_module("src.scenes.math_game")
+        math_generator = importlib.import_module("src.utils.math_generator")
+        scene = math_module.MathGameScene()
+        scene._current_problem = math_generator.MathProblem(
+            7,
+            5,
+            math_generator.Operation.ADD,
+        )
+        scene._initialized = True
+
+        self._send_digit_burst(scene, "1000000000016")
+        scene.handle_event(self._digit_event("1", keypad=True, timestamp=1000))
+        scene.handle_event(self._digit_event("2", keypad=True, timestamp=1100))
+        scene.handle_event(self._key_event(pygame.K_KP_ENTER))
+
+        self.assertEqual(scene._current_answer, "12")
+        self.assertEqual(scene._wrong_attempts, 0)
+        self.assertEqual(
+            scene._success_timer,
+            math_module.SUCCESS_ANIMATION_FRAMES,
+        )
+
+    def test_math_backspace_clears_unterminated_barcode_burst(self) -> None:
+        math_module = importlib.import_module("src.scenes.math_game")
+        math_generator = importlib.import_module("src.utils.math_generator")
+        scene = math_module.MathGameScene()
+        scene._current_problem = math_generator.MathProblem(
+            7,
+            5,
+            math_generator.Operation.ADD,
+        )
+        scene._initialized = True
+
+        self._send_digit_burst(scene, "1000000000016")
+        scene.handle_event(self._key_event(pygame.K_BACKSPACE))
+        scene.handle_event(self._digit_event("1", keypad=True))
+        scene.handle_event(self._digit_event("2", keypad=True))
+        scene.handle_event(self._key_event(pygame.K_KP_ENTER))
+
+        self.assertEqual(scene._keyboard_digit_buffer, "")
+        self.assertFalse(scene._barcode_digit_burst_active)
+        self.assertEqual(scene._current_answer, "12")
+        self.assertEqual(
+            scene._success_timer,
+            math_module.SUCCESS_ANIMATION_FRAMES,
+        )
+
+    def test_math_escape_clears_unterminated_barcode_burst(self) -> None:
+        math_module = importlib.import_module("src.scenes.math_game")
+        math_generator = importlib.import_module("src.utils.math_generator")
+        scene = math_module.MathGameScene()
+        scene._current_problem = math_generator.MathProblem(
+            4,
+            5,
+            math_generator.Operation.ADD,
+        )
+        scene._initialized = True
+
+        self._send_digit_burst(scene, "1000000000016")
+        scene.handle_event(self._key_event(pygame.K_ESCAPE))
+        scene.handle_event(self._digit_event("9"))
+        scene.handle_event(self._key_event(pygame.K_RETURN))
+
+        self.assertEqual(scene._keyboard_digit_buffer, "")
+        self.assertFalse(scene._barcode_digit_burst_active)
+        self.assertEqual(scene._current_answer, "9")
+        self.assertEqual(
+            scene._success_timer,
+            math_module.SUCCESS_ANIMATION_FRAMES,
+        )
 
     def test_math_still_accepts_short_keypad_answer(self) -> None:
         math_module = importlib.import_module("src.scenes.math_game")
@@ -151,6 +223,29 @@ class KioskFlowInputTests(unittest.TestCase):
 
         self.assertEqual(scene._current_answer, "12")
         self.assertEqual(scene._wrong_attempts, 0)
+        self.assertEqual(
+            scene._success_timer,
+            math_module.SUCCESS_ANIMATION_FRAMES,
+        )
+
+    def test_math_accepts_three_digit_answer_when_problem_needs_it(self) -> None:
+        math_module = importlib.import_module("src.scenes.math_game")
+        math_generator = importlib.import_module("src.utils.math_generator")
+        scene = math_module.MathGameScene()
+        scene._current_problem = math_generator.MathProblem(
+            10,
+            10,
+            math_generator.Operation.MULTIPLY,
+        )
+        scene._initialized = True
+
+        scene.handle_event(self._digit_event("1", keypad=True))
+        scene.handle_event(self._digit_event("0", keypad=True))
+        scene.handle_event(self._digit_event("0", keypad=True))
+        scene.handle_event(self._key_event(pygame.K_KP_ENTER))
+
+        self.assertEqual(scene._answer_slot_count(), 3)
+        self.assertEqual(scene._current_answer, "100")
         self.assertEqual(
             scene._success_timer,
             math_module.SUCCESS_ANIMATION_FRAMES,
@@ -175,15 +270,39 @@ class KioskFlowInputTests(unittest.TestCase):
         digit: str,
         *,
         keypad: bool = False,
+        timestamp: int | None = None,
     ) -> pygame.event.Event:
         key = KEYPAD_DIGITS[digit] if keypad else ord(digit)
-        return self._key_event(key, digit)
+        return self._key_event(key, digit, timestamp=timestamp)
 
-    def _key_event(self, key: int, text: str = "") -> pygame.event.Event:
+    def _key_event(
+        self,
+        key: int,
+        text: str = "",
+        *,
+        timestamp: int | None = None,
+    ) -> pygame.event.Event:
+        attributes = {"key": key, "unicode": text}
+        if timestamp is not None:
+            attributes["timestamp"] = timestamp
+
         return pygame.event.Event(
             pygame.KEYDOWN,
-            {"key": key, "unicode": text},
+            attributes,
         )
+
+    def _send_digit_burst(
+        self,
+        scene,
+        digits: str,
+        *,
+        start_ms: int = 0,
+        step_ms: int = 5,
+    ) -> None:
+        for index, digit in enumerate(digits):
+            scene.handle_event(
+                self._digit_event(digit, timestamp=start_ms + index * step_ms)
+            )
 
 
 if __name__ == "__main__":

@@ -24,6 +24,8 @@ from src.utils.math_generator import MathProblem, generate_problem
 
 DEFAULT_DIFFICULTY = 1
 BARCODE_DIGIT_MIN_LENGTH = 8
+BARCODE_BURST_IDLE_MS = 150
+MAX_ANSWER_SLOT_COUNT = 3
 
 EQUATION_CENTER_Y = 265
 HELP_DOTS_TOP = 334
@@ -125,6 +127,8 @@ class MathGameScene(MessageMixin, Scene):
         self._success_reward = REWARD_WITHOUT_HELP
         self._pending_reward = 0
         self._keyboard_digit_buffer = ""
+        self._barcode_digit_burst_active = False
+        self._last_keyboard_digit_ms: int | None = None
 
     def on_enter(self) -> None:
         """Use the active user's difficulty when math mode becomes active."""
@@ -153,6 +157,8 @@ class MathGameScene(MessageMixin, Scene):
         self._success_reward = REWARD_WITHOUT_HELP
         self._pending_reward = 0
         self._keyboard_digit_buffer = ""
+        self._barcode_digit_burst_active = False
+        self._last_keyboard_digit_ms = None
         self._initialized = False
         self._message = ""
         self._message_timer = 0
@@ -184,6 +190,8 @@ class MathGameScene(MessageMixin, Scene):
         self._success_timer = 0
         self._pending_reward = 0
         self._keyboard_digit_buffer = ""
+        self._barcode_digit_burst_active = False
+        self._last_keyboard_digit_ms = None
         self._problem_sequence += 1
         self._reward_variant_index = self._select_reward_variant(self._current_problem)
 
@@ -202,7 +210,8 @@ class MathGameScene(MessageMixin, Scene):
         """Return how many answer slots the current problem should show."""
         if not self._current_problem:
             return 1
-        return 1 if self._current_problem.answer < 10 else 2
+        answer_digits = len(str(abs(self._current_problem.answer)))
+        return min(MAX_ANSWER_SLOT_COUNT, max(1, answer_digits))
 
     def _current_reward(self) -> int:
         """Return the reward for the current attempt state."""
@@ -283,11 +292,13 @@ class MathGameScene(MessageMixin, Scene):
         """Handle USB numpad and keyboard input."""
         key_text = getattr(event, "unicode", "")
         if key_text.isdigit():
-            self._handle_digit_key(key_text)
+            self._handle_digit_key(key_text, self._event_timestamp_ms(event))
             return
 
         if event.key == pygame.K_BACKSPACE and (
-            self._current_answer or self._keyboard_digit_buffer
+            self._current_answer
+            or self._keyboard_digit_buffer
+            or self._barcode_digit_burst_active
         ):
             self._handle_backspace_key()
             return
@@ -299,9 +310,28 @@ class MathGameScene(MessageMixin, Scene):
         if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
             self._handle_enter_key()
 
-    def _handle_digit_key(self, digit: str) -> None:
+    def _event_timestamp_ms(self, event: pygame.event.Event) -> int:
+        """Return an event timestamp in milliseconds."""
+        timestamp = getattr(event, "timestamp", None)
+        if isinstance(timestamp, (int, float)):
+            return int(timestamp)
+        return pygame.time.get_ticks()
+
+    def _handle_digit_key(self, digit: str, event_ms: int) -> None:
         """Handle one numeric keyboard character."""
+        if self._barcode_digit_burst_active:
+            if self._is_barcode_burst_continuation(event_ms):
+                self._last_keyboard_digit_ms = event_ms
+                return
+            self._clear_keyboard_answer()
+
         self._keyboard_digit_buffer += digit
+        self._last_keyboard_digit_ms = event_ms
+
+        if self._is_barcode_digit_burst():
+            self._ignore_barcode_digit_burst()
+            return
+
         if len(self._keyboard_digit_buffer) > self._answer_slot_count():
             self._update_answer("")
             return
@@ -310,6 +340,10 @@ class MathGameScene(MessageMixin, Scene):
 
     def _handle_backspace_key(self) -> None:
         """Remove the last typed keyboard digit."""
+        if self._barcode_digit_burst_active or self._is_barcode_digit_burst():
+            self._clear_keyboard_answer()
+            return
+
         if self._keyboard_digit_buffer:
             self._keyboard_digit_buffer = self._keyboard_digit_buffer[:-1]
             self._update_answer(self._keyboard_digit_buffer)
@@ -319,7 +353,7 @@ class MathGameScene(MessageMixin, Scene):
 
     def _handle_enter_key(self) -> None:
         """Submit short math input and ignore barcode-length digit bursts."""
-        if self._is_barcode_digit_burst():
+        if self._barcode_digit_burst_active or self._is_barcode_digit_burst():
             self._clear_keyboard_answer()
             return
 
@@ -331,9 +365,23 @@ class MathGameScene(MessageMixin, Scene):
         """Return whether the current keyboard buffer looks like a barcode."""
         return len(self._keyboard_digit_buffer) >= BARCODE_DIGIT_MIN_LENGTH
 
+    def _is_barcode_burst_continuation(self, event_ms: int) -> bool:
+        """Return whether a digit still belongs to the ignored scanner burst."""
+        if self._last_keyboard_digit_ms is None:
+            return True
+        return event_ms - self._last_keyboard_digit_ms <= BARCODE_BURST_IDLE_MS
+
+    def _ignore_barcode_digit_burst(self) -> None:
+        """Hide and suppress a digit-only scanner burst."""
+        self._barcode_digit_burst_active = True
+        self._keyboard_digit_buffer = ""
+        self._update_answer("")
+
     def _clear_keyboard_answer(self) -> None:
         """Clear typed keyboard digits and the visible answer."""
         self._keyboard_digit_buffer = ""
+        self._barcode_digit_burst_active = False
+        self._last_keyboard_digit_ms = None
         self._update_answer("")
 
     def update(self) -> None:
