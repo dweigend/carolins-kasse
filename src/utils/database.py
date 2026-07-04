@@ -486,19 +486,15 @@ def save_transaction(
     items: list[dict],
 ) -> int:
     """Save a purchase transaction, return transaction ID."""
-    items_json = json.dumps(items, ensure_ascii=False)
     with get_db() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO transactions (user_card_id, total, items_json)
-            VALUES (?, ?, ?)
-            """,
-            (user_card_id, total, items_json),
+        transaction_id = database_transactions.save_transaction(
+            conn,
+            user_card_id,
+            total,
+            items,
         )
-        if cursor.rowcount != 1 or cursor.lastrowid is None:
-            raise RuntimeError(f"Failed to save transaction for user {user_card_id}")
         conn.commit()
-        return cursor.lastrowid
+        return transaction_id
 
 
 def process_checkout(

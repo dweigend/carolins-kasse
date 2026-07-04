@@ -18,7 +18,7 @@ local data handling.
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
 | Regression tests | Active | 90-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, and product/recipe/user/session/earning/transaction/balance-adjustment public API compatibility |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
-| Data module split | Active | #4 first slices moved database models/types plus product, recipe, basic user CRUD, session, read-only earning, read-only transaction, and read-only balance-adjustment query helpers; other SQL/query families remain |
+| Data module split | Active | #4 first slices moved database models/types plus product, recipe, basic user CRUD, session, read-only earning, transaction, and read-only balance-adjustment helpers; other SQL/query families remain |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
 | UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
@@ -46,7 +46,7 @@ local data handling.
   `database_users.py` owns basic user CRUD query helpers;
   `database_sessions.py` owns session query helpers; `database_earnings.py`
   owns read-only earning query helpers; `database_transactions.py` owns
-  read-only transaction query helpers; `database_balance_adjustments.py` owns
+  transaction helpers; `database_balance_adjustments.py` owns
   read-only balance-adjustment query helpers; other query-family splits remain.
 
 ## Active Priorities
@@ -97,16 +97,16 @@ local data handling.
      existing connection and do not commit.
    - `src/utils/database_earnings.py` owns read-only earning SQL helpers that
      receive an existing connection and do not commit.
-   - `src/utils/database_transactions.py` owns read-only transaction SQL helpers
-     that receive an existing connection and do not commit.
+   - `src/utils/database_transactions.py` owns transaction SQL helpers that
+     receive an existing connection and do not commit.
    - `src/utils/database_balance_adjustments.py` owns read-only balance
      adjustment SQL helpers that receive an existing connection and do not
      commit.
    - Keep `src/utils/database.py` import-compatible while separating
      schema/init, product/user/recipe/session/earning queries, transactions,
      and admin balance changes.
-   - Do not move `process_checkout`, `update_user_balance`, or transaction
-     writes without focused safety tests and a narrow review.
+   - Do not move `process_checkout` or `update_user_balance` without focused
+     safety tests and a narrow review.
 
 6. **Regression coverage maintenance**
    - Keep the 90-test pipeline suite green.

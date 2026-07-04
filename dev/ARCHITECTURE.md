@@ -69,7 +69,7 @@ dataclasses and checkout result/error types live in
 `src/utils/database_recipes.py`; basic user CRUD query helpers live in
 `src/utils/database_users.py`; session query helpers live in
 `src/utils/database_sessions.py`; read-only earning query helpers live in
-`src/utils/database_earnings.py`; read-only transaction query helpers live in
+`src/utils/database_earnings.py`; transaction helpers live in
 `src/utils/database_transactions.py`; read-only balance adjustment query helpers
 live in `src/utils/database_balance_adjustments.py`. Public names are still
 re-exported or wrapped from `src/utils/database.py` for import compatibility.
@@ -178,7 +178,7 @@ Systemd units live under `systemd/`:
 | `src/utils/database_users.py` | Basic user CRUD SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_sessions.py` | Session SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_earnings.py` | Read-only earning SQL helpers that receive an existing connection and do not commit |
-| `src/utils/database_transactions.py` | Read-only transaction SQL helpers that receive an existing connection and do not commit |
+| `src/utils/database_transactions.py` | Transaction SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_balance_adjustments.py` | Read-only balance adjustment SQL helpers that receive an existing connection and do not commit |
 | `src/utils/barcodes.py` | Barcode rules and generated SVG paths |
 | `src/utils/admin_runtime.py` | Managed FastAPI server start/stop for pygame admin |

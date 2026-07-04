@@ -232,10 +232,11 @@
   handling stay in `src/utils/database.py`; `add_earning` remains there because
   it writes earning rows and updates balances, and transactions stay untouched.
 - Local #4 seventh split moved the read-only user transaction query helper into
-  `src/utils/database_transactions.py`. The public transaction API and
-  connection handling stay in `src/utils/database.py`; `save_transaction` and
-  `process_checkout` remain there because they write transaction rows and
-  coordinate balance changes.
+  `src/utils/database_transactions.py`. A follow-up split moved the standalone
+  `save_transaction` write helper into the same module while keeping the public
+  transaction API, connection handling, and commit boundary in
+  `src/utils/database.py`; `process_checkout` remains there because it
+  coordinates balance and transaction writes atomically.
 - Local #4 eighth split moved the read-only manual balance adjustment query
   helper into `src/utils/database_balance_adjustments.py`. The public balance
   adjustment API and connection handling stay in `src/utils/database.py`;
@@ -333,6 +334,15 @@ Run on 2026-07-04 CEST for the local #4 read-only balance adjustment query split
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `uv run python -m unittest tests.test_database_smoke tests.test_admin_safety` (19 tests)
 - `uv run poe check` (90 tests, 58.12% coverage, 40% minimum)
+
+Run on 2026-07-04 CEST for the local #4 transaction write helper split:
+
+- `git diff --check`
+- `uv run ruff format --check src/ tools/ tests/ main.py`
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest tests.test_database_smoke tests.test_checkout_mixin tests.test_recipe_scene` (19 tests)
+- `uv run poe check` (90 tests, 58.15% coverage, 40% minimum)
 
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 
