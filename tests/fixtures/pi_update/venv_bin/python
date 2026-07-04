@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "python $*" >> "${FAKE_LOG_DIR}/python.log"
+echo "python $*" >> "${FAKE_LOG_DIR}/events.log"
+
+case "$*" in
+    "-m compileall src tools")
+        if [ "${FAIL_STEP:-}" = "compileall" ]; then
+            exit 43
+        fi
+        ;;
+    "tools/seed_database.py")
+        if [ "${FAIL_STEP:-}" = "seed" ]; then
+            exit 44
+        fi
+        if [ "${FAIL_STEP:-}" = "seed-refusal" ]; then
+            exit 1
+        fi
+        ;;
+    "tools/generate_barcodes.py")
+        if [ "${FAIL_STEP:-}" = "barcodes" ]; then
+            exit 45
+        fi
+        if [ "${MUTATE_WORKTREE_STEP:-}" = "barcodes" ]; then
+            echo "dirty" > "${FAKE_STATE_DIR}/worktree_dirty"
+            echo "worktree mutated after $*" >> "${FAKE_LOG_DIR}/events.log"
+        fi
+        ;;
+    "tools/generate_printables.py")
+        if [ "${FAIL_STEP:-}" = "printables" ]; then
+            exit 46
+        fi
+        ;;
+esac

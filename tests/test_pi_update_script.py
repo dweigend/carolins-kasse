@@ -3,14 +3,15 @@
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
-import textwrap
 import unittest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPO_ROOT / "tools" / "pi_update.sh"
+FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "pi_update"
 OLD_COMMIT = "1111111111111111111111111111111111111111"
 NEW_COMMIT = "2222222222222222222222222222222222222222"
 
@@ -167,8 +168,9 @@ def run_pi_update_script(
         log_dir.mkdir()
         (state_dir / "current_commit").write_text(OLD_COMMIT)
 
-        write_fake_commands(fake_bin)
-        write_fake_app_commands(tools_dir, venv_bin)
+        copy_executable_fixtures(FIXTURE_ROOT / "fake_bin", fake_bin)
+        copy_executable_fixtures(FIXTURE_ROOT / "app_tools", tools_dir)
+        copy_executable_fixtures(FIXTURE_ROOT / "venv_bin", venv_bin)
 
         env = os.environ.copy()
         env.update(
@@ -213,170 +215,11 @@ def run_pi_update_script(
         )
 
 
-def write_fake_commands(fake_bin: Path) -> None:
-    write_executable(
-        fake_bin / "id",
-        """
-        #!/bin/bash
-        set -euo pipefail
-        if [ "${1:-}" = "-u" ]; then
-            echo "0"
-            exit 0
-        fi
-        /usr/bin/id "$@"
-        """,
-    )
-    write_executable(
-        fake_bin / "systemctl",
-        """
-        #!/bin/bash
-        set -euo pipefail
-        echo "systemctl $*" >> "${FAKE_LOG_DIR}/systemctl.log"
-        echo "systemctl $*" >> "${FAKE_LOG_DIR}/events.log"
-        """,
-    )
-    write_executable(
-        fake_bin / "runuser",
-        """
-        #!/bin/bash
-        set -euo pipefail
-        if [ "${1:-}" = "-u" ]; then
-            shift 2
-        fi
-        if [ "${1:-}" = "--" ]; then
-            shift
-        fi
-        exec "$@"
-        """,
-    )
-    write_executable(
-        fake_bin / "git",
-        """
-        #!/bin/bash
-        set -euo pipefail
-        if [ "${1:-}" = "-C" ]; then
-            shift 2
-        fi
-
-        command="${1:-}"
-        shift || true
-        state_file="${FAKE_STATE_DIR}/current_commit"
-
-        case "${command}" in
-            status)
-                if [ -n "${FAKE_GIT_DIRTY:-}" ]; then
-                    echo " M tools/pi_update.sh"
-                elif [ -f "${FAKE_STATE_DIR}/worktree_dirty" ]; then
-                    echo " M generated-file"
-                fi
-                ;;
-            rev-parse)
-                if [ "${1:-}" = "HEAD" ]; then
-                    cat "${state_file}"
-                fi
-                ;;
-            fetch)
-                echo "git fetch $*" >> "${FAKE_LOG_DIR}/git.log"
-                echo "git fetch $*" >> "${FAKE_LOG_DIR}/events.log"
-                ;;
-            pull)
-                echo "git pull $*" >> "${FAKE_LOG_DIR}/git.log"
-                echo "git pull $*" >> "${FAKE_LOG_DIR}/events.log"
-                echo "${FAKE_NEW_COMMIT}" > "${state_file}"
-                ;;
-            reset)
-                echo "git reset $*" >> "${FAKE_LOG_DIR}/git.log"
-                echo "git reset $*" >> "${FAKE_LOG_DIR}/events.log"
-                if [ -n "${FAIL_ROLLBACK:-}" ]; then
-                    exit 77
-                fi
-                if [ "${1:-}" = "--hard" ]; then
-                    echo "${2:-}" > "${state_file}"
-                    rm -f "${FAKE_STATE_DIR}/worktree_dirty"
-                fi
-                ;;
-            *)
-                echo "Unexpected git command: ${command}" >&2
-                exit 2
-                ;;
-        esac
-        """,
-    )
-    write_executable(
-        fake_bin / "uv",
-        """
-        #!/bin/bash
-        set -euo pipefail
-        echo "uv $*" >> "${FAKE_LOG_DIR}/uv.log"
-        echo "uv $*" >> "${FAKE_LOG_DIR}/events.log"
-        if [ "${FAIL_STEP:-}" = "uv" ]; then
-            exit 42
-        fi
-        """,
-    )
-    write_executable(
-        fake_bin / "date",
-        """
-        #!/bin/bash
-        set -euo pipefail
-        echo "2026-07-04T12:00:00+02:00"
-        """,
-    )
-
-
-def write_fake_app_commands(tools_dir: Path, venv_bin: Path) -> None:
-    write_executable(
-        tools_dir / "pi_backup.sh",
-        """
-        #!/bin/bash
-        set -euo pipefail
-        echo "backup" >> "${FAKE_LOG_DIR}/backup.log"
-        echo "backup" >> "${FAKE_LOG_DIR}/events.log"
-        """,
-    )
-    write_executable(
-        venv_bin / "python",
-        """
-        #!/bin/bash
-        set -euo pipefail
-        echo "python $*" >> "${FAKE_LOG_DIR}/python.log"
-        echo "python $*" >> "${FAKE_LOG_DIR}/events.log"
-        case "$*" in
-            "-m compileall src tools")
-                if [ "${FAIL_STEP:-}" = "compileall" ]; then
-                    exit 43
-                fi
-                ;;
-            "tools/seed_database.py")
-                if [ "${FAIL_STEP:-}" = "seed" ]; then
-                    exit 44
-                fi
-                if [ "${FAIL_STEP:-}" = "seed-refusal" ]; then
-                    exit 1
-                fi
-                ;;
-            "tools/generate_barcodes.py")
-                if [ "${FAIL_STEP:-}" = "barcodes" ]; then
-                    exit 45
-                fi
-                if [ "${MUTATE_WORKTREE_STEP:-}" = "barcodes" ]; then
-                    echo "dirty" > "${FAKE_STATE_DIR}/worktree_dirty"
-                    echo "worktree mutated after $*" >> "${FAKE_LOG_DIR}/events.log"
-                fi
-                ;;
-            "tools/generate_printables.py")
-                if [ "${FAIL_STEP:-}" = "printables" ]; then
-                    exit 46
-                fi
-                ;;
-        esac
-        """,
-    )
-
-
-def write_executable(path: Path, content: str) -> None:
-    path.write_text(textwrap.dedent(content).lstrip())
-    path.chmod(0o755)
+def copy_executable_fixtures(source_dir: Path, target_dir: Path) -> None:
+    for source_path in sorted(source_dir.iterdir()):
+        target_path = target_dir / source_path.name
+        shutil.copyfile(source_path, target_path)
+        target_path.chmod(0o755)
 
 
 def read_log(path: Path) -> str:

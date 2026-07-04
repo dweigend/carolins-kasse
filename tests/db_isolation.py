@@ -6,6 +6,7 @@ import importlib
 import os
 from pathlib import Path
 import sys
+import tempfile
 from types import ModuleType
 
 
@@ -54,3 +55,13 @@ def isolated_database_module(db_path: Path) -> Iterator[ModuleType]:
 
         sys.path[:] = previous_sys_path
         sys.modules.update(previous_modules)
+
+
+@contextmanager
+def initialized_temporary_database() -> Iterator[ModuleType]:
+    """Yield an initialized isolated database backed by a temporary file."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        db_path = Path(temp_dir) / "kasse.db"
+        with isolated_database_module(db_path) as database:
+            database.init_database()
+            yield database

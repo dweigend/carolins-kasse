@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "systemctl $*" >> "${FAKE_LOG_DIR}/systemctl.log"
+echo "systemctl $*" >> "${FAKE_LOG_DIR}/events.log"

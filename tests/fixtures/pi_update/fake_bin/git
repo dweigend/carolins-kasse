@@ -1,0 +1,49 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ "${1:-}" = "-C" ]; then
+    shift 2
+fi
+
+command="${1:-}"
+shift || true
+state_file="${FAKE_STATE_DIR}/current_commit"
+
+case "${command}" in
+    status)
+        if [ -n "${FAKE_GIT_DIRTY:-}" ]; then
+            echo " M tools/pi_update.sh"
+        elif [ -f "${FAKE_STATE_DIR}/worktree_dirty" ]; then
+            echo " M generated-file"
+        fi
+        ;;
+    rev-parse)
+        if [ "${1:-}" = "HEAD" ]; then
+            cat "${state_file}"
+        fi
+        ;;
+    fetch)
+        echo "git fetch $*" >> "${FAKE_LOG_DIR}/git.log"
+        echo "git fetch $*" >> "${FAKE_LOG_DIR}/events.log"
+        ;;
+    pull)
+        echo "git pull $*" >> "${FAKE_LOG_DIR}/git.log"
+        echo "git pull $*" >> "${FAKE_LOG_DIR}/events.log"
+        echo "${FAKE_NEW_COMMIT}" > "${state_file}"
+        ;;
+    reset)
+        echo "git reset $*" >> "${FAKE_LOG_DIR}/git.log"
+        echo "git reset $*" >> "${FAKE_LOG_DIR}/events.log"
+        if [ -n "${FAIL_ROLLBACK:-}" ]; then
+            exit 77
+        fi
+        if [ "${1:-}" = "--hard" ]; then
+            echo "${2:-}" > "${state_file}"
+            rm -f "${FAKE_STATE_DIR}/worktree_dirty"
+        fi
+        ;;
+    *)
+        echo "Unexpected git command: ${command}" >&2
+        exit 2
+        ;;
+esac

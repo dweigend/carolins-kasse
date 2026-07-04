@@ -2,8 +2,7 @@
 
 import importlib
 import os
-from pathlib import Path
-import tempfile
+from types import ModuleType
 import unittest
 
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -18,7 +17,7 @@ from src.scenes.recipe import RecipeScene
 from src.scenes.scan import ScanScene
 from src.utils import state
 from src.utils.database import Product, Recipe, User
-from tests.db_isolation import isolated_database_module
+from tests.db_isolation import initialized_temporary_database
 
 
 class DummyScene(Scene):
@@ -168,30 +167,10 @@ class SceneLifecycleTests(unittest.TestCase):
         self.assertEqual(math_scene._difficulty, DEFAULT_DIFFICULTY)
 
     def test_start_session_clears_pending_picker_selection(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            db_path = Path(temp_dir) / "kasse.db"
+        with initialized_temporary_database() as database:
+            selected_product = start_session_and_clear_picker_selection(database)
 
-            with isolated_database_module(db_path) as database:
-                database.init_database()
-                user = database.User("2000000000015", "Carolin", difficulty=2)
-                product = database.Product(
-                    barcode="1000000000016",
-                    name="apple",
-                    name_de="Apfel",
-                    price=1.0,
-                    category="obst",
-                    has_barcode=False,
-                )
-                database.add_user(user)
-                database.add_product(product)
-                isolated_state = importlib.import_module("src.utils.state")
-
-                isolated_state.set_selected_product(product)
-                isolated_state.start_session(user)
-                selected_product = isolated_state.get_and_clear_selected_product()
-                isolated_state.logout()
-
-            self.assertIsNone(selected_product)
+        self.assertIsNone(selected_product)
 
 
 def create_product() -> Product:
@@ -203,6 +182,29 @@ def create_product() -> Product:
         price=1.0,
         category="obst",
     )
+
+
+def start_session_and_clear_picker_selection(database: ModuleType) -> object | None:
+    """Start a session with a pending picker product, then return the cleared value."""
+    user = database.User("2000000000015", "Carolin", difficulty=2)
+    product = database.Product(
+        barcode="1000000000016",
+        name="apple",
+        name_de="Apfel",
+        price=1.0,
+        category="obst",
+        has_barcode=False,
+    )
+    database.add_user(user)
+    database.add_product(product)
+    isolated_state = importlib.import_module("src.utils.state")
+
+    isolated_state.set_selected_product(product)
+    isolated_state.start_session(user)
+    try:
+        return isolated_state.get_and_clear_selected_product()
+    finally:
+        isolated_state.logout()
 
 
 if __name__ == "__main__":

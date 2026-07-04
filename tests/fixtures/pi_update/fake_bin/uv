@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "uv $*" >> "${FAKE_LOG_DIR}/uv.log"
+echo "uv $*" >> "${FAKE_LOG_DIR}/events.log"
+
+if [ "${FAIL_STEP:-}" = "uv" ]; then
+    exit 42
+fi
