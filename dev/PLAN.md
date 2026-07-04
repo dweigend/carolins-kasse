@@ -16,7 +16,7 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Done | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability |
-| Regression tests | Active | 39-test unittest temp-DB and lifecycle suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, and debug status |
+| Regression tests | Active | 54-test unittest temp-DB and lifecycle suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, and Pi update unit installation |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 
@@ -27,6 +27,7 @@ close or update them after review/merge:
 
 - #23 Add rollback safety to Pi update script.
 - #24 Show install, update, and backup status on debug page.
+- #28 Start the kiosk service without waiting for `network-online.target`.
 
 ## Active Priorities
 
@@ -37,9 +38,9 @@ close or update them after review/merge:
 
 2. **Pi performance**
    - Cache fonts and scaled assets for Pi Zero runtime (#22).
-   - Avoid waiting on `network-online.target` for the kiosk cold path (#28).
    - Remove NumPy paper texture generation from startup (#29).
    - Lazy-load admin and non-start scenes outside the cold path (#30).
+   - Keep the deployed #28 systemd dependency fix validated on the Pi.
    - Keep changes measurable against the 1024x600 kiosk path.
 
 3. **Hardware and child validation**
@@ -57,7 +58,7 @@ close or update them after review/merge:
    - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
 
 6. **Regression coverage maintenance**
-   - Keep the 39-test temp-DB and lifecycle unittest suite green.
+   - Keep the 54-test temp-DB and lifecycle unittest suite green.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
    - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
      local checks, and safe Pi update/restart/backup actions.

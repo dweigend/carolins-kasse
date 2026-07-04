@@ -23,8 +23,9 @@
   and the boot-time shell entrypoint in `tools/pi_firstboot.sh`;
   `tools/pi_prepare_boot.py` copies that script instead of embedding shell text.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
-- The current `codex/pi-ops-safety` branch covers Pi operations issues #23
-  and #24. `tools/pi_update.sh` records the previous commit and rolls back
+- The current `codex/pi-ops-safety` branch is pushed through `caff492` and
+  covers Pi operations issues #23, #24, and the deployed #28 startup dependency
+  fix. `tools/pi_update.sh` records the previous commit and rolls back
   after post-pull failures, including no-op pull failure paths. The
   PIN-protected debug page now reports service, install/update/backup, timer,
   failed-unit, and log-snippet status while degrading gracefully when Pi or
@@ -68,8 +69,8 @@
 - The installer completed its real work but hit the systemd start timeout at the final service-start step. Manual recovery via SSH started `carolins-kasse.service`; it is now `active` and `enabled`, `userconfig.service` is `masked`, and no failed units remain.
 - Remote debugging is available over SSH as `kasse@carolins-kasse.local`
   (`192.168.1.139`). The current Pi checkout is `/opt/carolins-kasse` on
-  `codex/pi-firstboot-installer` at `fda1394`; the kiosk service is systemd
-  managed and active.
+  `codex/pi-ops-safety` at `caff492`; the kiosk service is systemd managed and
+  active.
 - Passwordless sudo is limited to the intended service operations:
   restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
   start `carolins-kasse-backup.service`.
@@ -147,11 +148,11 @@
   `tests/db_isolation.py` now holds the small temp-DB helpers needed by those
   tests.
 - Review status for the Pi/Ops safety round is clean through `cd900a2`, with no
-  P0-P3 findings. The current `codex/pi-ops-safety` branch covers #23 and #24
-  and is ready to close those issues after merge.
-- Local #28 worker removed the kiosk service `network-online.target`
-  dependency so the pygame kiosk can start without waiting for NetworkManager
-  wait-online; Pi boot-chain validation is still needed.
+  P0-P3 findings. The current `codex/pi-ops-safety` branch now covers #23, #24,
+  and the validated #28 service dependency fix.
+- #28 is deployed and validated on the Pi: the update service installed the
+  permanent systemd units, `carolins-kasse.service` no longer depends on
+  `network-online.target`, and its critical chain now reaches `basic.target`.
 - Local Pi update worker taught `tools/pi_update.sh` to install the permanent
   kiosk/update/backup systemd units and daemon-reload after successful update
   validation, while excluding the first-boot-only `carolins-install.service`.
@@ -249,6 +250,15 @@ Run on 2026-07-04 CEST for the Pi update systemd unit installation fix:
 - `bash -n tools/pi_update.sh tests/fixtures/pi_update/fake_bin/systemctl`
 - `git diff --check`
 
+Final Pi deployment validation on 2026-07-04 CEST:
+
+- `/Users/davidweigend/.codex/skills/carolins-kasse-debug/scripts/kasse-debug.sh tests` (54 tests OK plus checks)
+- Pi update service ran twice; the second run installed systemd units and
+  finished at `2026-07-04T21:12:31+02:00`.
+- Pi `/opt/carolins-kasse` is on `codex/pi-ops-safety` at `caff492`;
+  `carolins-kasse.service` is active and `systemd-analyze critical-chain` now
+  shows `carolins-kasse.service -> basic.target`.
+
 ## Open GitHub Issues
 
 Covered by earlier correctness branch commits and ready to close after
@@ -267,13 +277,15 @@ review/merge:
 - #20 Award recipe bonus after successful recipe checkout
 - #21 Add temp-DB regression smoke suite
 
-Covered by the current `codex/pi-ops-safety` branch and ready to close after
-review/merge:
+Covered by the current `codex/pi-ops-safety` branch and ready to close or
+update after review/merge:
 
 - #23 Add rollback safety to Pi update script
 - #24 Show install, update, and backup status on debug page
+- #28 Deploy and validate the kiosk unit without `network-online.target` on the Pi
 
-Covered by local performance working tree changes and ready for review/merge:
+Covered by the current `codex/pi-ops-safety` branch and deployed to the Pi for
+validation:
 
 - #29 Remove NumPy paper texture generation from kiosk cold start
 - #30 Lazy-load admin and non-start scenes outside the kiosk cold path
@@ -286,8 +298,6 @@ follow-up measurement and remaining hotspots:
 Highest-priority Pi operations follow-up:
 
 - #27 Accept keypad digit keycodes when unicode text is empty
-- #28 Deploy and validate the kiosk unit without `network-online.target` on the
-  Pi via the normal update service
 - #22 Continue cache work beyond the initial font/ProductDisplay/MathGame pass
 
 Still open for validation or later structure work:
@@ -317,7 +327,7 @@ Still open for validation or later structure work:
 ## Next Best Steps
 
 1. Retest the #27 number pad fix on the Pi with the SIGMACHIP keypad.
-2. Measure the #28/#29/#30/#22 startup and rendering changes on the Pi, then
+2. Measure the #29/#30/#22 startup and rendering changes on the Pi, then
    continue #22 only where timing still shows repeated scale/render cost.
 3. Use the local `carolins-kasse-debug` skill for SSH diagnostics, tests, and
    safe Pi service actions.
