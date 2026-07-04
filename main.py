@@ -3,17 +3,9 @@
 import pygame
 
 from src.constants import FPS, SCREEN_HEIGHT, SCREEN_WIDTH
-from src.scenes import (
-    AdminScene,
-    LoginScene,
-    MathGameScene,
-    MenuScene,
-    PickerScene,
-    RecipeScene,
-    ScanScene,
-    StartScene,
-    SceneManager,
-)
+from src.scenes.base import Scene
+from src.scenes.manager import SceneDefinition, SceneManager
+from src.scenes.start import StartScene
 from src.ui.shell import NO_FRAME_SCENES, FrameShell
 from src.utils import state
 from src.utils.database import init_database
@@ -53,6 +45,69 @@ def finger_position(event: pygame.event.Event) -> tuple[int, int]:
     return x, y
 
 
+def create_scene_registry() -> dict[str, SceneDefinition]:
+    """Create the scene registry while keeping non-start scenes lazy."""
+    return {
+        "start": StartScene(),
+        "login": _create_login_scene,
+        "admin": _create_admin_scene,
+        "menu": _create_menu_scene,
+        "scan": _create_scan_scene,
+        "recipe": _create_recipe_scene,
+        "math_game": _create_math_game_scene,
+        "picker": _create_picker_scene,
+    }
+
+
+def _create_login_scene() -> Scene:
+    """Create the login scene on first use."""
+    from src.scenes.login import LoginScene
+
+    return LoginScene()
+
+
+def _create_admin_scene() -> Scene:
+    """Create the admin scene on first use."""
+    from src.scenes.admin import AdminScene
+
+    return AdminScene()
+
+
+def _create_menu_scene() -> Scene:
+    """Create the menu scene on first use."""
+    from src.scenes.menu import MenuScene
+
+    return MenuScene()
+
+
+def _create_scan_scene() -> Scene:
+    """Create the scan scene on first use."""
+    from src.scenes.scan import ScanScene
+
+    return ScanScene()
+
+
+def _create_recipe_scene() -> Scene:
+    """Create the recipe scene on first use."""
+    from src.scenes.recipe import RecipeScene
+
+    return RecipeScene()
+
+
+def _create_math_game_scene() -> Scene:
+    """Create the math game scene on first use."""
+    from src.scenes.math_game import MathGameScene
+
+    return MathGameScene()
+
+
+def _create_picker_scene() -> Scene:
+    """Create the picker scene on first use."""
+    from src.scenes.picker import PickerScene
+
+    return PickerScene()
+
+
 def main() -> None:
     """Initialize pygame and run the main game loop."""
     init_database()
@@ -65,18 +120,7 @@ def main() -> None:
     # Shell: shared UI frame around all scenes
     shell = FrameShell()
 
-    # Setup scenes
-    scenes = {
-        "start": StartScene(),
-        "login": LoginScene(),
-        "admin": AdminScene(),
-        "menu": MenuScene(),
-        "scan": ScanScene(),
-        "recipe": RecipeScene(),
-        "math_game": MathGameScene(),
-        "picker": PickerScene(),
-    }
-    manager = SceneManager(scenes, initial="start")
+    manager = SceneManager(create_scene_registry(), initial="start")
 
     # Main loop
     running = True

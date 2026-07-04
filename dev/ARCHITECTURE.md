@@ -5,7 +5,7 @@
 ```text
 main.py
   ├─ FrameShell renders paper background, user frame, title, close button, footer
-  ├─ SceneManager owns the active pygame scene
+  ├─ SceneManager owns the active pygame scene and lazy scene factories
   ├─ src/utils/state.py owns current user/session/cart runtime state
   └─ src/utils/database.py persists SQLite data
 ```
@@ -13,6 +13,9 @@ main.py
 SceneManager calls optional scene lifecycle hooks. `on_enter()` runs when a
 scene becomes active. `reset_user_state()` runs on kiosk user changes and shell
 logout so scenes can clear user-bound state without losing normal entry state.
+It accepts either prebuilt scene instances or factories. Factories are built on
+first scene entry and then cached, keeping non-start scenes out of the kiosk
+cold path while preserving scene-local state between normal navigation steps.
 
 Active scenes:
 
@@ -28,6 +31,10 @@ Active scenes:
 ScanScene can route to PickerScene for touch product selection without losing
 the current cart. MathGameScene filters fast scanner-style digit bursts,
 including unterminated bursts, so barcode input does not become a math answer.
+The kiosk entry point eagerly creates only `StartScene`; login, admin, menu,
+scan, picker, recipe, and math scenes are constructed on first use. This keeps
+the admin QR stack (`qrcode`/Pillow) and other non-start scene setup outside
+`import main` and the first visible splash frame.
 
 ## Render Boundary
 

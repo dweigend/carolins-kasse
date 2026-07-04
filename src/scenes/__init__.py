@@ -1,24 +1,38 @@
-# Scene management and all scene classes
-from src.scenes.admin import AdminScene
-from src.scenes.base import Scene
-from src.scenes.login import LoginScene
-from src.scenes.manager import SceneManager
-from src.scenes.math_game import MathGameScene
-from src.scenes.menu import MenuScene
-from src.scenes.picker import PickerScene
-from src.scenes.recipe import RecipeScene
-from src.scenes.scan import ScanScene
-from src.scenes.start import StartScene
+"""Lazy scene package exports."""
 
-__all__ = [
-    "Scene",
-    "SceneManager",
-    "AdminScene",
-    "StartScene",
-    "LoginScene",
-    "MenuScene",
-    "ScanScene",
-    "RecipeScene",
-    "MathGameScene",
-    "PickerScene",
-]
+from importlib import import_module
+
+_SCENE_EXPORTS = {
+    "Scene": ("src.scenes.base", "Scene"),
+    "SceneManager": ("src.scenes.manager", "SceneManager"),
+    "AdminScene": ("src.scenes.admin", "AdminScene"),
+    "StartScene": ("src.scenes.start", "StartScene"),
+    "LoginScene": ("src.scenes.login", "LoginScene"),
+    "MenuScene": ("src.scenes.menu", "MenuScene"),
+    "ScanScene": ("src.scenes.scan", "ScanScene"),
+    "RecipeScene": ("src.scenes.recipe", "RecipeScene"),
+    "MathGameScene": ("src.scenes.math_game", "MathGameScene"),
+    "PickerScene": ("src.scenes.picker", "PickerScene"),
+}
+
+__all__ = list(_SCENE_EXPORTS)
+
+
+def __getattr__(name: str) -> object:
+    """Import exported scene classes only when they are requested."""
+    try:
+        module_name, attribute_name = _SCENE_EXPORTS[name]
+    except KeyError as error:
+        raise AttributeError(
+            f"module {__name__!r} has no attribute {name!r}"
+        ) from error
+
+    module = import_module(module_name)
+    value = getattr(module, attribute_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    """Return available lazy package exports for introspection."""
+    return sorted([*globals(), *_SCENE_EXPORTS])

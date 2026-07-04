@@ -26,10 +26,15 @@ class DummyScene(Scene):
     def __init__(self, next_scene: str | None = None) -> None:
         self.next_scene = next_scene
         self.enter_count = 0
+        self.reset_count = 0
 
     def on_enter(self) -> None:
         """Track enter hook calls."""
         self.enter_count += 1
+
+    def reset_user_state(self) -> None:
+        """Track user-state reset calls."""
+        self.reset_count += 1
 
     def handle_event(self, event: pygame.event.Event) -> str | None:
         """Return the configured transition target."""
@@ -171,6 +176,109 @@ class SceneLifecycleTests(unittest.TestCase):
             selected_product = start_session_and_clear_picker_selection(database)
 
         self.assertIsNone(selected_product)
+
+    def test_lazy_scene_factory_constructs_on_first_switch_and_reuses_scene(
+        self,
+    ) -> None:
+        constructed: list[DummyScene] = []
+
+        def create_scan_scene() -> DummyScene:
+            scene = DummyScene()
+            constructed.append(scene)
+            return scene
+
+        start_scene = DummyScene()
+        manager = SceneManager(
+            {
+                "start": start_scene,
+                "scan": create_scan_scene,
+            },
+            initial="start",
+        )
+
+        self.assertEqual(constructed, [])
+        self.assertEqual(start_scene.enter_count, 1)
+
+        manager.switch_to("scan")
+        first_scan_scene = manager.current_scene
+        manager.switch_to("start")
+        manager.switch_to("scan")
+
+        self.assertEqual(len(constructed), 1)
+        self.assertIs(manager.current_scene, first_scan_scene)
+        self.assertEqual(constructed[0].enter_count, 2)
+
+    def test_user_state_reset_does_not_construct_unused_lazy_scenes(self) -> None:
+        constructed: list[DummyScene] = []
+
+        def create_admin_scene() -> DummyScene:
+            scene = DummyScene()
+            constructed.append(scene)
+            return scene
+
+        login_scene = DummyScene()
+        manager = SceneManager(
+            {
+                "login": login_scene,
+                "admin": create_admin_scene,
+            },
+            initial="login",
+        )
+
+        manager.switch_to("login", reset_user_state=True)
+
+        self.assertEqual(constructed, [])
+        self.assertEqual(login_scene.reset_count, 1)
+
+    def test_event_transition_can_activate_unconstructed_lazy_scene(self) -> None:
+        constructed: list[DummyScene] = []
+
+        def create_admin_scene() -> DummyScene:
+            scene = DummyScene()
+            constructed.append(scene)
+            return scene
+
+        login_scene = DummyScene(next_scene="admin")
+        manager = SceneManager(
+            {
+                "login": login_scene,
+                "admin": create_admin_scene,
+            },
+            initial="login",
+        )
+
+        manager.handle_event(pygame.event.Event(pygame.USEREVENT))
+
+        self.assertEqual(manager.current_name, "admin")
+        self.assertEqual(len(constructed), 1)
+        self.assertIs(manager.current_scene, constructed[0])
+        self.assertEqual(constructed[0].enter_count, 1)
+        self.assertEqual(login_scene.reset_count, 1)
+
+    def test_user_state_reset_includes_constructed_lazy_scenes(self) -> None:
+        scan_scene = ScanScene()
+
+        def create_scan_scene() -> ScanScene:
+            return scan_scene
+
+        login_scene = DummyScene(next_scene="menu")
+        manager = SceneManager(
+            {
+                "login": login_scene,
+                "menu": DummyScene(),
+                "scan": create_scan_scene,
+            },
+            initial="login",
+        )
+        product = create_product()
+        manager.switch_to("scan")
+        scan_scene._cart.add(product)
+
+        manager.switch_to("login")
+        manager.handle_event(pygame.event.Event(pygame.USEREVENT))
+
+        self.assertEqual(manager.current_name, "menu")
+        self.assertTrue(scan_scene._cart.is_empty)
 
 
 def create_product() -> Product:
