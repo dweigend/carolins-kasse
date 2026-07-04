@@ -25,8 +25,9 @@
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
 - The `codex/pi-ops-safety` branch is pushed to GitHub. Runtime code changes
   through `4fef3ac` cover the now-closed Pi operations issues #23, #24, and
-  #28; the latest verified Pi sync before this handover refresh was the
-  docs-only `b009ebe` commit. `tools/pi_update.sh` records the
+  #28. Later docs-only commits may be ahead on GitHub; use the live
+  `kasse-debug.sh status` output as the authoritative Pi checkout before Pi
+  work. `tools/pi_update.sh` records the
   previous commit and rolls back after post-pull failures, including no-op pull
   failure paths. The
   PIN-protected debug page now reports service, install/update/backup, timer,
@@ -70,10 +71,9 @@
 - The fresh Pi is reachable over SSH at `carolins-kasse.local` / `192.168.1.139`. First-boot user setup worked; `kasse` is in `sudo`, `input`, `render`, `gpio`, `i2c`, and `spi`.
 - The installer completed its real work but hit the systemd start timeout at the final service-start step. Manual recovery via SSH started `carolins-kasse.service`; it is now `active` and `enabled`, `userconfig.service` is `masked`, and no failed units remain.
 - Remote debugging is available over SSH as `kasse@carolins-kasse.local`
-  (`192.168.1.139`). The latest verified Pi checkout in this session reached
-  `/opt/carolins-kasse` on `codex/pi-ops-safety` at `9c0d70b`; use
-  `kasse-debug.sh status` as the authoritative live check before Pi work.
-  The kiosk service is systemd managed and active.
+  (`192.168.1.139`). At the last live check, `/opt/carolins-kasse` on the Pi
+  was on `codex/pi-ops-safety` at `9c0d70b`; newer docs-only commits may be
+  ahead on GitHub. The kiosk service is systemd managed and active.
 - Passwordless sudo is limited to the intended service operations:
   restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
   start `carolins-kasse-backup.service`.
@@ -265,8 +265,9 @@ Final Pi deployment validation on 2026-07-04 CEST:
   `9c0d70b` at `2026-07-04T21:38:33+02:00`; the kiosk restarted cleanly and
   stayed active after each update. The same boot journal shows the first kiosk
   service start at monotonic `37.176s` and the first Pygame log at `39.434s`.
-  A clean power-cycle first-screen timing check and admin smoke are still
-  needed for #29/#30.
+  Newer handover-only commits do not change kiosk runtime behavior. A clean
+  power-cycle first-screen timing check and admin smoke are still needed for
+  #29/#30.
 
 ## Open GitHub Issues
 
