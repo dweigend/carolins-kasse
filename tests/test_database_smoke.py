@@ -97,7 +97,6 @@ class DatabaseSmokeTests(unittest.TestCase):
 
                 transaction_id = database.process_checkout(
                     "2000000000015",
-                    new_balance=7.0,
                     total=3,
                     items=items,
                 )
@@ -105,12 +104,81 @@ class DatabaseSmokeTests(unittest.TestCase):
                 user = database.get_user("2000000000015")
                 transactions = database.get_user_transactions("2000000000015", limit=5)
 
-            self.assertGreater(transaction_id, 0)
+            self.assertGreater(transaction_id.transaction_id, 0)
             self.assertIsNotNone(user)
             self.assertEqual(user.balance, 7.0)
+            self.assertEqual(transaction_id.user.balance, 7.0)
             self.assertEqual(len(transactions), 1)
             self.assertEqual(transactions[0].total, 3)
             self.assertEqual(json.loads(transactions[0].items_json), items)
+
+    def test_foreign_key_enforcement_is_enabled_per_connection(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "kasse.db"
+
+            with isolated_database_module(db_path) as database:
+                database.init_database()
+
+                with database.get_db() as conn:
+                    enabled = conn.execute("PRAGMA foreign_keys").fetchone()[0]
+                    with self.assertRaises(sqlite3.IntegrityError):
+                        conn.execute(
+                            """
+                            INSERT INTO transactions (user_card_id, total, items_json)
+                            VALUES (?, ?, ?)
+                            """,
+                            ("2000000000992", 1, "[]"),
+                        )
+
+            self.assertEqual(enabled, 1)
+
+    def test_process_checkout_rejects_insufficient_balance_without_transaction(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "kasse.db"
+
+            with isolated_database_module(db_path) as database:
+                database.init_database()
+                database.add_user(
+                    database.User(
+                        card_id="2000000000015",
+                        name="Carolin",
+                        balance=2.0,
+                    )
+                )
+
+                with self.assertRaises(database.InsufficientFundsError):
+                    database.process_checkout(
+                        "2000000000015",
+                        total=3,
+                        items=[],
+                    )
+
+                user = database.get_user("2000000000015")
+                transactions = database.get_user_transactions("2000000000015", limit=5)
+
+            self.assertIsNotNone(user)
+            self.assertEqual(user.balance, 2.0)
+            self.assertEqual(transactions, [])
+
+    def test_process_checkout_rejects_unknown_card_without_transaction(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "kasse.db"
+
+            with isolated_database_module(db_path) as database:
+                database.init_database()
+
+                with self.assertRaises(database.CheckoutUserNotFoundError):
+                    database.process_checkout(
+                        "2000000000992",
+                        total=3,
+                        items=[],
+                    )
+
+                transactions = database.get_user_transactions("2000000000992", limit=5)
+
+            self.assertEqual(transactions, [])
 
 
 if __name__ == "__main__":

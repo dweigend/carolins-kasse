@@ -16,7 +16,12 @@ from src.constants import (
 from src.utils.assets import get as get_asset
 from src.utils.assets import get_raw as get_raw_asset
 from src.utils.barcodes import USER_PREFIX
-from src.utils.database import get_user, process_checkout
+from src.utils import state
+from src.utils.database import (
+    CheckoutUserNotFoundError,
+    InsufficientFundsError,
+    process_checkout,
+)
 from src.utils.earnings import award_cashier_salary
 from src.utils.fonts import bold_custom, body, caption
 
@@ -126,33 +131,36 @@ class CheckoutMixin:
             self._show_message("Bitte Kunden-Badge scannen!")
             return True
 
-        # Look up customer
-        customer = get_user(barcode)
-        if not customer:
+        total = self._get_checkout_total()
+        items_data = self._get_checkout_items()
+        try:
+            checkout = process_checkout(barcode, total, items_data)
+        except CheckoutUserNotFoundError:
             self._show_message("Karte nicht erkannt!")
             return True
-
-        total = self._get_checkout_total()
-
-        # Check balance
-        if customer.balance < total:
+        except InsufficientFundsError as error:
             if self._insufficient_funds_popup:
-                self._insufficient_funds_popup.show(total, int(customer.balance))
+                self._insufficient_funds_popup.show(total, int(error.available))
             self._exit_checkout_mode()
             return True
 
-        # Process payment atomically
-        new_balance = customer.balance - total
-        items_data = self._get_checkout_items()
-        process_checkout(customer.card_id, new_balance, total, items_data)
+        current_user = state.get_current_user()
+        if current_user and current_user.card_id == checkout.user.card_id:
+            state.set_current_user(checkout.user)
 
         # Pay cashier salary
-        salary, cashier_name = award_cashier_salary(customer.name, customer.card_id)
+        salary, cashier_name = award_cashier_salary(
+            checkout.user.name, checkout.user.card_id
+        )
 
         # Show receipt (with cashier salary info)
         if self._checkout_receipt:
             self._checkout_receipt.show(
-                customer.name, total, int(new_balance), cashier_name, salary
+                checkout.user.name,
+                total,
+                int(checkout.user.balance),
+                cashier_name,
+                salary,
             )
 
         # Cleanup

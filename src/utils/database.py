@@ -213,12 +213,43 @@ PRODUCT_COLUMNS = (
 )
 USER_COLUMNS = "card_id, name, balance, color, difficulty, is_admin, active"
 RECIPE_COLUMNS = "barcode, name, image_path, active"
+SQLITE_BUSY_TIMEOUT_MS = 5000
+
+
+class CheckoutError(RuntimeError):
+    """Base error for checkout failures that should not write partial data."""
+
+
+class CheckoutUserNotFoundError(CheckoutError):
+    """Raised when checkout is attempted for an unknown or inactive user."""
+
+
+class InsufficientFundsError(CheckoutError):
+    """Raised when the customer balance is lower than the checkout total."""
+
+    def __init__(self, *, available: float, required: int) -> None:
+        super().__init__(
+            f"Insufficient balance: available {available}, required {required}"
+        )
+        self.available = available
+        self.required = required
+
+
+@dataclass(frozen=True)
+class CheckoutResult:
+    """Result of a successful checkout transaction."""
+
+    transaction_id: int
+    user: User
 
 
 def get_connection() -> sqlite3.Connection:
     """Get a database connection."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute(f"PRAGMA busy_timeout = {SQLITE_BUSY_TIMEOUT_MS}")
+    return conn
 
 
 @contextmanager
@@ -556,27 +587,40 @@ def update_user_balance(
 ) -> None:
     """Update a user's balance and record the manual adjustment."""
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT balance FROM users WHERE card_id = ?", (card_id,)
-        ).fetchone()
-        if row is None:
-            raise ValueError(f"Unknown user card ID: {card_id}")
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                "SELECT balance FROM users WHERE card_id = ?", (card_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Unknown user card ID: {card_id}")
 
-        old_balance = float(row[0])
-        delta = new_balance - old_balance
-        conn.execute(
-            "UPDATE users SET balance = ? WHERE card_id = ?", (new_balance, card_id)
-        )
-        conn.execute(
-            """
-            INSERT INTO balance_adjustments (
-                user_card_id, old_balance, new_balance, delta, note
+            old_balance = float(row[0])
+            delta = new_balance - old_balance
+            update_cursor = conn.execute(
+                "UPDATE users SET balance = ? WHERE card_id = ?",
+                (new_balance, card_id),
             )
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (card_id, old_balance, new_balance, delta, note),
-        )
-        conn.commit()
+            if update_cursor.rowcount != 1:
+                raise RuntimeError(f"Failed to update balance for user {card_id}")
+
+            adjustment_cursor = conn.execute(
+                """
+                INSERT INTO balance_adjustments (
+                    user_card_id, old_balance, new_balance, delta, note
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (card_id, old_balance, new_balance, delta, note),
+            )
+            if adjustment_cursor.rowcount != 1:
+                raise RuntimeError(
+                    f"Failed to record balance adjustment for user {card_id}"
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def update_user_admin_fields(
@@ -856,16 +900,17 @@ def save_transaction(
             """,
             (user_card_id, total, items_json),
         )
+        if cursor.rowcount != 1 or cursor.lastrowid is None:
+            raise RuntimeError(f"Failed to save transaction for user {user_card_id}")
         conn.commit()
-        return cursor.lastrowid  # type: ignore
+        return cursor.lastrowid
 
 
 def process_checkout(
     card_id: str,
-    new_balance: float,
     total: int,
     items: list[dict],
-) -> int:
+) -> CheckoutResult:
     """Atomically process checkout: update balance + save transaction.
 
     Both operations happen in a single transaction - if either fails,
@@ -873,19 +918,53 @@ def process_checkout(
     """
     items_json = json.dumps(items, ensure_ascii=False)
     with get_db() as conn:
-        conn.execute(
-            "UPDATE users SET balance = ? WHERE card_id = ?",
-            (new_balance, card_id),
-        )
-        cursor = conn.execute(
-            """
-            INSERT INTO transactions (user_card_id, total, items_json)
-            VALUES (?, ?, ?)
-            """,
-            (card_id, total, items_json),
-        )
-        conn.commit()
-        return cursor.lastrowid  # type: ignore
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                f"""
+                SELECT {USER_COLUMNS}
+                FROM users
+                WHERE card_id = ? AND active = 1
+                """,
+                (card_id,),
+            ).fetchone()
+            if row is None:
+                raise CheckoutUserNotFoundError(f"Unknown user card ID: {card_id}")
+
+            user = User.from_row(row)
+            if user.balance < total:
+                raise InsufficientFundsError(available=user.balance, required=total)
+
+            update_cursor = conn.execute(
+                """
+                UPDATE users
+                SET balance = balance - ?
+                WHERE card_id = ? AND active = 1 AND balance >= ?
+                """,
+                (total, card_id, total),
+            )
+            if update_cursor.rowcount != 1:
+                raise RuntimeError(f"Failed to update checkout balance for {card_id}")
+
+            transaction_cursor = conn.execute(
+                """
+                INSERT INTO transactions (user_card_id, total, items_json)
+                VALUES (?, ?, ?)
+                """,
+                (card_id, total, items_json),
+            )
+            if transaction_cursor.rowcount != 1 or transaction_cursor.lastrowid is None:
+                raise RuntimeError(f"Failed to save checkout transaction for {card_id}")
+
+            user.balance -= total
+            conn.commit()
+            return CheckoutResult(
+                transaction_id=transaction_cursor.lastrowid,
+                user=user,
+            )
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def get_user_transactions(user_card_id: str, limit: int = 10) -> list[Transaction]:

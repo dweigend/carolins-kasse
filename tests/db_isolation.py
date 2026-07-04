@@ -10,7 +10,13 @@ from types import ModuleType
 
 
 DATABASE_ENV_VAR = "CAROLINS_KASSE_DB_PATH"
-DATABASE_MODULES = ("tools.seed_database", "src.utils.database")
+DATABASE_MODULES = (
+    "tools.seed_database",
+    "src.scenes.checkout_mixin",
+    "src.utils.database",
+    "src.utils.earnings",
+    "src.utils.state",
+)
 
 
 @contextmanager
