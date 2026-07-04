@@ -352,6 +352,7 @@ def _template_response(request: Request, template_name: str, context: dict):
 def _csrf_token_for_request(request: Request) -> tuple[str, bool]:
     token = request.cookies.get(CSRF_COOKIE)
     if _valid_csrf_token(token):
+        assert token is not None
         return token, False
     return _new_csrf_token(), True
 
@@ -361,6 +362,8 @@ def _valid_csrf_form(request: Request, form: dict[str, str]) -> bool:
     form_token = form.get(CSRF_FIELD)
     if not _valid_csrf_token(cookie_token) or not _valid_csrf_token(form_token):
         return False
+    assert cookie_token is not None
+    assert form_token is not None
     return compare_digest(cookie_token, form_token)
 
 

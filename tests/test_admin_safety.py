@@ -312,7 +312,11 @@ class AdminSafetyTests(unittest.TestCase):
                 collected = True
                 return fake_debug_snapshot()
 
-            context.server.collect_debug_snapshot = fake_collect_debug_snapshot
+            setattr(
+                context.server,
+                "collect_debug_snapshot",
+                fake_collect_debug_snapshot,
+            )
 
             locked_response = context.client.get("/debug")
 

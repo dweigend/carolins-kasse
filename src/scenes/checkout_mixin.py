@@ -86,7 +86,7 @@ class CheckoutMixin:
 
     @abstractmethod
     def _show_message(
-        self, text: str, frames: int = 60, color: tuple = TEXT_PRIMARY
+        self, text: str, _frames: int = 60, color: tuple = TEXT_PRIMARY
     ) -> None:
         """Show a feedback message."""
         ...

@@ -270,7 +270,9 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
 
         if barcode.startswith(RECIPE_PREFIX):
             if self._load_recipe(barcode):
-                self._show_message(f"Rezept geladen: {self._recipe.name}")
+                recipe = self._recipe
+                assert recipe is not None
+                self._show_message(f"Rezept geladen: {recipe.name}")
             else:
                 self._show_message("Rezept nicht gefunden!")
             return

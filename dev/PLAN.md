@@ -16,9 +16,10 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 54-test unittest temp-DB and lifecycle suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, and Pi update unit installation |
+| Regression tests | Active | 60-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, and Pi update unit installation |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
+| Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Open | Raise UI component and operation-script coverage in issue #25 |
 | UI handler complexity | Open | Reduce highest-complexity handlers in issue #26 |
 
@@ -78,11 +79,12 @@ local data handling.
    - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
 
 6. **Regression coverage maintenance**
-   - Keep the 54-test temp-DB and lifecycle unittest suite green.
+   - Keep the 60-test pipeline suite green.
    - Raise UI component and operation-script coverage in a focused #25 pass.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
    - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
      local checks, and safe Pi update/restart/backup actions.
+   - Run `uv run poe check` as the single local quality command before review.
 
 7. **UI handler complexity**
    - Reduce the highest-complexity UI handlers in a focused #26 pass.
@@ -123,6 +125,9 @@ local data handling.
 - The PIN-protected debug page is the lightweight Pi operations dashboard for
   service state, install/update/backup state, backup timer, failed units, and
   short logs.
+- `uv run poe check` is the code-quality pipeline. Ruff format/lint, `ty`,
+  Vulture, Deptry, jscpd, and pytest-cov are strict gates; Radon reports
+  complexity findings for #26.
 - The Pi stays on the home WiFi; no hotspot in v1.
 - Hardware debugging uses SSH over WiFi so the Pi USB data bus can be isolated for OTG and hub tests.
 - When the SEENGREAT shield is in Pi Zero hub mode, the Pi micro-USB data port must stay unused; downstream USB devices should connect through the shield.

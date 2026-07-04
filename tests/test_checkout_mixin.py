@@ -64,7 +64,9 @@ def create_fake_checkout_scene(
         def _on_checkout_complete(self) -> None:
             self.completed = True
 
-        def _show_message(self, text: str, frames: int = 60, color: tuple = ()) -> None:
+        def _show_message(
+            self, text: str, _frames: int = 60, color: tuple = ()
+        ) -> None:
             self.messages.append(text)
 
     return FakeCheckoutScene()
@@ -112,8 +114,10 @@ class CheckoutMixinTests(unittest.TestCase):
 
             self.assertTrue(handled)
             self.assertTrue(scene.completed)
-            self.assertIsNotNone(current_user)
-            self.assertIsNotNone(persisted_user)
+            if current_user is None:
+                raise AssertionError("Expected current runtime user")
+            if persisted_user is None:
+                raise AssertionError(f"Missing persisted test user {USER_CARD_ID}")
             self.assertEqual(current_user.balance, 5.0)
             self.assertEqual(persisted_user.balance, 5.0)
             self.assertEqual(scene._checkout_receipt.new_balance, 5)

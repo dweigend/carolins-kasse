@@ -113,7 +113,7 @@ class PickerScene(Scene):
                 product_id=i,
                 name=product.name_de,
                 image=image,
-                on_click=lambda pid, p=product: self._select_product(p),
+                on_click=lambda _product_id, p=product: self._select_product(p),
             )
             self._tiles.append(tile)
 

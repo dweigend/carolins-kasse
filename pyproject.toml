@@ -17,5 +17,95 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "deptry>=0.25.1",
+    "poethepoet>=0.47.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "radon>=6.0.1",
     "ruff>=0.14.14",
+    "ty>=0.0.56",
+    "vulture>=2.16",
 ]
+
+[tool.poe]
+executor.type = "uv"
+
+[tool.poe.tasks]
+format-check = "ruff format --check src/ tools/ tests/ main.py"
+lint = "ruff check src/ tools/ tests/ main.py"
+type-check.shell = "ty check src tools tests main.py --respect-ignore-files"
+dead-code.shell = "vulture"
+deps.shell = "deptry ."
+duplicates.shell = "bunx jscpd@5.0.11 --config .jscpd.json src tools tests main.py"
+complexity.shell = "radon cc src tools tests main.py -s -a || true"
+test = "pytest"
+
+[[tool.poe.tasks.check.sequence]]
+ref = "format-check"
+
+[[tool.poe.tasks.check.sequence]]
+ref = "lint"
+
+[[tool.poe.tasks.check.sequence]]
+ref = "type-check"
+
+[[tool.poe.tasks.check.sequence]]
+ref = "dead-code"
+
+[[tool.poe.tasks.check.sequence]]
+ref = "deps"
+
+[[tool.poe.tasks.check.sequence]]
+ref = "duplicates"
+
+[[tool.poe.tasks.check.sequence]]
+ref = "complexity"
+
+[[tool.poe.tasks.check.sequence]]
+ref = "test"
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ty.environment]
+python-version = "3.13"
+root = ["./src", "./tools", "."]
+
+[tool.vulture]
+paths = ["src", "tools", "tests", "main.py"]
+min_confidence = 80
+sort_by_size = true
+ignore_decorators = ["@app.*"]
+
+[tool.deptry]
+known_first_party = ["src", "tests"]
+extend_exclude = ["dev/local-debug", "data", "assets"]
+
+[tool.deptry.per_rule_ignores]
+DEP002 = [
+    "jinja2", # FastAPI Jinja2Templates runtime backend.
+    "pillow", # ReportLab ImageReader uses Pillow for image-backed printables.
+    "uvicorn", # Admin server is launched via CLI/process entry points.
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--cov=src",
+    "--cov=tools",
+    "--cov-branch",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-fail-under=40",
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
+
+[tool.radon]
+cc_min = "C"
+show_complexity = true
+total_average = true

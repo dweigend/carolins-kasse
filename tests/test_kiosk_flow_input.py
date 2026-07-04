@@ -90,8 +90,10 @@ class KioskFlowInputTests(unittest.TestCase):
 
                 scan_scene._cart.add(scanned_product)
                 scan_scene._init_ui()
-                self.assertIsNotNone(scan_scene._picker_button)
-                self._click(manager, scan_scene._picker_button.rect.center)
+                picker_button = scan_scene._picker_button
+                if picker_button is None:
+                    raise AssertionError("Expected picker button")
+                self._click(manager, picker_button.rect.center)
 
                 self.assertEqual(manager.current_name, "picker")
 

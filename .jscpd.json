@@ -1,0 +1,16 @@
+{
+  "format": ["python"],
+  "ignore": [
+    "**/.venv/**",
+    "**/.ruff_cache/**",
+    "**/__pycache__/**",
+    "**/assets/**",
+    "**/data/**",
+    "**/dev/local-debug/**"
+  ],
+  "minLines": 8,
+  "minTokens": 80,
+  "noTips": true,
+  "reporters": ["console"],
+  "threshold": 5
+}

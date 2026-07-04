@@ -151,7 +151,7 @@ class AdminScene(MessageMixin, Scene):
         qr.make(fit=True)
         image = qr.make_image(fill_color="black", back_color="white").convert("RGB")
         image = image.resize((QR_SIZE, QR_SIZE))
-        self._qr_surface = pygame.image.fromstring(
+        self._qr_surface = pygame.image.frombytes(
             image.tobytes(), image.size, image.mode
         )
         self._qr_url = url
