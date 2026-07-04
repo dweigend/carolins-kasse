@@ -16,7 +16,7 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 75-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, and operation scripts |
+| Regression tests | Active | 81-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, and bootfs prep |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
@@ -38,8 +38,8 @@ local data handling.
   keep the remaining work as a profiling backlog.
 - #25 Raise coverage for UI components and operation scripts: Numpad,
   ScrollableCart, cashier feedback components, barcode generation, and
-  printable generation now have direct tests; keep only clear remaining
-  operation-script gaps in scope.
+  printable generation plus Pi bootfs preparation now have direct tests; keep
+  only clear remaining operation-script gaps in scope.
 - #1, #2, #7, #8, and #9 remain hardware, child, and first-boot validation
   issues.
 - #4 remains the database module split backlog item.
@@ -81,9 +81,9 @@ local data handling.
    - Preserve behavior while separating schema/init, models, product/user/recipe queries, sessions, earnings, transactions, and admin balance changes.
 
 6. **Regression coverage maintenance**
-   - Keep the 75-test pipeline suite green.
+   - Keep the 81-test pipeline suite green.
    - Continue #25 only where remaining operation-script coverage has clear
-     payoff, especially `pi_prepare_boot.py` and `pi_debug.py`.
+     payoff, especially `pi_debug.py`.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
    - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
      local checks, and safe Pi update/restart/backup actions.

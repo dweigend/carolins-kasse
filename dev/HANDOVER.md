@@ -53,9 +53,9 @@
   recipe ingredients, picker reachability, math scanner filtering, and recipe
   bonus timing, Pi update rollback safety with shell fixtures, Pi update
   systemd unit installation, debug observability, keypad keycode input,
-  cashier feedback component render/state behavior, and operation script
-  generation against temporary output paths. The current pipeline suite has 75
-  passing tests.
+  cashier feedback component render/state behavior, operation script
+  generation against temporary output paths, and Pi bootfs preparation. The
+  current pipeline suite has 81 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -196,6 +196,11 @@
   `tools/generate_barcodes.py` and `tools/generate_printables.py`. The tests run
   the script mains against a temporary DB and temporary barcode/print output
   directories so `data/kasse.db` stays untouched.
+- Local #25 Pi bootfs-preparation slice added temp-bootfs tests for
+  `tools/pi_prepare_boot.py`, covering validation, cmdline updates, copied
+  first-boot files, install environment handling, idempotence, and foreign
+  `systemd.run` hook behavior without embedding shell script bodies in Python
+  tests.
 
 ## Verification Run Recently
 
@@ -300,6 +305,14 @@ Run on 2026-07-04 CEST for the local #25 operation-script coverage slice:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `git diff --check`
 
+Run on 2026-07-04 CEST for the local #25 Pi bootfs-preparation coverage slice:
+
+- `uv run python -m unittest tests/test_pi_prepare_boot.py` (6 tests)
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `git diff --check`
+- `uv run poe check` (81 tests, 56.40% coverage, 40% minimum)
+
 Pi reachability check on 2026-07-04 CEST before attempting another update:
 
 - `kasse-debug.sh status` could not resolve `carolins-kasse.local`.
@@ -384,7 +397,6 @@ Open follow-up and validation backlog:
    mode, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, #8, and #9.
 6. Continue #25 with the remaining low-risk operation-script coverage where it
-   still has clear payoff, especially `tools/pi_prepare_boot.py` and
-   `tools/pi_debug.py`.
+   still has clear payoff, especially `tools/pi_debug.py`.
 7. Keep future #26-style complexity findings as focused follow-up passes, not
    part of the current Pi acceptance loop.
