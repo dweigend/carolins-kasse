@@ -62,9 +62,10 @@ SQLite tables:
 - `balance_adjustments`: manual admin balance changes
 
 Current technical debt: `src/utils/database.py` still contains schema,
-non-product queries, and runtime persistence. Row dataclasses and checkout
-result/error types live in `src/utils/database_models.py`; product query helpers
-live in `src/utils/database_products.py`. Public names are still re-exported or
+non-product/non-recipe queries, and runtime persistence. Row dataclasses and
+checkout result/error types live in `src/utils/database_models.py`; product
+query helpers live in `src/utils/database_products.py`; recipe query helpers
+live in `src/utils/database_recipes.py`. Public names are still re-exported or
 wrapped from `src/utils/database.py` for import compatibility. Continue
 splitting only in small behavior-preserving slices.
 
@@ -167,6 +168,7 @@ Systemd units live under `systemd/`:
 | `src/utils/database.py` | Public SQLite API, connection, schema, commit, checkout, and transaction boundary |
 | `src/utils/database_models.py` | Database row dataclasses, column lists, and checkout result/error types |
 | `src/utils/database_products.py` | Product SQL helpers that receive an existing connection and do not commit |
+| `src/utils/database_recipes.py` | Recipe SQL helpers that receive an existing connection and do not commit |
 | `src/utils/barcodes.py` | Barcode rules and generated SVG paths |
 | `src/utils/admin_runtime.py` | Managed FastAPI server start/stop for pygame admin |
 | `src/utils/network.py` | Local IP and admin URL helpers |

@@ -15,10 +15,10 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from src.utils import database_products
+from src.utils import database_products, database_recipes
 from src.utils.database_models import (
-    PRODUCT_COLUMNS,
-    RECIPE_COLUMNS,
+    PRODUCT_COLUMNS as PRODUCT_COLUMNS,
+    RECIPE_COLUMNS as RECIPE_COLUMNS,
     USER_COLUMNS,
     BalanceAdjustment,
     CheckoutError as CheckoutError,
@@ -405,62 +405,33 @@ def delete_user(card_id: str) -> None:
 def get_recipe(barcode: str) -> Recipe | None:
     """Get an active recipe by barcode."""
     with get_db() as conn:
-        row = conn.execute(
-            f"SELECT {RECIPE_COLUMNS} FROM recipes WHERE barcode = ? AND active = 1",
-            (barcode,),
-        ).fetchone()
-        return Recipe.from_row(row) if row else None
+        return database_recipes.get_recipe(conn, barcode)
 
 
 def get_all_recipes(include_inactive: bool = False) -> list[Recipe]:
     """Get all recipes."""
     with get_db() as conn:
-        where_clause = "" if include_inactive else "WHERE active = 1"
-        rows = conn.execute(
-            f"""
-            SELECT {RECIPE_COLUMNS}
-            FROM recipes
-            {where_clause}
-            ORDER BY name
-            """
-        ).fetchall()
-        return [Recipe.from_row(row) for row in rows]
+        return database_recipes.get_all_recipes(conn, include_inactive)
 
 
 def add_recipe(recipe: Recipe) -> None:
     """Add a new recipe."""
     with get_db() as conn:
-        conn.execute(
-            """
-            INSERT INTO recipes (barcode, name, image_path, active)
-            VALUES (?, ?, ?, ?)
-            """,
-            (recipe.barcode, recipe.name, recipe.image_path, recipe.active),
-        )
+        database_recipes.add_recipe(conn, recipe)
         conn.commit()
 
 
 def update_recipe_admin_fields(barcode: str, name: str, active: bool) -> None:
     """Update parent-facing recipe fields."""
     with get_db() as conn:
-        conn.execute(
-            """
-            UPDATE recipes
-            SET name = ?, active = ?
-            WHERE barcode = ?
-            """,
-            (name, active, barcode),
-        )
+        database_recipes.update_recipe_admin_fields(conn, barcode, name, active)
         conn.commit()
 
 
 def delete_recipe(barcode: str) -> None:
     """Delete a recipe and its ingredients."""
     with get_db() as conn:
-        conn.execute(
-            "DELETE FROM recipe_ingredients WHERE recipe_barcode = ?", (barcode,)
-        )
-        conn.execute("DELETE FROM recipes WHERE barcode = ?", (barcode,))
+        database_recipes.delete_recipe(conn, barcode)
         conn.commit()
 
 
@@ -470,42 +441,20 @@ def delete_recipe(barcode: str) -> None:
 def get_recipe_ingredients(recipe_barcode: str) -> list[tuple[Product, int]]:
     """Get all ingredients for a recipe with quantities."""
     with get_db() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT {PRODUCT_COLUMNS}, ri.quantity
-            FROM recipe_ingredients ri
-            JOIN products p ON ri.product_barcode = p.barcode
-            WHERE ri.recipe_barcode = ?
-            ORDER BY p.name
-            """,
-            (recipe_barcode,),
-        ).fetchall()
-        return [(Product.from_row(row[:8]), row[8]) for row in rows]
+        return database_recipes.get_recipe_ingredients(conn, recipe_barcode)
 
 
 def add_recipe_ingredient(ingredient: RecipeIngredient) -> None:
     """Add an ingredient to a recipe."""
     with get_db() as conn:
-        conn.execute(
-            """
-            INSERT INTO recipe_ingredients (recipe_barcode, product_barcode, quantity)
-            VALUES (?, ?, ?)
-            """,
-            (
-                ingredient.recipe_barcode,
-                ingredient.product_barcode,
-                ingredient.quantity,
-            ),
-        )
+        database_recipes.add_recipe_ingredient(conn, ingredient)
         conn.commit()
 
 
 def clear_recipe_ingredients(recipe_barcode: str) -> None:
     """Remove all ingredients from a recipe."""
     with get_db() as conn:
-        conn.execute(
-            "DELETE FROM recipe_ingredients WHERE recipe_barcode = ?", (recipe_barcode,)
-        )
+        database_recipes.clear_recipe_ingredients(conn, recipe_barcode)
         conn.commit()
 
 

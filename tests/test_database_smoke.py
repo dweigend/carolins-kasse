@@ -100,6 +100,65 @@ class DatabaseSmokeTests(unittest.TestCase):
         )
         self.assertIsNone(deleted_product)
 
+    def test_recipe_public_api_keeps_query_and_commit_behavior(self) -> None:
+        with initialized_temporary_database() as database:
+            recipe = database.Recipe(
+                barcode="3000000000014",
+                name="Waffeln",
+                image_path="assets/recipes/waffeln.png",
+            )
+            flour = database.Product(
+                barcode="1000000000016",
+                name="flour",
+                name_de="Mehl",
+                price=1.0,
+                category="zutaten",
+                active=False,
+            )
+            milk = database.Product(
+                barcode="1000000000023",
+                name="milk",
+                name_de="Milch",
+                price=1.5,
+                category="zutaten",
+            )
+
+            database.add_product(milk)
+            database.add_product(flour)
+            database.add_recipe(recipe)
+            database.add_recipe_ingredient(
+                database.RecipeIngredient(recipe.barcode, milk.barcode, quantity=2)
+            )
+            database.add_recipe_ingredient(
+                database.RecipeIngredient(recipe.barcode, flour.barcode, quantity=3)
+            )
+
+            ingredients = database.get_recipe_ingredients(recipe.barcode)
+
+            database.update_recipe_admin_fields(
+                recipe.barcode,
+                name="Sonntagswaffeln",
+                active=False,
+            )
+            inactive_lookup = database.get_recipe(recipe.barcode)
+            all_recipes = database.get_all_recipes(include_inactive=True)
+
+            database.clear_recipe_ingredients(recipe.barcode)
+            cleared_ingredients = database.get_recipe_ingredients(recipe.barcode)
+
+            database.delete_recipe(recipe.barcode)
+            deleted_recipes = database.get_all_recipes(include_inactive=True)
+
+        self.assertEqual(
+            [(product.barcode, quantity) for product, quantity in ingredients],
+            [(flour.barcode, 3), (milk.barcode, 2)],
+        )
+        self.assertFalse(ingredients[0][0].active)
+        self.assertIsNone(inactive_lookup)
+        self.assertEqual([recipe.name for recipe in all_recipes], ["Sonntagswaffeln"])
+        self.assertEqual(cleared_ingredients, [])
+        self.assertEqual(deleted_recipes, [])
+
     def test_init_database_creates_schema_on_empty_temp_db(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "kasse.db"

@@ -55,8 +55,8 @@
   systemd unit installation, debug observability, keypad keycode input,
   cashier feedback component render/state behavior, operation script
   generation against temporary output paths, Pi bootfs preparation, Pi debug CLI
-  output, database model import compatibility, and product public API
-  compatibility. The current pipeline suite has 84 passing tests.
+  output, database model import compatibility, and product/recipe public API
+  compatibility. The current pipeline suite has 85 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -215,6 +215,9 @@
 - Local #4 second split moved product SQL helpers into
   `src/utils/database_products.py`. The public product API, connection handling,
   commits, and import compatibility stay in `src/utils/database.py`.
+- Local #4 third split moved recipe and recipe ingredient SQL helpers into
+  `src/utils/database_recipes.py`. The public recipe API, connection handling,
+  and commits stay in `src/utils/database.py`.
 
 ## Verification Run Recently
 
@@ -257,6 +260,14 @@ Run on 2026-07-04 CEST for the local #28 systemd quick win:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `uv run python -m unittest discover -s tests` (40 tests)
 - `git diff --check`
+
+Run on 2026-07-04 CEST for the local #4 recipe query split:
+
+- `uv run python -m unittest tests.test_database_smoke tests.test_recipe_scene`
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `git diff --check`
+- `uv run poe check` (85 tests, 57.43% coverage, 40% minimum)
 
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 
