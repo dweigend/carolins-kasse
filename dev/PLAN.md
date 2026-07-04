@@ -57,6 +57,11 @@ local data handling.
      render cost.
 
 3. **Hardware and child validation**
+   - Use `kasse-debug.sh acceptance` as the short read-only hardware sign-off
+     path for #27/#29/#30: number pad app test, clean power-cycle first-screen
+     timing, and admin smoke.
+   - Keep detail diagnosis in the focused helper commands: `status`, `usb`,
+     `boot`, `logs`, and `keypad`.
    - Keep the validated SEENGREAT topology: leave the Pi USB data port empty while the shield is in Pi mode, then attach touch, scanner, and number pad downstream of the shield.
    - Validate cashier, recipe, scanner, number pad, checkout, Admin card, math mode, update, and QR flows on real hardware.
    - Run one clean first-boot validation; the implementation is in place, but

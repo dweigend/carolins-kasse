@@ -84,8 +84,10 @@
   validation of the app path is still pending.
 - Local Codex debug helpers live outside the repo at
   `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`. Its
-  `scripts/kasse-debug.sh` helper wraps status, USB, boot, logs, keypad,
-  tests, update, restart, and backup workflows.
+  `scripts/kasse-debug.sh acceptance` command is the short read-only hardware
+  sign-off path for #27/#29/#30: number pad app-path test, clean power-cycle
+  first-screen timing, and admin smoke. Use `status`, `usb`, `boot`, `logs`,
+  and `keypad` from the same helper only when deeper diagnosis is needed.
 
 ## Recent Completed Work
 
@@ -314,16 +316,16 @@ Open follow-up and validation backlog:
 
 ## Next Best Steps
 
-1. Retest the #27 number pad fix on the Pi with the SIGMACHIP keypad.
-2. Clean power-cycle the Pi, measure first-screen timing for #29/#30, and
-   smoke the admin path: Admin card, server QR, and remote admin launch.
-3. Use the local `carolins-kasse-debug` skill for SSH diagnostics, tests, and
-   safe Pi service actions.
-4. Continue #22 only where profiling still shows repeated font, scale, or
+1. Run `kasse-debug.sh acceptance` for the short #27/#29/#30 hardware
+   sign-off: SIGMACHIP number pad app path, clean power-cycle first-screen
+   timing, and admin smoke.
+2. If that baseline fails, use the detailed helper diagnostics: `status`,
+   `usb`, `boot`, `logs`, or `keypad`.
+3. Continue #22 only where profiling still shows repeated font, scale, or
    render cost.
-5. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
+4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
    product labels, number pad input, checkout, Admin card, recipe cards, math
    mode, debug PIN, update, and remote admin QR.
-6. Add observations to issues #1, #2, #7, #8, and #9.
-7. Keep #25 and #26 as focused follow-up passes, not part of the current Pi
+5. Add observations to issues #1, #2, #7, #8, and #9.
+6. Keep #25 and #26 as focused follow-up passes, not part of the current Pi
    acceptance loop.
