@@ -62,13 +62,13 @@ SQLite tables:
 - `balance_adjustments`: manual admin balance changes
 
 Current technical debt: `src/utils/database.py` still contains schema, balance,
-checkout, write-side earning logic, transaction, and other runtime persistence. Row
-dataclasses and checkout result/error types live in
+checkout, and other runtime persistence. Row dataclasses and checkout
+result/error types live in
 `src/utils/database_models.py`; product query helpers live in
 `src/utils/database_products.py`; recipe query helpers live in
 `src/utils/database_recipes.py`; basic user CRUD query helpers live in
 `src/utils/database_users.py`; session query helpers live in
-`src/utils/database_sessions.py`; read-only earning query helpers live in
+`src/utils/database_sessions.py`; earning helpers live in
 `src/utils/database_earnings.py`; transaction helpers live in
 `src/utils/database_transactions.py`; read-only balance adjustment query helpers
 live in `src/utils/database_balance_adjustments.py`. Public names are still
@@ -177,7 +177,7 @@ Systemd units live under `systemd/`:
 | `src/utils/database_recipes.py` | Recipe SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_users.py` | Basic user CRUD SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_sessions.py` | Session SQL helpers that receive an existing connection and do not commit |
-| `src/utils/database_earnings.py` | Read-only earning SQL helpers that receive an existing connection and do not commit |
+| `src/utils/database_earnings.py` | Earning SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_transactions.py` | Transaction SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_balance_adjustments.py` | Read-only balance adjustment SQL helpers that receive an existing connection and do not commit |
 | `src/utils/barcodes.py` | Barcode rules and generated SVG paths |

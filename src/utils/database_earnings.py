@@ -5,6 +5,28 @@ import sqlite3
 from src.utils.database_models import Earning
 
 
+def add_earning(
+    conn: sqlite3.Connection,
+    session_id: int,
+    user_card_id: str,
+    source: str,
+    amount: int,
+    description: str | None = None,
+) -> None:
+    """Add an earning entry and update user balance."""
+    conn.execute(
+        """
+        INSERT INTO earnings (session_id, user_card_id, source, amount, description)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (session_id, user_card_id, source, amount, description),
+    )
+    conn.execute(
+        "UPDATE users SET balance = balance + ? WHERE card_id = ?",
+        (amount, user_card_id),
+    )
+
+
 def get_today_earnings(conn: sqlite3.Connection, user_card_id: str) -> list[Earning]:
     """Get all earnings for a user from today."""
     rows = conn.execute(

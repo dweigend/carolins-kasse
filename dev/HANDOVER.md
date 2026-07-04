@@ -229,8 +229,7 @@
   transactions were intentionally left in `database.py`.
 - Local #4 sixth split moved read-only earning query helpers into
   `src/utils/database_earnings.py`. The public earning API and connection
-  handling stay in `src/utils/database.py`; `add_earning` remains there because
-  it writes earning rows and updates balances, and transactions stay untouched.
+  handling stay in `src/utils/database.py`; transactions stay untouched.
 - Local #4 seventh split moved the read-only user transaction query helper into
   `src/utils/database_transactions.py`. A follow-up split moved the standalone
   `save_transaction` write helper into the same module while keeping the public
@@ -242,6 +241,9 @@
   adjustment API and connection handling stay in `src/utils/database.py`;
   `update_user_balance` remains there because it writes user balances and
   adjustment rows in one transaction-sensitive path.
+- Local #4 ninth split moved the standalone `add_earning` write helper into
+  `src/utils/database_earnings.py`. The public earning API, connection
+  handling, and commit boundary stay in `src/utils/database.py`.
 
 ## Verification Run Recently
 
@@ -343,6 +345,15 @@ Run on 2026-07-04 CEST for the local #4 transaction write helper split:
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 - `uv run python -m unittest tests.test_database_smoke tests.test_checkout_mixin tests.test_recipe_scene` (19 tests)
 - `uv run poe check` (90 tests, 58.15% coverage, 40% minimum)
+
+Run on 2026-07-04 CEST for the local #4 earning write helper split:
+
+- `git diff --check`
+- `uv run ruff format --check src/ tools/ tests/ main.py`
+- `uv run ruff check src/ tools/ tests/ main.py`
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `uv run python -m unittest tests.test_database_smoke tests.test_recipe_scene tests.test_scene_lifecycle` (28 tests)
+- `uv run poe check` (90 tests, 58.17% coverage, 40% minimum)
 
 Run on 2026-07-04 CEST for the local #27 keypad keycode fix:
 

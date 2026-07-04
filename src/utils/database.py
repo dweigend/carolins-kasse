@@ -443,18 +443,13 @@ def add_earning(
 ) -> None:
     """Add an earning entry and update user balance."""
     with get_db() as conn:
-        # Add earning record
-        conn.execute(
-            """
-            INSERT INTO earnings (session_id, user_card_id, source, amount, description)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (session_id, user_card_id, source, amount, description),
-        )
-        # Update user balance
-        conn.execute(
-            "UPDATE users SET balance = balance + ? WHERE card_id = ?",
-            (amount, user_card_id),
+        database_earnings.add_earning(
+            conn,
+            session_id,
+            user_card_id,
+            source,
+            amount,
+            description,
         )
         conn.commit()
 
