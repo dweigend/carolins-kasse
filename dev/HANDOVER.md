@@ -204,6 +204,9 @@
 - Local #25 Pi debug CLI slice added direct `tools/pi_debug.py` main coverage
   with a patched debug snapshot and captured stdout, without touching
   production code or the runtime database.
+- GitHub issue #25 is closed after a read-only coverage audit. Future coverage
+  work should be tied to specific risky scene, database, admin, or Pi-operations
+  changes instead of a broad standing coverage issue.
 
 ## Verification Run Recently
 
@@ -374,7 +377,6 @@ Open follow-up and validation backlog:
 - #8 Validate Pi Zero USB hub and OTG host path
 - #9 Pi first-boot installer fails before installing services
 - #22 Cache fonts and scaled assets for Pi Zero runtime
-- #25 Raise coverage for UI components and operation scripts
 
 ## Known Risks
 
@@ -407,7 +409,7 @@ Open follow-up and validation backlog:
    product labels, number pad input, checkout, Admin card, recipe cards, math
    mode, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, #8, and #9.
-6. Continue #25 with the remaining low-risk operation-script coverage where it
-   still has clear payoff, especially `tools/pi_debug.py`.
+6. Add focused regression coverage with the next risky scene, database, admin,
+   or Pi-operations change instead of keeping a broad standing coverage issue.
 7. Keep future #26-style complexity findings as focused follow-up passes, not
    part of the current Pi acceptance loop.

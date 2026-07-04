@@ -20,7 +20,7 @@ local data handling.
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Open | Tracked as issue #4 |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
-| Test coverage | Open | Raise UI component and operation-script coverage in issue #25 |
+| Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
 | UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
 
 ## Open Issue Snapshot
@@ -36,10 +36,6 @@ local data handling.
   smoke.
 - #22 Cache fonts and scaled assets for Pi Zero runtime: partially covered;
   keep the remaining work as a profiling backlog.
-- #25 Raise coverage for UI components and operation scripts: Numpad,
-  ScrollableCart, cashier feedback components, barcode generation, printable
-  generation, Pi bootfs preparation, and Pi debug CLI output now have direct
-  tests; keep only clear remaining operation-script gaps in scope.
 - #1, #2, #7, #8, and #9 remain hardware, child, and first-boot validation
   issues.
 - #4 remains the database module split backlog item.
@@ -82,8 +78,8 @@ local data handling.
 
 6. **Regression coverage maintenance**
    - Keep the 82-test pipeline suite green.
-   - Continue #25 only where remaining operation-script coverage has clear
-     payoff.
+   - Add focused tests with the next risky scene, database, admin, or
+     Pi-operations change instead of keeping a broad standing coverage issue.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
    - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
      local checks, and safe Pi update/restart/backup actions.
