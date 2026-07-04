@@ -25,11 +25,17 @@ class PiUpdateRun:
     uv_log: str
     python_log: str
     backup_log: str
+    event_log: str
     current_commit: str
+    worktree_dirty: bool
 
     @property
     def combined_output(self) -> str:
         return f"{self.stdout}\n{self.stderr}"
+
+    @property
+    def events(self) -> list[str]:
+        return self.event_log.splitlines()
 
 
 class PiUpdateScriptTests(unittest.TestCase):
@@ -43,6 +49,17 @@ class PiUpdateScriptTests(unittest.TestCase):
         self.assertIn("systemctl restart carolins-kasse.service", run.systemctl_log)
         self.assertIn("backup", run.backup_log)
         self.assertIn("Update finished", run.stdout)
+        self.assert_events_in_order(
+            run,
+            [
+                "systemctl stop carolins-kasse.service",
+                "backup",
+                "git pull --ff-only",
+                "uv sync --frozen --no-dev",
+                "python tools/generate_printables.py",
+                "systemctl restart carolins-kasse.service",
+            ],
+        )
 
     def test_failure_after_pull_rolls_back_to_previous_commit(self) -> None:
         run = run_pi_update_script(fail_step="uv")
@@ -57,6 +74,44 @@ class PiUpdateScriptTests(unittest.TestCase):
         self.assertIn("Rollback completed.", run.stdout)
         self.assertIn("systemctl restart carolins-kasse.service", run.systemctl_log)
         self.assertIn("Restarting kiosk service.", run.stdout)
+        self.assert_events_in_order(
+            run,
+            [
+                "git pull --ff-only",
+                "uv sync --frozen --no-dev",
+                f"git reset --hard {OLD_COMMIT}",
+                "systemctl restart carolins-kasse.service",
+            ],
+        )
+
+    def test_noop_pull_failure_resets_dirty_worktree_before_restart(self) -> None:
+        run = run_pi_update_script(
+            fail_step="printables",
+            mutate_worktree_step="barcodes",
+            new_commit=OLD_COMMIT,
+        )
+
+        self.assertNotEqual(run.returncode, 0)
+        self.assertEqual(run.current_commit, OLD_COMMIT)
+        self.assertFalse(run.worktree_dirty)
+        self.assertIn(f"git reset --hard {OLD_COMMIT}", run.git_log)
+        self.assertIn(
+            "Checkout is already at "
+            f"{OLD_COMMIT}; resetting source checkout to discard post-pull changes.",
+            run.stdout,
+        )
+        self.assertIn("Rollback completed.", run.stdout)
+        self.assert_events_in_order(
+            run,
+            [
+                "git pull --ff-only",
+                "python tools/generate_barcodes.py",
+                "worktree mutated after tools/generate_barcodes.py",
+                "python tools/generate_printables.py",
+                f"git reset --hard {OLD_COMMIT}",
+                "systemctl restart carolins-kasse.service",
+            ],
+        )
 
     def test_failed_rollback_leaves_kiosk_stopped_with_clear_log(self) -> None:
         run = run_pi_update_script(fail_step="uv", fail_rollback=True)
@@ -72,12 +127,29 @@ class PiUpdateScriptTests(unittest.TestCase):
         )
         self.assertIn("systemctl stop carolins-kasse.service", run.systemctl_log)
         self.assertNotIn("systemctl restart carolins-kasse.service", run.systemctl_log)
+        self.assertNotIn("systemctl restart carolins-kasse.service", run.events)
+
+    def assert_events_in_order(
+        self, run: PiUpdateRun, expected_events: list[str]
+    ) -> None:
+        start_at = 0
+        for expected_event in expected_events:
+            try:
+                event_index = run.events.index(expected_event, start_at)
+            except ValueError:
+                self.fail(
+                    f"Expected event {expected_event!r} after index {start_at}; "
+                    f"events were: {run.events!r}"
+                )
+            start_at = event_index + 1
 
 
 def run_pi_update_script(
     *,
     fail_step: str | None = None,
     fail_rollback: bool = False,
+    mutate_worktree_step: str | None = None,
+    new_commit: str = NEW_COMMIT,
 ) -> PiUpdateRun:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_root = Path(temp_dir)
@@ -109,9 +181,10 @@ def run_pi_update_script(
                 "CAROLINS_KASSE_UV_BIN": str(fake_bin / "uv"),
                 "FAKE_LOG_DIR": str(log_dir),
                 "FAKE_STATE_DIR": str(state_dir),
-                "FAKE_NEW_COMMIT": NEW_COMMIT,
+                "FAKE_NEW_COMMIT": new_commit,
                 "FAIL_STEP": fail_step or "",
                 "FAIL_ROLLBACK": "1" if fail_rollback else "",
+                "MUTATE_WORKTREE_STEP": mutate_worktree_step or "",
             }
         )
 
@@ -134,7 +207,9 @@ def run_pi_update_script(
             uv_log=read_log(log_dir / "uv.log"),
             python_log=read_log(log_dir / "python.log"),
             backup_log=read_log(log_dir / "backup.log"),
+            event_log=read_log(log_dir / "events.log"),
             current_commit=(state_dir / "current_commit").read_text().strip(),
+            worktree_dirty=(state_dir / "worktree_dirty").exists(),
         )
 
 
@@ -157,6 +232,7 @@ def write_fake_commands(fake_bin: Path) -> None:
         #!/bin/bash
         set -euo pipefail
         echo "systemctl $*" >> "${FAKE_LOG_DIR}/systemctl.log"
+        echo "systemctl $*" >> "${FAKE_LOG_DIR}/events.log"
         """,
     )
     write_executable(
@@ -190,6 +266,8 @@ def write_fake_commands(fake_bin: Path) -> None:
             status)
                 if [ -n "${FAKE_GIT_DIRTY:-}" ]; then
                     echo " M tools/pi_update.sh"
+                elif [ -f "${FAKE_STATE_DIR}/worktree_dirty" ]; then
+                    echo " M generated-file"
                 fi
                 ;;
             rev-parse)
@@ -199,18 +277,22 @@ def write_fake_commands(fake_bin: Path) -> None:
                 ;;
             fetch)
                 echo "git fetch $*" >> "${FAKE_LOG_DIR}/git.log"
+                echo "git fetch $*" >> "${FAKE_LOG_DIR}/events.log"
                 ;;
             pull)
                 echo "git pull $*" >> "${FAKE_LOG_DIR}/git.log"
+                echo "git pull $*" >> "${FAKE_LOG_DIR}/events.log"
                 echo "${FAKE_NEW_COMMIT}" > "${state_file}"
                 ;;
             reset)
                 echo "git reset $*" >> "${FAKE_LOG_DIR}/git.log"
+                echo "git reset $*" >> "${FAKE_LOG_DIR}/events.log"
                 if [ -n "${FAIL_ROLLBACK:-}" ]; then
                     exit 77
                 fi
                 if [ "${1:-}" = "--hard" ]; then
                     echo "${2:-}" > "${state_file}"
+                    rm -f "${FAKE_STATE_DIR}/worktree_dirty"
                 fi
                 ;;
             *)
@@ -226,6 +308,7 @@ def write_fake_commands(fake_bin: Path) -> None:
         #!/bin/bash
         set -euo pipefail
         echo "uv $*" >> "${FAKE_LOG_DIR}/uv.log"
+        echo "uv $*" >> "${FAKE_LOG_DIR}/events.log"
         if [ "${FAIL_STEP:-}" = "uv" ]; then
             exit 42
         fi
@@ -248,6 +331,7 @@ def write_fake_app_commands(tools_dir: Path, venv_bin: Path) -> None:
         #!/bin/bash
         set -euo pipefail
         echo "backup" >> "${FAKE_LOG_DIR}/backup.log"
+        echo "backup" >> "${FAKE_LOG_DIR}/events.log"
         """,
     )
     write_executable(
@@ -256,6 +340,7 @@ def write_fake_app_commands(tools_dir: Path, venv_bin: Path) -> None:
         #!/bin/bash
         set -euo pipefail
         echo "python $*" >> "${FAKE_LOG_DIR}/python.log"
+        echo "python $*" >> "${FAKE_LOG_DIR}/events.log"
         case "$*" in
             "-m compileall src tools")
                 if [ "${FAIL_STEP:-}" = "compileall" ]; then
@@ -273,6 +358,10 @@ def write_fake_app_commands(tools_dir: Path, venv_bin: Path) -> None:
             "tools/generate_barcodes.py")
                 if [ "${FAIL_STEP:-}" = "barcodes" ]; then
                     exit 45
+                fi
+                if [ "${MUTATE_WORKTREE_STEP:-}" = "barcodes" ]; then
+                    echo "dirty" > "${FAKE_STATE_DIR}/worktree_dirty"
+                    echo "worktree mutated after $*" >> "${FAKE_LOG_DIR}/events.log"
                 fi
                 ;;
             "tools/generate_printables.py")

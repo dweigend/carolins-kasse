@@ -53,11 +53,11 @@ rollback_checkout() {
 
     current_commit="$(git_for_app rev-parse HEAD 2>/dev/null || true)"
     if [ "${current_commit}" = "${previous_commit}" ]; then
-        echo "Checkout is already at ${previous_commit}; no rollback needed."
-        return 0
+        echo "Checkout is already at ${previous_commit}; resetting source checkout to discard post-pull changes."
+    else
+        echo "Rolling back source checkout from ${current_commit:-unknown} to ${previous_commit}."
     fi
 
-    echo "Rolling back source checkout from ${current_commit:-unknown} to ${previous_commit}."
     if git_for_app reset --hard "${previous_commit}"; then
         echo "Rollback completed."
         return 0
