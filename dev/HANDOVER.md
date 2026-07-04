@@ -52,9 +52,10 @@
   without adding dependencies. It also covers recipe quantities, inactive
   recipe ingredients, picker reachability, math scanner filtering, and recipe
   bonus timing, Pi update rollback safety with shell fixtures, Pi update
-  systemd unit installation, debug observability, keypad keycode input, and
-  cashier feedback component render/state behavior. The current pipeline suite
-  has 73 passing tests.
+  systemd unit installation, debug observability, keypad keycode input,
+  cashier feedback component render/state behavior, and operation script
+  generation against temporary output paths. The current pipeline suite has 75
+  passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -191,6 +192,10 @@
 - Local #25 coverage slice added direct cashier feedback component tests for
   `BalanceBar`, `CheckoutReceipt`, and `InsufficientFundsPopup` without touching
   production code or the runtime database.
+- Local #25 operation-script slice added temp-state tests for
+  `tools/generate_barcodes.py` and `tools/generate_printables.py`. The tests run
+  the script mains against a temporary DB and temporary barcode/print output
+  directories so `data/kasse.db` stays untouched.
 
 ## Verification Run Recently
 
@@ -287,6 +292,23 @@ Run on 2026-07-04 CEST for the local #25 cashier feedback coverage slice:
 - `uv run python -m unittest tests.test_cashier_feedback_components` (8 tests)
 - `uv run poe check` (73 tests, 50.35% coverage, 40% minimum)
 
+Run on 2026-07-04 CEST for the local #25 operation-script coverage slice:
+
+- `uv run python -m unittest tests.test_operation_scripts` (2 tests)
+- `/Users/davidweigend/.codex/skills/carolins-kasse-debug/scripts/kasse-debug.sh tests` (75 tests, 54.72% coverage, 40% minimum)
+- `uv run poe check` (75 tests, 54.72% coverage, 40% minimum)
+- `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
+- `git diff --check`
+
+Pi reachability check on 2026-07-04 CEST before attempting another update:
+
+- `kasse-debug.sh status` could not resolve `carolins-kasse.local`.
+- `KASSE_HOST=kasse@192.168.1.139 kasse-debug.sh status` timed out on SSH.
+- `ping -c 2 -W 1000 192.168.1.139` had 100% packet loss.
+- `arp -a` showed `192.168.1.139` as incomplete on `en1`.
+- The local Mac is on `192.168.1.199` via gateway `192.168.1.1`.
+- No Pi update was attempted because the target was not reachable.
+
 Final Pi deployment validation on 2026-07-04 CEST:
 
 - `/Users/davidweigend/.codex/skills/carolins-kasse-debug/scripts/kasse-debug.sh tests` (54 tests OK plus checks)
@@ -344,8 +366,9 @@ Open follow-up and validation backlog:
 - The first-boot installer needs one more clean validation after the timeout fix: the current fresh install succeeded after manual service start, but `carolins-install.service` timed out just before the final kiosk start completed.
 - SEENGREAT hub behavior is validated with the corrected topology. The Pi Zero 2 W has one USB data bus, so using the Pi micro-USB data port and the shield pogo-pin upstream at the same time causes descriptor failures.
 - The current Pi was systemd managed and previously reachable over SSH, but the
-  latest local checks could not resolve `carolins-kasse.local` and timed out on
-  `192.168.1.139`. Recheck network reachability before the next Pi update.
+  latest local checks could not resolve `carolins-kasse.local`, timed out on
+  `192.168.1.139`, and showed incomplete ARP for that address. Recheck network
+  reachability before the next Pi update.
 
 ## Next Best Steps
 
@@ -360,5 +383,8 @@ Open follow-up and validation backlog:
    product labels, number pad input, checkout, Admin card, recipe cards, math
    mode, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, #8, and #9.
-6. Keep #25 and future #26-style complexity findings as focused follow-up
-   passes, not part of the current Pi acceptance loop.
+6. Continue #25 with the remaining low-risk operation-script coverage where it
+   still has clear payoff, especially `tools/pi_prepare_boot.py` and
+   `tools/pi_debug.py`.
+7. Keep future #26-style complexity findings as focused follow-up passes, not
+   part of the current Pi acceptance loop.
