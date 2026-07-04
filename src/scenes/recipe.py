@@ -265,45 +265,89 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
     def _handle_barcode(self, barcode: str) -> None:
         """Process a scanned barcode."""
         if self._checkout_mode:
-            self._handle_checkout_barcode(barcode)
+            self._handle_checkout_scan(barcode)
             return
 
         if barcode.startswith(RECIPE_PREFIX):
-            if self._load_recipe(barcode):
-                recipe = self._recipe
-                assert recipe is not None
-                self._show_message(f"Rezept geladen: {recipe.name}")
-            else:
-                self._show_message("Rezept nicht gefunden!")
+            self._handle_recipe_card_scan(barcode)
             return
 
         if not self._recipe:
-            self._show_message("Scanne zuerst ein Rezept!")
+            self._handle_missing_recipe_scan()
             return
 
         if self._complete:
-            self._show_message("Jetzt bezahlen!")
+            self._handle_completed_recipe_scan()
             return
 
+        self._handle_ingredient_scan(barcode)
+
+    def _handle_checkout_scan(self, barcode: str) -> None:
+        """Forward scans to checkout while payment mode is active."""
+        self._handle_checkout_barcode(barcode)
+
+    def _handle_recipe_card_scan(self, barcode: str) -> None:
+        """Load a recipe card and show the matching scan result."""
+        if self._load_recipe(barcode):
+            recipe = self._recipe
+            assert recipe is not None
+            self._show_message(f"Rezept geladen: {recipe.name}")
+            return
+
+        self._show_message("Rezept nicht gefunden!")
+
+    def _handle_missing_recipe_scan(self) -> None:
+        """Reject ingredient scans until a recipe is loaded."""
+        self._show_message("Scanne zuerst ein Rezept!")
+
+    def _handle_completed_recipe_scan(self) -> None:
+        """Reject ingredient scans after the recipe checklist is complete."""
+        self._show_message("Jetzt bezahlen!")
+
+    def _handle_ingredient_scan(self, barcode: str) -> None:
+        """Process a product barcode for the loaded recipe."""
         product = get_product(barcode)
         if not product:
-            self._show_message("Produkt nicht gefunden!")
+            self._handle_unknown_product_scan()
             return
 
         ingredient = self._find_ingredient(barcode)
         if not ingredient:
-            self._show_message(f"{product.name_de} ist nicht im Rezept!")
+            self._handle_product_not_in_recipe_scan(product)
             return
 
         ingredient_product, required_quantity = ingredient
         scanned_quantity = self._scanned_quantities.get(barcode, 0)
         if scanned_quantity >= required_quantity:
-            self._show_message(f"{product.name_de} schon gescannt!")
+            self._handle_duplicate_ingredient_scan(product)
             return
 
+        self._record_ingredient_scan(barcode, ingredient_product, required_quantity)
+
+    def _handle_unknown_product_scan(self) -> None:
+        """Reject barcodes that do not match an active product."""
+        self._show_message("Produkt nicht gefunden!")
+
+    def _handle_product_not_in_recipe_scan(self, product: Product) -> None:
+        """Reject products that are not part of the current recipe."""
+        self._show_message(f"{product.name_de} ist nicht im Rezept!")
+
+    def _handle_duplicate_ingredient_scan(self, product: Product) -> None:
+        """Reject ingredient scans beyond the required quantity."""
+        self._show_message(f"{product.name_de} schon gescannt!")
+
+    def _record_ingredient_scan(
+        self,
+        barcode: str,
+        ingredient_product: Product,
+        required_quantity: int,
+    ) -> None:
+        """Record a valid ingredient scan and refresh completion state."""
+        scanned_quantity = self._scanned_quantities.get(barcode, 0)
         scanned_quantity += 1
         self._scanned_quantities[barcode] = scanned_quantity
         self._rebuild_checklist()
+
         if scanned_quantity < required_quantity:
             self._show_message(
                 f"✓ {ingredient_product.name_de} ({scanned_quantity}/{required_quantity})"
@@ -311,6 +355,10 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         else:
             self._show_message(f"✓ {ingredient_product.name_de}")
 
+        self._update_completion_after_scan()
+
+    def _update_completion_after_scan(self) -> None:
+        """Mark the recipe complete once all ingredients are collected."""
         if self._all_ingredients_collected():
             self._complete = True
             self._pending_recipe_bonus_name = (

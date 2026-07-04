@@ -185,7 +185,8 @@
   pointer, and action helpers. Radon now reports that method as A instead of D;
   a second #26 follow-up split `ScrollableCart.handle_event` into scroll-arrow,
   visible-row, and mousewheel helpers and added direct component tests. The
-  remaining Radon C finding is `RecipeScene._handle_barcode`.
+  final #26 follow-up split `RecipeScene._handle_barcode` into branch-specific
+  scan helpers. Radon now reports no C/D findings in the full pipeline.
 
 ## Verification Run Recently
 
@@ -274,7 +275,7 @@ Run on 2026-07-04 CEST for the local code-quality pipeline:
 - `uv lock`
 - `uv lock --check`
 - `uv run poe --help`
-- `uv run poe check` (65 tests, 46.25% coverage, 40% minimum)
+- `uv run poe check` (65 tests, 46.32% coverage, 40% minimum)
 - `PYTHONPYCACHEPREFIX=/tmp/carolins_kasse_compileall uv run python -m compileall -q src tools tests main.py`
 
 Final Pi deployment validation on 2026-07-04 CEST:
@@ -319,15 +320,15 @@ Open follow-up and validation backlog:
 - #9 Pi first-boot installer fails before installing services
 - #22 Cache fonts and scaled assets for Pi Zero runtime
 - #25 Raise coverage for UI components and operation scripts
-- #26 Reduce highest-complexity UI handlers
+- #26 Reduce highest-complexity UI handlers; current Radon C/D findings are
+  removed, keep open only for future/manual complexity follow-up
 
 ## Known Risks
 
 - `src/utils/database.py` is still the largest mixed-responsibility module. Split it only when the next write path makes the boundary obvious.
 - The new quality pipeline is intentionally a practical baseline: Ruff,
-  `ty`, Vulture, Deptry, jscpd, and pytest-cov are strict, while Radon reports
-  the remaining `RecipeScene._handle_barcode` C hotspot for the focused #26
-  cleanup pass.
+  `ty`, Vulture, Deptry, jscpd, and pytest-cov are strict, while Radon remains
+  reporting-only. The focused #26 pass removed the current Radon C/D findings.
 - Hardware behavior is not fully validated: scanner timing, touch target precision, fullscreen rendering, Pi performance, and child comprehension still need real tests.
 - Remote admin is still intended for the home WiFi. Mutating POST routes require
   the debug PIN/admin session cookie plus CSRF, while the read surface remains
@@ -335,10 +336,9 @@ Open follow-up and validation backlog:
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer needs one more clean validation after the timeout fix: the current fresh install succeeded after manual service start, but `carolins-install.service` timed out just before the final kiosk start completed.
 - SEENGREAT hub behavior is validated with the corrected topology. The Pi Zero 2 W has one USB data bus, so using the Pi micro-USB data port and the shield pogo-pin upstream at the same time causes descriptor failures.
-- The current Pi is systemd managed and reachable over SSH, but the direct IP
-  `192.168.1.139` has an old local SSH host-key conflict on the Mac. Use
-  `carolins-kasse.local` unless the stale known-host entry is intentionally
-  cleaned up.
+- The current Pi was systemd managed and previously reachable over SSH, but the
+  latest local checks could not resolve `carolins-kasse.local` and timed out on
+  `192.168.1.139`. Recheck network reachability before the next Pi update.
 
 ## Next Best Steps
 
@@ -353,5 +353,5 @@ Open follow-up and validation backlog:
    product labels, number pad input, checkout, Admin card, recipe cards, math
    mode, debug PIN, update, and remote admin QR.
 5. Add observations to issues #1, #2, #7, #8, and #9.
-6. Keep #25 and #26 as focused follow-up passes, not part of the current Pi
-   acceptance loop.
+6. Keep #25 and future #26-style complexity findings as focused follow-up
+   passes, not part of the current Pi acceptance loop.

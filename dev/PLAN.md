@@ -21,7 +21,7 @@ local data handling.
 | Data module split | Open | Tracked as issue #4 |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Open | Raise UI component and operation-script coverage in issue #25 |
-| UI handler complexity | Open | Reduce highest-complexity handlers in issue #26 |
+| UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
 
 ## Open Issue Snapshot
 
@@ -37,7 +37,8 @@ local data handling.
 - #22 Cache fonts and scaled assets for Pi Zero runtime: partially covered;
   keep the remaining work as a profiling backlog.
 - #25 Raise coverage for UI components and operation scripts.
-- #26 Reduce highest-complexity UI handlers.
+- #26 Reduce highest-complexity UI handlers: current Radon C/D findings are
+  removed; keep future findings tracked in the same issue or a follow-up issue.
 - #1, #2, #7, #8, and #9 remain hardware, child, and first-boot validation
   issues.
 - #4 remains the database module split backlog item.
@@ -91,7 +92,8 @@ local data handling.
      component tests.
    - `ScrollableCart.handle_event` has been reduced out of the Radon C list
      with direct component tests.
-   - Continue with the remaining Radon C hotspot: `RecipeScene._handle_barcode`.
+   - `RecipeScene._handle_barcode` has been split into branch-specific scan
+     helpers; the current Radon pipeline reports no C/D findings.
    - Keep refactors behavior-preserving and covered by targeted smoke tests.
 
 8. **Later CRUD**
@@ -131,7 +133,7 @@ local data handling.
   short logs.
 - `uv run poe check` is the code-quality pipeline. Ruff format/lint, `ty`,
   Vulture, Deptry, jscpd, and pytest-cov are strict gates; Radon reports
-  complexity findings for #26.
+  future complexity findings.
 - The Pi stays on the home WiFi; no hotspot in v1.
 - Hardware debugging uses SSH over WiFi so the Pi USB data bus can be isolated for OTG and hub tests.
 - When the SEENGREAT shield is in Pi Zero hub mode, the Pi micro-USB data port must stay unused; downstream USB devices should connect through the shield.
