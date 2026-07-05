@@ -23,11 +23,11 @@
   and the boot-time shell entrypoint in `tools/pi_firstboot.sh`;
   `tools/pi_prepare_boot.py` copies that script instead of embedding shell text.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
-- The `codex/pi-ops-safety` branch is pushed to GitHub. Runtime code changes
-  through `4fef3ac` cover the now-closed Pi operations issues #23, #24, and
-  #28. Later docs-only commits may be ahead on GitHub; use the live
-  `kasse-debug.sh status` output as the authoritative Pi checkout before Pi
-  work. `tools/pi_update.sh` records the
+- The `codex/pi-ops-safety` branch is pushed to GitHub and deployed on the Pi at
+  `b0cf630`. Runtime code changes through that commit cover the now-closed Pi
+  operations issues #23, #24, #28, #31, the now-closed database split #4, and
+  the local-day earning fix #32. Use the live `kasse-debug.sh status` output as
+  the authoritative Pi checkout before Pi work. `tools/pi_update.sh` records the
   previous commit and rolls back after post-pull failures, including no-op pull
   failure paths. The
   PIN-protected debug page now reports service, install/update/backup, timer,
@@ -92,14 +92,14 @@
   final service-start step. Manual recovery via SSH started
   `carolins-kasse.service`; the service was `active` and `enabled`,
   `userconfig.service` was `masked`, and no failed units remained.
-- Remote debugging previously worked over SSH as `kasse@carolins-kasse.local`
-  (`192.168.1.139`). At the last successful live check, `/opt/carolins-kasse`
-  on the Pi was on `codex/pi-ops-safety` at `9c0d70b`; newer docs-only commits
-  may be ahead on GitHub. The kiosk service was systemd managed and active.
-- The current local code/test changes are not deployed to the Pi. On the latest
-  2026-07-05 read-only local checks, `carolins-kasse.local` did not resolve,
-  `192.168.1.139` timed out over SSH, ping had 100% packet loss, and ARP stayed
-  incomplete, so no Pi update was attempted.
+- Remote debugging currently works over SSH as `kasse@carolins-kasse.local`.
+  Direct SSH to `192.168.1.139` hit a local `known_hosts` mismatch after the Pi
+  was reachable again, so prefer `.local` unless the stale IP host key is
+  cleaned locally.
+- The current source checkout is deployed to the Pi. On 2026-07-05, the safe
+  update service pulled `b0cf630`, ran validation and generated-output steps,
+  installed systemd units, and restarted the kiosk. `carolins-kasse.service` is
+  active after the update.
 - Reachability is the #31 gate: if `kasse-debug.sh status` cannot connect, do
   not run `acceptance`, `update`, `restart`, or `backup`. Check Pi power, home
   WiFi, DHCP/router lease, and the local kiosk screen first. If the address
@@ -269,7 +269,9 @@
   `src/utils/database_checkout.py`. The helper still reuses
   `database_transactions.save_transaction(conn, card_id, total, items)` inside
   the same transaction. Regression coverage verifies rollback when
-  `save_transaction` fails.
+  `save_transaction` fails. Issue #4 is closed for the current KISS scope; keep
+  the remaining public connection and transaction boundaries in
+  `src/utils/database.py` unless a new focused issue proves a need.
 - Local #4 schema split moved SQLite DDL and migration helpers into
   `src/utils/database_schema.py`. The public `init_database()` wrapper stays in
   `src/utils/database.py` with `get_db()` and the commit boundary; smoke
@@ -510,7 +512,30 @@ Pi read-only reachability check on 2026-07-05 CEST before attempting another upd
 - The local Mac is on `192.168.1.199` via gateway `192.168.1.1`.
 - No acceptance, update, restart, or backup was attempted because the target was
   not reachable.
-- Track the deployment blocker in #31.
+- This was superseded later on 2026-07-05 when `.local` SSH worked again and
+  #31 was closed.
+
+Latest Pi deployment validation on 2026-07-05 CEST:
+
+- Local preflight `uv run poe check` passed: 93 tests, 58.30% coverage, 0 jscpd
+  duplicates, Radon Average A.
+- Commit `b0cf630` was pushed to `origin/codex/pi-ops-safety` and
+  `origin/master`.
+- `/Users/davidweigend/.codex/skills/carolins-kasse-debug/scripts/kasse-debug.sh update`
+  completed successfully.
+- Pi update log reported checkout after pull
+  `b0cf630f8651002af5ce5b3bd9e1c9ae70c2fc58`.
+- Pi update ran `uv sync --frozen --no-dev`, compileall, non-destructive seed,
+  barcode generation, print PDF generation, systemd unit install, and kiosk
+  restart.
+- Post-update `kasse-debug.sh status` showed `carolins-kasse.service` active
+  since `2026-07-05 06:41:32 CEST` with checkout `codex/pi-ops-safety b0cf630`.
+- `kasse-debug.sh acceptance` read-only baseline showed `throttled=0x0`, the
+  QinHeng hub, QDTECH touch, M4 YX scanner, and SIGMACHIP keypad enumerated,
+  `Startup finished in 6.885s (kernel) + 22.666s (userspace) = 29.552s`, and
+  `graphical.target` reached after `20.311s` in userspace.
+- Direct SSH to `192.168.1.139` hit a local `known_hosts` mismatch; `.local`
+  remained usable and was used for the successful update.
 
 Previous Pi deployment validation on 2026-07-04 CEST:
 
@@ -534,24 +559,20 @@ Previous Pi deployment validation on 2026-07-04 CEST:
 
 Acceptance still missing:
 
-- #31 Pi unreachable over SSH for deployment validation: blocks `acceptance`,
-  `update`, `restart`, and `backup` until power, WiFi, DHCP/router lease, local
-  screen state, and a connecting `status` check are confirmed.
 - #27 Accept keypad digit keycodes when unicode text is empty: code is
-  deployed, but the physical SIGMACHIP keypad still needs validation through
-  the real kiosk app path.
+  deployed at `b0cf630`, and the read-only baseline sees the SIGMACHIP keypad;
+  physical Math/Numpad app-path validation is still pending.
 - #29 Remove NumPy paper texture generation from kiosk cold start: code is
-  deployed, but still needs clean power-cycle first-screen timing and admin
-  smoke.
+  deployed at `b0cf630`, and boot baseline is captured; manual first visible
+  StartScene timing plus texture inspection are still pending.
 - #30 Lazy-load admin and non-start scenes outside the kiosk cold path: code is
-  deployed, but still needs clean power-cycle first-screen timing and admin
-  smoke.
+  deployed at `b0cf630`, but still needs Admin card/QR/remote-admin and
+  navigation smoke on hardware.
 
 Open follow-up and validation backlog:
 
 - #1 Validate cashier UI with kids on touch display
 - #2 Validate recipe UI with kids on touch display
-- #4 Split database module for admin backend
 - #7 Validate automated Raspberry Pi first-boot setup
 - #8 Validate Pi Zero USB hub and OTG host path
 - #9 Pi first-boot installer fails before installing services
@@ -559,10 +580,9 @@ Open follow-up and validation backlog:
 
 ## Known Risks
 
-- `src/utils/database.py` is still a mixed-responsibility SQLite boundary even
-  after the current helper splits. Further #4 slices should move one query
-  family at a time and keep transaction-sensitive checkout/balance boundaries
-  covered.
+- `src/utils/database.py` intentionally remains the public SQLite boundary after
+  the #4 helper splits. Avoid further database indirection unless a new focused
+  issue identifies a concrete query family or transaction-boundary problem.
 - The new quality pipeline is intentionally a practical baseline: Ruff,
   `ty`, Vulture, Deptry, jscpd, and pytest-cov are strict, while Radon remains
   reporting-only. The focused #26 pass removed the current Radon C/D findings.
@@ -573,28 +593,25 @@ Open follow-up and validation backlog:
 - Generated runtime outputs (`data/print/*.pdf`, barcode files, local DB changes) must stay separate from source changes.
 - The first-boot installer needs one more clean validation after the timeout fix: the current fresh install succeeded after manual service start, but `carolins-install.service` timed out just before the final kiosk start completed.
 - SEENGREAT hub behavior is validated with the corrected topology. The Pi Zero 2 W has one USB data bus, so using the Pi micro-USB data port and the shield pogo-pin upstream at the same time causes descriptor failures.
-- The current Pi was systemd managed and previously reachable over SSH, but
-  repeated latest local checks could not resolve `carolins-kasse.local`, timed
-  out on `192.168.1.139`, and showed incomplete ARP for that address. #31 must
-  be resolved before `acceptance`, `update`, `restart`, or `backup`.
+- Direct IP SSH may need local `known_hosts` cleanup after the Pi reflash or
+  host-key change. Prefer `kasse@carolins-kasse.local`, which worked for the
+  latest successful update.
 
 ## Next Best Steps
 
-1. Resolve #31: confirm Pi power, home WiFi, DHCP/router lease, local screen
-   state, and SSH reachability. If the address changed, use
-   `KASSE_HOST=kasse@<current-ip> kasse-debug.sh status`.
-2. Once `status` connects, run `kasse-debug.sh acceptance` for the short
-   #27/#29/#30 hardware sign-off: SIGMACHIP number pad app path, clean
-   power-cycle first-screen timing, and admin smoke.
-3. If that baseline fails, use the detailed helper diagnostics: `status`,
+1. Run the remaining physical #27/#29/#30 checks on the live kiosk: SIGMACHIP
+   keypad Math/Numpad app path, clean power-cycle first visible StartScene
+   timing, texture inspection, Admin card/QR, remote admin, and navigation
+   smoke.
+2. If that baseline fails, use the detailed helper diagnostics: `status`,
    `usb`, `boot`, `logs`, or `keypad`.
-4. Continue #22 only where profiling still shows repeated font, scale, or
+3. Continue #22 only where profiling still shows repeated font, scale, or
    render cost.
-5. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
+4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
    product labels, number pad input, checkout, Admin card, recipe cards, math
    mode, debug PIN, update, and remote admin QR.
-6. Add observations to issues #1, #2, #7, #8, #9, and #31.
-7. Add focused regression coverage with the next risky scene, database, admin,
+5. Add observations to issues #1, #2, #7, #8, and #9.
+6. Add focused regression coverage with the next risky scene, database, admin,
    or Pi-operations change instead of keeping a broad standing coverage issue.
-8. Keep future #26-style complexity findings as focused follow-up passes, not
+7. Keep future #26-style complexity findings as focused follow-up passes, not
    part of the current Pi acceptance loop.
