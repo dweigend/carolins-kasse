@@ -24,8 +24,11 @@
   behavior-preserving, and easy to review.
 - Track findings as clear GitHub issues with priority, risk, and a proposed
   fix when follow-up is needed.
-- Remote Pi debugging uses SSH `kasse@carolins-kasse.local` and the local
-  helper skill at `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`.
+- Remote Pi debugging starts with `kasse-debug.sh status` from the local helper
+  skill at `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`.
+- If `status` cannot connect, do not run `acceptance`, `update`, `restart`, or
+  `backup`. Check Pi power, WiFi, DHCP/router lease, and the local kiosk screen
+  first; if the IP changed, retry status with `KASSE_HOST=kasse@<current-ip>`.
 - Run tests before Pi updates. Update the Pi only after green checks and via
   the configured safe service commands.
 
@@ -75,16 +78,15 @@ tools/             # Seed, barcode, print helper scripts
 - Run scripts with `uv run`.
 - Use type hints where they improve readability or correctness.
 - Add short English docstrings for shared or non-obvious public APIs.
-- No `ty` by default; pygame typing is still incomplete.
+- `ty` runs inside `uv run poe check`; prefer the full pipeline over separate
+  `ty` runs unless narrowing a type-check failure.
 
 ## Verification
 
-Run at least:
+For code changes, run at least:
 
 ```bash
-uv run ruff check src/ tools/
-uv run ruff format src/ tools/
-uv run python -m compileall src tools
+uv run poe check
 ```
 
 When relevant, also run targeted smoke tests for pygame scenes, barcode flows,

@@ -67,27 +67,43 @@
   complexity cleanup.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
-- Fresh Raspberry Pi OS Lite 64-bit was flashed successfully on 2026-04-29 and the Pi is reachable over WiFi SSH as `kasse@carolins-kasse.local` / `192.168.1.139`.
+- Fresh Raspberry Pi OS Lite 64-bit was flashed successfully on 2026-04-29; that
+  historical validation reached WiFi SSH as `kasse@carolins-kasse.local` /
+  `192.168.1.139`.
 - First-boot validation failed late: the Pi cloned GitHub `master` at `aa76175`, which lacks the local `systemd/` files from `codex/pi-firstboot-installer`, so `carolins-install.service` failed before installing `carolins-kasse.service`.
 - The first-boot user group setup also failed on missing `lpadmin`, leaving `kasse` without sudo. Track and fix in issue #9.
 - USB baseline on the Pi: host mode is active via `dtoverlay=dwc2,dr_mode=host`, `vcgencmd get_throttled` reports `0x0`, `lsusb` shows only the root hub, and boot dmesg contains `usb 1-1 ... error -71` descriptor failures.
 - SEENGREAT hub works as a standalone Mac USB hub and exposes downstream HID/CP2102 devices there, so the hub chip and Mac-side cable path are basically functional.
-- The corrected SEENGREAT topology is validated: leave the Pi micro-USB data port empty, keep the shield in `SW1=0`, `SW2=1`, and attach touch, scanner, and number pad downstream of the shield. `lsusb` now shows the QinHeng hub, QDTECH MPI7002 touch, M4 YX scanner, and SIGMACHIP number pad.
-- Touch is now working again through the shield. Keep the current cabling/ports as the known-good setup. The app also normalizes SDL finger events into mouse events so touch-only SDL paths still drive the existing UI.
+- The corrected SEENGREAT topology was validated: leave the Pi micro-USB data
+  port empty, keep the shield in `SW1=0`, `SW2=1`, and attach touch, scanner,
+  and number pad downstream of the shield. That check showed the QinHeng hub,
+  QDTECH MPI7002 touch, M4 YX scanner, and SIGMACHIP number pad.
+- Touch worked through the shield in that topology. Keep the current
+  cabling/ports as the known-good setup. The app also normalizes SDL finger
+  events into mouse events so touch-only SDL paths still drive the existing UI.
 - Earlier incomplete first-boot/manual-kiosk states were superseded by the fresh
   SD-card install below.
 - The SD card was fully reflashed on 2026-05-02 through a Terminal sudo flow. The flash log reports `3229614080 bytes transferred`, bootfs preparation completed, and `/dev/disk5` was ejected.
 - Local ignored flash helper `dev/local-debug/scripts/flash_carolins_kasse_sd.sh` has been updated to mask `userconfig.service` during first boot, matching `tools/pi_prepare_boot.py`.
-- The fresh Pi is reachable over SSH at `carolins-kasse.local` / `192.168.1.139`. First-boot user setup worked; `kasse` is in `sudo`, `input`, `render`, `gpio`, `i2c`, and `spi`.
-- The installer completed its real work but hit the systemd start timeout at the final service-start step. Manual recovery via SSH started `carolins-kasse.service`; it is now `active` and `enabled`, `userconfig.service` is `masked`, and no failed units remain.
-- Remote debugging is available over SSH as `kasse@carolins-kasse.local`
-  (`192.168.1.139`). At the last live check, `/opt/carolins-kasse` on the Pi
-  was on `codex/pi-ops-safety` at `9c0d70b`; newer docs-only commits may be
-  ahead on GitHub. The kiosk service is systemd managed and active.
+- On 2026-05-02, the fresh Pi was reachable over SSH at
+  `carolins-kasse.local` / `192.168.1.139`. First-boot user setup worked;
+  `kasse` was in `sudo`, `input`, `render`, `gpio`, `i2c`, and `spi`.
+- The installer completed its real work but hit the systemd start timeout at the
+  final service-start step. Manual recovery via SSH started
+  `carolins-kasse.service`; the service was `active` and `enabled`,
+  `userconfig.service` was `masked`, and no failed units remained.
+- Remote debugging previously worked over SSH as `kasse@carolins-kasse.local`
+  (`192.168.1.139`). At the last successful live check, `/opt/carolins-kasse`
+  on the Pi was on `codex/pi-ops-safety` at `9c0d70b`; newer docs-only commits
+  may be ahead on GitHub. The kiosk service was systemd managed and active.
 - The current local code/test changes are not deployed to the Pi. On the latest
   2026-07-05 read-only local checks, `carolins-kasse.local` did not resolve,
   `192.168.1.139` timed out over SSH, ping had 100% packet loss, and ARP stayed
   incomplete, so no Pi update was attempted.
+- Reachability is the #31 gate: if `kasse-debug.sh status` cannot connect, do
+  not run `acceptance`, `update`, `restart`, or `backup`. Check Pi power, home
+  WiFi, DHCP/router lease, and the local kiosk screen first. If the address
+  changed, retry status with `KASSE_HOST=kasse@<current-ip>`.
 - Passwordless sudo is limited to the intended service operations:
   restart `carolins-kasse.service`, start `carolins-kasse-update.service`, and
   start `carolins-kasse-backup.service`.
@@ -97,11 +113,11 @@
   keypad digit keycodes in shared input, MathGameScene, and Numpad; Pi
   validation of the app path is still pending.
 - Local Codex debug helpers live outside the repo at
-  `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`. Its
-  `scripts/kasse-debug.sh acceptance` command is the short read-only hardware
+  `/Users/davidweigend/.codex/skills/carolins-kasse-debug/`. After `status`
+  connects, `scripts/kasse-debug.sh acceptance` is the short read-only hardware
   sign-off path for #27/#29/#30: number pad app-path test, clean power-cycle
-  first-screen timing, and admin smoke. Use `status`, `usb`, `boot`, `logs`,
-  and `keypad` from the same helper only when deeper diagnosis is needed.
+  first-screen timing, and admin smoke. Use `usb`, `boot`, `logs`, and `keypad`
+  from the same helper only when deeper diagnosis is needed.
 
 ## Recent Completed Work
 
@@ -247,12 +263,13 @@
   into `src/utils/database_balance_adjustments.py`. The public
   `update_user_balance` wrapper, `get_db()`, `BEGIN IMMEDIATE`, commit, and
   rollback boundary stay in `src/utils/database.py`.
-- Local #4 checkout-dedupe pass kept `process_checkout` in
-  `src/utils/database.py` for `get_db()`, `BEGIN IMMEDIATE`, commit/rollback,
-  user lookup, insufficient funds, guarded balance update, and
-  `CheckoutResult`, while reusing
-  `database_transactions.save_transaction(conn, card_id, total, items)`.
-  Regression coverage now verifies rollback when `save_transaction` fails.
+- Local #4 checkout-dedupe pass kept the public `process_checkout` transaction
+  boundary in `src/utils/database.py` for `get_db()`, `BEGIN IMMEDIATE`,
+  commit/rollback, and `CheckoutResult`, while moving checkout SQL/details into
+  `src/utils/database_checkout.py`. The helper still reuses
+  `database_transactions.save_transaction(conn, card_id, total, items)` inside
+  the same transaction. Regression coverage verifies rollback when
+  `save_transaction` fails.
 - Local #4 schema split moved SQLite DDL and migration helpers into
   `src/utils/database_schema.py`. The public `init_database()` wrapper stays in
   `src/utils/database.py` with `get_db()` and the commit boundary; smoke
@@ -491,17 +508,18 @@ Pi read-only reachability check on 2026-07-05 CEST before attempting another upd
 - `ping -c 2 -W 1000 192.168.1.139` had 100% packet loss.
 - `arp -a` showed `192.168.1.139` as incomplete on `en1`.
 - The local Mac is on `192.168.1.199` via gateway `192.168.1.1`.
-- No Pi update was attempted because the target was not reachable.
+- No acceptance, update, restart, or backup was attempted because the target was
+  not reachable.
 - Track the deployment blocker in #31.
 
-Final Pi deployment validation on 2026-07-04 CEST:
+Previous Pi deployment validation on 2026-07-04 CEST:
 
 - `/Users/davidweigend/.codex/skills/carolins-kasse-debug/scripts/kasse-debug.sh tests` (54 tests OK plus checks)
 - Pi update service ran twice; the second run installed systemd units and
   finished at `2026-07-04T21:12:31+02:00`.
-- Pi `/opt/carolins-kasse` is on `codex/pi-ops-safety` at `4fef3ac`;
-  `carolins-kasse.service` is active and `systemd-analyze critical-chain` now
-  shows `carolins-kasse.service -> basic.target`.
+- Pi `/opt/carolins-kasse` reported `codex/pi-ops-safety` at `4fef3ac`;
+  `carolins-kasse.service` was active and `systemd-analyze critical-chain`
+  showed `carolins-kasse.service -> basic.target`.
 - Later docs-only syncs pulled `b009ebe` at `2026-07-04T21:30:34+02:00` and
   `9c0d70b` at `2026-07-04T21:38:33+02:00`; the kiosk restarted cleanly and
   stayed active after each update. The same boot journal shows the first kiosk
@@ -516,9 +534,9 @@ Final Pi deployment validation on 2026-07-04 CEST:
 
 Acceptance still missing:
 
-- #31 Pi unreachable over SSH for deployment validation: blocks safe update and
-  #27/#29/#30 acceptance until power, WiFi, DHCP address, and SSH reachability
-  are confirmed.
+- #31 Pi unreachable over SSH for deployment validation: blocks `acceptance`,
+  `update`, `restart`, and `backup` until power, WiFi, DHCP/router lease, local
+  screen state, and a connecting `status` check are confirmed.
 - #27 Accept keypad digit keycodes when unicode text is empty: code is
   deployed, but the physical SIGMACHIP keypad still needs validation through
   the real kiosk app path.
@@ -558,16 +576,16 @@ Open follow-up and validation backlog:
 - The current Pi was systemd managed and previously reachable over SSH, but
   repeated latest local checks could not resolve `carolins-kasse.local`, timed
   out on `192.168.1.139`, and showed incomplete ARP for that address. #31 must
-  be resolved before the next Pi update.
+  be resolved before `acceptance`, `update`, `restart`, or `backup`.
 
 ## Next Best Steps
 
-1. Resolve #31: confirm Pi power, home WiFi, DHCP address, and SSH
-   reachability. If the address changed, use
-   `KASSE_HOST=kasse@<new-ip> kasse-debug.sh status`.
-2. Once reachable, run `kasse-debug.sh acceptance` for the short #27/#29/#30 hardware
-   sign-off: SIGMACHIP number pad app path, clean power-cycle first-screen
-   timing, and admin smoke.
+1. Resolve #31: confirm Pi power, home WiFi, DHCP/router lease, local screen
+   state, and SSH reachability. If the address changed, use
+   `KASSE_HOST=kasse@<current-ip> kasse-debug.sh status`.
+2. Once `status` connects, run `kasse-debug.sh acceptance` for the short
+   #27/#29/#30 hardware sign-off: SIGMACHIP number pad app path, clean
+   power-cycle first-screen timing, and admin smoke.
 3. If that baseline fails, use the detailed helper diagnostics: `status`,
    `usb`, `boot`, `logs`, or `keypad`.
 4. Continue #22 only where profiling still shows repeated font, scale, or

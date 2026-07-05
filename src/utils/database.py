@@ -16,6 +16,7 @@ from pathlib import Path
 
 from src.utils import (
     database_balance_adjustments,
+    database_checkout,
     database_earnings,
     database_products,
     database_recipes,
@@ -27,13 +28,13 @@ from src.utils import (
 from src.utils.database_models import (
     PRODUCT_COLUMNS as PRODUCT_COLUMNS,
     RECIPE_COLUMNS as RECIPE_COLUMNS,
-    USER_COLUMNS,
+    USER_COLUMNS as USER_COLUMNS,
     BalanceAdjustment,
     CheckoutError as CheckoutError,
     CheckoutResult,
-    CheckoutUserNotFoundError,
+    CheckoutUserNotFoundError as CheckoutUserNotFoundError,
     Earning,
-    InsufficientFundsError,
+    InsufficientFundsError as InsufficientFundsError,
     Product,
     Recipe,
     RecipeIngredient,
@@ -365,40 +366,12 @@ def process_checkout(
     with get_db() as conn:
         try:
             conn.execute("BEGIN IMMEDIATE")
-            row = conn.execute(
-                f"""
-                SELECT {USER_COLUMNS}
-                FROM users
-                WHERE card_id = ? AND active = 1
-                """,
-                (card_id,),
-            ).fetchone()
-            if row is None:
-                raise CheckoutUserNotFoundError(f"Unknown user card ID: {card_id}")
-
-            user = User.from_row(row)
-            if user.balance < total:
-                raise InsufficientFundsError(available=user.balance, required=total)
-
-            update_cursor = conn.execute(
-                """
-                UPDATE users
-                SET balance = balance - ?
-                WHERE card_id = ? AND active = 1 AND balance >= ?
-                """,
-                (total, card_id, total),
-            )
-            if update_cursor.rowcount != 1:
-                raise RuntimeError(f"Failed to update checkout balance for {card_id}")
-
-            transaction_id = database_transactions.save_transaction(
+            transaction_id, user = database_checkout.process_checkout(
                 conn,
                 card_id,
                 total,
                 items,
             )
-
-            user.balance -= total
             conn.commit()
             return CheckoutResult(
                 transaction_id=transaction_id,

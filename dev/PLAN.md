@@ -18,7 +18,7 @@ local data handling.
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
 | Regression tests | Active | 93-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, legacy schema migration, checkout rollback, local-day earnings, and product/recipe/user/session/earning/transaction/balance-adjustment public API compatibility |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
-| Data module split | Active | #4 slices moved database models/types plus schema, product, recipe, basic user CRUD, session, earning, transaction, and balance-adjustment helpers; `database.py` keeps the public init, connection, commit, checkout, and balance transaction boundaries |
+| Data module split | Active | #4 slices moved database models/types plus schema, product, recipe, basic user CRUD, session, earning, transaction, balance-adjustment, and checkout helpers; `database.py` keeps the public init, connection, commit, checkout, and balance transaction boundaries |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
 | Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
 | UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
@@ -27,8 +27,9 @@ local data handling.
 
 `gh issue list --limit 30` on 2026-07-05 shows these issues as open:
 
-- #31 Pi unreachable over SSH for deployment validation: blocks safe Pi update
-  and #27/#29/#30 hardware acceptance until power/WiFi/address is confirmed.
+- #31 Pi unreachable over SSH for deployment validation: blocks `acceptance`,
+  `update`, `restart`, and `backup` until power, WiFi, DHCP/router lease, local
+  screen state, and a connecting `status` check are confirmed.
 - #27 Accept keypad digit keycodes when unicode text is empty: deployed, but
   still needs physical app-path validation with the SIGMACHIP keypad.
 - #29 Remove NumPy paper texture generation from kiosk cold start: deployed,
@@ -47,9 +48,10 @@ local data handling.
   `database_sessions.py` owns session query helpers; `database_earnings.py`
   owns earning helpers; `database_transactions.py` owns transaction helpers,
   including `save_transaction`; `database_balance_adjustments.py` owns
-  balance-adjustment query and write helpers; `database_schema.py` owns schema
-  DDL and migration helpers; public init, commit, and checkout transaction
-  boundaries remain in `database.py`.
+  balance-adjustment query and write helpers; `database_checkout.py` owns
+  checkout SQL/details; `database_schema.py` owns schema DDL and migration
+  helpers; public init, commit, and checkout transaction boundaries remain in
+  `database.py`.
 
 ## Active Priorities
 
@@ -67,11 +69,14 @@ local data handling.
      render cost.
 
 3. **Hardware and child validation**
-   - Resolve #31 before attempting Pi update or acceptance: confirm power,
-     WiFi, DHCP address, and SSH reachability.
-   - Use `kasse-debug.sh acceptance` as the short read-only hardware sign-off
-     path for #27/#29/#30: number pad app test, clean power-cycle first-screen
-     timing, and admin smoke.
+   - Resolve #31 before attempting `acceptance`, Pi update, restart, or backup:
+     confirm power, WiFi, DHCP/router lease, local screen state, and SSH
+     reachability.
+   - If the address changed, retry reachability with
+     `KASSE_HOST=kasse@<current-ip> kasse-debug.sh status`.
+   - Once `status` connects, use `kasse-debug.sh acceptance` as the short
+     read-only hardware sign-off path for #27/#29/#30: number pad app test,
+     clean power-cycle first-screen timing, and admin smoke.
    - Keep detail diagnosis in the focused helper commands: `status`, `usb`,
      `boot`, `logs`, and `keypad`.
    - Keep the validated SEENGREAT topology: leave the Pi USB data port empty while the shield is in Pi mode, then attach touch, scanner, and number pad downstream of the shield.
@@ -107,6 +112,8 @@ local data handling.
    - `src/utils/database_balance_adjustments.py` owns balance adjustment SQL
      query and write helpers that receive an existing connection and do not
      commit.
+   - `src/utils/database_checkout.py` owns checkout SQL/details that receive an
+     existing connection and do not commit.
    - Keep `src/utils/database.py` import-compatible as the public SQLite API,
      including `init_database()`, connection helpers, commit/rollback,
      checkout, and admin balance transaction boundaries.
@@ -120,7 +127,8 @@ local data handling.
      Pi-operations change instead of keeping a broad standing coverage issue.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
    - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
-     local checks, and safe Pi update/restart/backup actions.
+     local checks, and safe Pi update/restart/backup actions after the #31
+     reachability gate passes.
    - Run `uv run poe check` as the single local quality command before review.
 
 7. **UI handler complexity**

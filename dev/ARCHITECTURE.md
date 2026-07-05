@@ -73,8 +73,9 @@ types live in `src/utils/database_models.py`; product query helpers live in
 `src/utils/database_earnings.py`; transaction helpers, including
 `save_transaction`, live in `src/utils/database_transactions.py`; balance
 adjustment query and write helpers live in
-`src/utils/database_balance_adjustments.py`. Public names are still re-exported
-or wrapped from `src/utils/database.py` for import compatibility; the public
+`src/utils/database_balance_adjustments.py`; checkout SQL/details live in
+`src/utils/database_checkout.py`. Public names are still re-exported or wrapped
+from `src/utils/database.py` for import compatibility; the public
 `process_checkout` and `update_user_balance` wrappers stay there with
 `get_db()`, `BEGIN IMMEDIATE`, commit, and rollback.
 Continue splitting only in small behavior-preserving slices.
@@ -83,9 +84,9 @@ SQLite connections enable foreign key checks and a short busy timeout. Checkout
 writes use `BEGIN IMMEDIATE` so the transaction, balance update, earnings or
 transaction records, and runtime refresh succeed or fail together. The checkout
 API returns `CheckoutResult` for successful commits and `CheckoutError` for
-user-facing failure cases. `process_checkout` delegates the transaction row
-write to `database_transactions.save_transaction()` inside the same SQLite
-transaction.
+user-facing failure cases. The public `process_checkout` wrapper delegates
+checkout SQL/details to `database_checkout.process_checkout()` inside the same
+SQLite transaction.
 
 ## Barcode Rules
 
@@ -187,6 +188,7 @@ Systemd units live under `systemd/`:
 | `src/utils/database_earnings.py` | Earning SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_transactions.py` | Transaction SQL helpers, including `save_transaction`, that receive an existing connection and do not commit |
 | `src/utils/database_balance_adjustments.py` | Balance adjustment SQL query/write helpers that receive an existing connection and do not commit |
+| `src/utils/database_checkout.py` | Checkout SQL/details that receive an existing connection and do not commit |
 | `src/utils/barcodes.py` | Barcode rules and generated SVG paths |
 | `src/utils/admin_runtime.py` | Managed FastAPI server start/stop for pygame admin |
 | `src/utils/network.py` | Local IP and admin URL helpers |
