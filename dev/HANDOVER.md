@@ -23,13 +23,13 @@
   and the boot-time shell entrypoint in `tools/pi_firstboot.sh`;
   `tools/pi_prepare_boot.py` copies that script instead of embedding shell text.
 - Pi runtime DB can live outside the checkout via `CAROLINS_KASSE_DB_PATH`, with `/var/lib/carolins-kasse/kasse.db` used by the systemd units.
-- The `codex/pi-ops-safety` branch is pushed to GitHub and deployed on the Pi at
-  `b0cf630`. Runtime code changes through that commit cover the now-closed Pi
+- The `codex/pi-ops-safety` branch is pushed to GitHub. Runtime code changes
+  through `b0cf630` are deployed on the Pi and cover the now-closed Pi
   operations issues #23, #24, #28, #31, the now-closed database split #4, and
-  the local-day earning fix #32. Use the live `kasse-debug.sh status` output as
-  the authoritative Pi checkout before Pi work. `tools/pi_update.sh` records the
-  previous commit and rolls back after post-pull failures, including no-op pull
-  failure paths. The
+  the local-day earning fix #32. A later docs-only sync reached `6241398` on the
+  Pi. Use the live `kasse-debug.sh status` output as the authoritative Pi
+  checkout before Pi work. `tools/pi_update.sh` records the previous commit and
+  rolls back after post-pull failures, including no-op pull failure paths. The
   PIN-protected debug page now reports service, install/update/backup, timer,
   failed-unit, and log-snippet status while degrading gracefully when Pi or
   systemd access is unavailable.
@@ -96,10 +96,10 @@
   Direct SSH to `192.168.1.139` hit a local `known_hosts` mismatch after the Pi
   was reachable again, so prefer `.local` unless the stale IP host key is
   cleaned locally.
-- The current source checkout is deployed to the Pi. On 2026-07-05, the safe
+- The current runtime source is deployed to the Pi. On 2026-07-05, the safe
   update service pulled `b0cf630`, ran validation and generated-output steps,
-  installed systemd units, and restarted the kiosk. `carolins-kasse.service` is
-  active after the update.
+  installed systemd units, and restarted the kiosk. A follow-up docs-only update
+  pulled `6241398`; `carolins-kasse.service` is active after the update.
 - Reachability is the #31 gate: if `kasse-debug.sh status` cannot connect, do
   not run `acceptance`, `update`, `restart`, or `backup`. Check Pi power, home
   WiFi, DHCP/router lease, and the local kiosk screen first. If the address
@@ -520,7 +520,7 @@ Latest Pi deployment validation on 2026-07-05 CEST:
 - Local preflight `uv run poe check` passed: 93 tests, 58.30% coverage, 0 jscpd
   duplicates, Radon Average A.
 - Commit `b0cf630` was pushed to `origin/codex/pi-ops-safety` and
-  `origin/master`.
+  `origin/master`; docs-only commit `6241398` was pushed afterward.
 - `/Users/davidweigend/.codex/skills/carolins-kasse-debug/scripts/kasse-debug.sh update`
   completed successfully.
 - Pi update log reported checkout after pull
@@ -536,6 +536,10 @@ Latest Pi deployment validation on 2026-07-05 CEST:
   `graphical.target` reached after `20.311s` in userspace.
 - Direct SSH to `192.168.1.139` hit a local `known_hosts` mismatch; `.local`
   remained usable and was used for the successful update.
+- Follow-up docs-only update fast-forwarded the Pi from `b0cf630` to `6241398`
+  and restarted the kiosk. Final `kasse-debug.sh status` showed
+  `carolins-kasse.service` active since `2026-07-05 06:45:16 CEST` with checkout
+  `codex/pi-ops-safety 6241398`.
 
 Previous Pi deployment validation on 2026-07-04 CEST:
 
