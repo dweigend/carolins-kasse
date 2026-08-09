@@ -1,8 +1,23 @@
 # Session Handover
 
-**Last Updated:** 2026-07-05 CEST
+**Last Updated:** 2026-08-09 CEST
 
 ## Current State
+
+- `tools/generate_printables.py --users Carolin Annelie` creates a focused A4
+  user-card sheet for the two child accounts, without including the Admin or
+  guest cards. The login scanner reads the printed EAN-13 barcodes, not QR
+  codes. User cards now share the 85.6 x 53.98 mm credit-card design, with a
+  larger portrait, colored heavy border, clear identity area, and barcode on
+  the warm background.
+- `tools/generate_printables.py --products ...` creates a focused A4 label
+  sheet for named barcode products, for example the current basic-food labels.
+  Product cards use the 85.6 x 53.98 mm credit-card format and separate image,
+  product details, and barcode into non-overlapping layout zones.
+- `tools/generate_printables.py --all-products` creates cards for every product
+  record, including picker products without pre-existing physical labels. The
+  product design uses a heavier border, transparent product art, and barcodes
+  directly on the warm card background.
 
 - Core kiosk flows are implemented: login, menu, shopping/scan, picker, checkout, recipe mode, math mode, sessions, earnings, transactions, and balances.
 - SceneManager now supports optional `on_enter()` and `reset_user_state()`

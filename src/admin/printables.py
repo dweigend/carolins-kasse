@@ -27,20 +27,24 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 ASSETS_DIR = PROJECT_ROOT / "assets"
 PRINT_DIR = PROJECT_ROOT / "data" / "print"
 
-USER_CARD_SIZE = (70 * mm, 45 * mm)
+CREDIT_CARD_SIZE = (85.6 * mm, 53.98 * mm)
+USER_CARD_SIZE = CREDIT_CARD_SIZE
 RECIPE_CARD_SIZE = (70 * mm, 45 * mm)
-PRODUCT_LABEL_SIZE = (55 * mm, 30 * mm)
+PRODUCT_LABEL_SIZE = CREDIT_CARD_SIZE
 PAGE_MARGIN = 12 * mm
 CARD_GAP = 5 * mm
-LABEL_GAP = 4 * mm
+LABEL_GAP = 6 * mm
 
 BACKGROUND = colors.HexColor("#FDF6EC")
 TEXT = colors.HexColor("#1F2937")
 MUTED = colors.HexColor("#6B7280")
 ORANGE = colors.HexColor("#F59E0B")
 RED = colors.HexColor("#EF4444")
-BLUE = colors.HexColor("#3B82F6")
 LIGHT_BORDER = colors.HexColor("#E5E7EB")
+PRODUCT_BACKGROUND = colors.HexColor("#FFF9F0")
+PRODUCT_PRICE_BACKGROUND = colors.HexColor("#FEE2E2")
+PRODUCT_BORDER = colors.HexColor("#94A3B8")
+USER_ROLE_BACKGROUND = colors.HexColor("#F1F5F9")
 
 
 @dataclass(frozen=True)
@@ -99,12 +103,14 @@ def printable_files() -> list[PrintableFile]:
     return result
 
 
-def generate_user_cards_pdf(path: Path | None = None) -> Path:
-    """Generate user/admin barcode cards."""
+def generate_user_cards_pdf(
+    path: Path | None = None, users: list[User] | None = None
+) -> Path:
+    """Generate barcode cards for all users or an explicitly selected subset."""
     output_path = path or PRINT_DIR / "user_cards.pdf"
-    users = get_all_users()
+    selected_users = users if users is not None else get_all_users()
     pdf = _new_pdf(output_path, "Carolin's Kasse - Karten")
-    _draw_user_cards(pdf, users)
+    _draw_user_cards(pdf, selected_users)
     pdf.save()
     return output_path
 
@@ -119,12 +125,18 @@ def generate_recipe_cards_pdf(path: Path | None = None) -> Path:
     return output_path
 
 
-def generate_product_labels_pdf(path: Path | None = None) -> Path:
-    """Generate product barcode labels."""
+def generate_product_labels_pdf(
+    path: Path | None = None, products: list[Product] | None = None
+) -> Path:
+    """Generate labels for all barcode products or an explicitly selected subset."""
     output_path = path or PRINT_DIR / "product_labels.pdf"
-    products = [p for p in get_all_products() if p.has_barcode]
+    selected_products = (
+        products
+        if products is not None
+        else [product for product in get_all_products() if product.has_barcode]
+    )
     pdf = _new_pdf(output_path, "Carolin's Kasse - Produkte")
-    _draw_product_labels(pdf, products)
+    _draw_product_labels(pdf, selected_products)
     pdf.save()
     return output_path
 
@@ -179,17 +191,36 @@ def _draw_product_labels(pdf: canvas.Canvas, products: list[Product]) -> None:
 def _draw_user_card(pdf: canvas.Canvas, x: float, y: float, user: User) -> None:
     width, height = USER_CARD_SIZE
     accent = colors.HexColor(user.color or "#F59E0B")
-    _draw_card_background(pdf, x, y, width, height, accent)
+    _draw_credit_card_background(pdf, x, y, width, height, accent)
 
-    _draw_image(pdf, _user_asset_path(user), x + 5 * mm, y + 17 * mm, 18 * mm, 18 * mm)
-    _draw_title(pdf, user.name, x + 26 * mm, y + 31 * mm, max_width=38 * mm)
+    _draw_image(
+        pdf,
+        _user_asset_path(user),
+        x + 5 * mm,
+        y + 27 * mm,
+        30 * mm,
+        23 * mm,
+    )
+    _draw_title(
+        pdf,
+        user.name,
+        x + 40 * mm,
+        y + 41 * mm,
+        max_width=40 * mm,
+        font_size=17,
+        min_font_size=11,
+    )
 
-    pdf.setFillColor(MUTED)
-    pdf.setFont("Helvetica", 7)
     role = "Admin-Karte" if user.is_admin else "Kinderkarte"
-    pdf.drawString(x + 26 * mm, y + 26 * mm, role)
-
-    _draw_barcode(pdf, user.card_id, x + 8 * mm, y + 4 * mm, 54 * mm, 14 * mm)
+    _draw_user_role(pdf, role, x + 40 * mm, y + 30 * mm)
+    _draw_barcode(
+        pdf,
+        user.card_id,
+        x + 10 * mm,
+        y + 6 * mm,
+        width - 20 * mm,
+        15 * mm,
+    )
 
 
 def _draw_recipe_card(pdf: canvas.Canvas, x: float, y: float, recipe: Recipe) -> None:
@@ -219,23 +250,87 @@ def _draw_product_label(
     pdf: canvas.Canvas, x: float, y: float, product: Product
 ) -> None:
     width, height = PRODUCT_LABEL_SIZE
-    _draw_card_background(pdf, x, y, width, height, BLUE)
+    _draw_credit_card_background(pdf, x, y, width, height, PRODUCT_BORDER)
 
     _draw_image(
         pdf,
         _asset_path("340er", product.image_path),
-        x + 4 * mm,
-        y + 10 * mm,
-        12 * mm,
-        12 * mm,
+        x + 5 * mm,
+        y + 28 * mm,
+        24 * mm,
+        20 * mm,
     )
-    _draw_title(pdf, product.name_de, x + 18 * mm, y + 21 * mm, max_width=31 * mm)
 
+    _draw_title(
+        pdf,
+        product.name_de,
+        x + 33 * mm,
+        y + 41 * mm,
+        max_width=47 * mm,
+        font_size=15,
+        min_font_size=10,
+    )
+
+    _draw_product_price(pdf, product.price, x + 33 * mm, y + 30 * mm)
+
+    _draw_barcode(
+        pdf,
+        product.barcode,
+        x + 10 * mm,
+        y + 6 * mm,
+        width - 20 * mm,
+        15 * mm,
+    )
+
+
+def _draw_credit_card_background(
+    pdf: canvas.Canvas,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    border_color,
+) -> None:
+    """Draw the shared warm credit-card shell."""
+    pdf.setFillColor(PRODUCT_BACKGROUND)
+    pdf.setStrokeColor(border_color)
+    pdf.setLineWidth(1.8)
+    pdf.roundRect(x, y, width, height, 4 * mm, stroke=1, fill=1)
+
+
+def _draw_user_role(pdf: canvas.Canvas, role: str, x: float, y: float) -> None:
+    """Draw the user card type as a subtle badge."""
+    badge_width = max(
+        27 * mm,
+        pdf.stringWidth(role, "Helvetica-Bold", 10) + 8 * mm,
+    )
+    badge_height = 7.5 * mm
+
+    pdf.setFillColor(USER_ROLE_BACKGROUND)
+    pdf.roundRect(x, y, badge_width, badge_height, 3.75 * mm, stroke=0, fill=1)
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawCentredString(x + badge_width / 2, y + 2.35 * mm, role)
+
+
+def _draw_product_price(pdf: canvas.Canvas, price: float, x: float, y: float) -> None:
+    """Draw the product price as a compact badge."""
+    price_text = f"{int(price)} Taler"
+    badge_width = max(
+        25 * mm,
+        pdf.stringWidth(price_text, "Helvetica-Bold", 10) + 8 * mm,
+    )
+    badge_height = 7.5 * mm
+
+    pdf.setFillColor(PRODUCT_PRICE_BACKGROUND)
+    pdf.roundRect(x, y, badge_width, badge_height, 3.75 * mm, stroke=0, fill=1)
     pdf.setFillColor(RED)
-    pdf.setFont("Helvetica-Bold", 8)
-    pdf.drawString(x + 18 * mm, y + 16 * mm, f"{int(product.price)} Taler")
-
-    _draw_barcode(pdf, product.barcode, x + 5 * mm, y + 3 * mm, 45 * mm, 10 * mm)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawCentredString(
+        x + badge_width / 2,
+        y + 2.35 * mm,
+        price_text,
+    )
 
 
 def _draw_card_background(
@@ -267,11 +362,17 @@ def _draw_card_background(
 
 
 def _draw_title(
-    pdf: canvas.Canvas, text: str, x: float, y: float, max_width: float
+    pdf: canvas.Canvas,
+    text: str,
+    x: float,
+    y: float,
+    max_width: float,
+    font_size: int = 11,
+    min_font_size: int = 7,
 ) -> None:
-    font_size = 11
     while (
-        font_size > 7 and pdf.stringWidth(text, "Helvetica-Bold", font_size) > max_width
+        font_size > min_font_size
+        and pdf.stringWidth(text, "Helvetica-Bold", font_size) > max_width
     ):
         font_size -= 1
     pdf.setFillColor(TEXT)

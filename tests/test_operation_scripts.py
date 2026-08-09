@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import importlib
 import io
 from pathlib import Path
+from reportlab.lib.units import mm
 import sys
 import tempfile
 from types import ModuleType
@@ -46,6 +47,84 @@ class OperationScriptTests(unittest.TestCase):
 
             self.assert_expected_printables(context.print_dir)
             self.assertIn("Druckdateien erfolgreich erstellt", output.getvalue())
+
+    def test_generate_selected_user_cards_creates_only_requested_cards(self) -> None:
+        with operation_script_context() as context:
+            generate_printables = importlib.import_module("tools.generate_printables")
+
+            with (
+                patch.object(
+                    importlib.import_module("src.admin.printables"),
+                    "PRINT_DIR",
+                    context.print_dir,
+                ),
+                patch.object(generate_printables, "PRINT_DIR", context.print_dir),
+            ):
+                output_path = generate_printables.generate_selected_user_cards(
+                    ["Carolin"]
+                )
+
+            self.assertEqual(context.print_dir / "user_cards_Carolin.pdf", output_path)
+            self.assertEqual(b"%PDF", output_path.read_bytes()[:4])
+
+    def test_generate_selected_product_labels_creates_only_requested_labels(
+        self,
+    ) -> None:
+        with operation_script_context() as context:
+            generate_printables = importlib.import_module("tools.generate_printables")
+
+            with (
+                patch.object(
+                    importlib.import_module("src.admin.printables"),
+                    "PRINT_DIR",
+                    context.print_dir,
+                ),
+                patch.object(generate_printables, "PRINT_DIR", context.print_dir),
+            ):
+                output_path = generate_printables.generate_selected_product_labels(
+                    ["Milch"]
+                )
+
+            self.assertEqual(
+                context.print_dir / "product_labels_Milch.pdf", output_path
+            )
+            self.assertEqual(b"%PDF", output_path.read_bytes()[:4])
+
+    def test_product_labels_use_credit_card_dimensions(self) -> None:
+        printables = importlib.import_module("src.admin.printables")
+
+        width, height = printables.PRODUCT_LABEL_SIZE
+
+        self.assertAlmostEqual(85.6, width / mm)
+        self.assertAlmostEqual(53.98, height / mm)
+
+    def test_user_cards_use_credit_card_dimensions(self) -> None:
+        printables = importlib.import_module("src.admin.printables")
+
+        width, height = printables.USER_CARD_SIZE
+
+        self.assertAlmostEqual(85.6, width / mm)
+        self.assertAlmostEqual(53.98, height / mm)
+
+    def test_generate_all_product_labels_creates_complete_sheet(self) -> None:
+        with operation_script_context() as context:
+            generate_printables = importlib.import_module("tools.generate_printables")
+
+            with (
+                patch.object(
+                    importlib.import_module("src.admin.printables"),
+                    "PRINT_DIR",
+                    context.print_dir,
+                ),
+                patch.object(generate_printables, "PRINT_DIR", context.print_dir),
+            ):
+                output_path = generate_printables.generate_all_product_labels()
+
+            self.assertEqual(
+                context.print_dir / "product_labels_all_products.pdf",
+                output_path,
+            )
+            self.assertEqual(b"%PDF", output_path.read_bytes()[:4])
 
     def assert_expected_barcodes(self, barcode_dir: Path) -> None:
         for svg_path in expected_barcode_paths(barcode_dir):
@@ -113,9 +192,10 @@ def run_generate_printables(print_dir: Path) -> io.StringIO:
 
     with (
         patch.object(printables, "PRINT_DIR", print_dir),
+        patch.object(generate_printables, "PRINT_DIR", print_dir),
         redirect_stdout(output),
     ):
-        generate_printables.main()
+        generate_printables.main([])
 
     return output
 
