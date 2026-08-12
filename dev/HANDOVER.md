@@ -28,13 +28,10 @@
   under `assets/340er/`, and delivered to the Pi through Git/update before the
   related catalog records are synchronized.
 
-- `README.md` now documents the current kiosk with genuine 1024x600 screenshots
-  for menu, shopping, customer-card checkout, recipe mode, and on-device admin.
-  Two clearly labeled reference-based illustrations use the real cart screenshot
-  and exact Poppler crops from the current child/product card PDFs; the checkout
-  steps now explicitly describe the required second customer-card scan.
-- The README hero now uses an optimized 320x180 GIF of the physical checkout
-  concept. Its reduced frame rate and palette keep the animation around 1.3 MiB.
+- `README.md` is restored to English and documents the current kiosk, hardware,
+  shopping flow, admin tools, inventory workflow, printables, Raspberry Pi
+  setup, and slim Python quality command. Genuine 1024x600 screenshots cover
+  the main modes, and the optimized 320x180 GIF appears without a caption.
 - `tools/generate_printables.py --users Carolin Annelie` creates a focused A4
   user-card sheet for the two child accounts, without including the Admin or
   guest cards. The login scanner reads the printed EAN-13 barcodes, not QR
