@@ -4,6 +4,12 @@
 
 ## Current State
 
+- `assets/generated/carolins-kasse-diy-variations/` contains ten square,
+  white-background style studies of the physical checkout terminal. The set
+  uses the original hardware photos for construction, keeps rear-only ports
+  and switches out of the front view, and shows the real
+  `assets/680er/startbildschirm.png` artwork on the touchscreen. A contact
+  sheet is included for quick comparison.
 - Product identity keeps the existing internal EAN-13 as the canonical barcode
   and can attach multiple scanned packaging barcodes through
   `product_barcode_aliases`. Kiosk and recipe lookup resolve aliases back to
