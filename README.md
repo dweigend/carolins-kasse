@@ -1,91 +1,227 @@
 # Carolin's Kasse
 
-A Raspberry Pi toy checkout for Carolin and Annelie: real barcode scanner,
-touch display, SQLite balances, shopping, recipes, math rewards, and a small
-parent admin area.
+Eine spielbare Kinderkasse für den Raspberry Pi: Karte scannen, einkaufen,
+Rezepte erfüllen und mit Rechenaufgaben Taler verdienen. Die Anwendung verbindet
+einen echten Barcode-Scanner und ein 1024×600-Touchdisplay mit einer bewusst
+einfachen, deutschsprachigen Oberfläche für Carolin und Annelie.
 
-## What Works
+![Carolin's Kasse mit dem echten Einkaufsbildschirm und Barcode-Scanner](docs/readme/kiosk-hero-illustration.png)
 
-- Pygame kiosk app for the 1024x600 touch display.
-- User card login, session tracking, balances, earnings, and transactions.
-- Shopping flow with scanner, touch picker, cart, checkout, and insufficient-funds handling.
-- Recipe mode with recipe cards and ingredient scanning.
-- Math mode with difficulty per child and Taler rewards.
-- FastAPI remote admin for products, users, recipes, barcodes, balances, and A4 print sheets.
-- On-device pygame admin mode via Admin card `2000000000046`.
+*Referenzbasierte Illustration. Der Bildschirm zeigt einen echten Screenshot
+der aktuellen 1024×600-App; Gerät und Umgebung sind illustriert.*
 
-## Hardware
+## Was die Kasse kann
 
-| Part | Model |
+- Anmeldung mit gedruckten EAN-13-Kinderkarten
+- Einkaufen per Barcode-Scanner oder Touch-Produktauswahl
+- Warenkorb, Kontostand, Bezahlung und verständliche Rückmeldungen
+- Rezeptmodus mit Rezeptkarten, Zutaten und benötigten Mengen
+- Rechenmodus mit kindgerechten Schwierigkeitsstufen und Taler-Belohnungen
+- Lokale Konten, Sitzungen, Einnahmen und Einkäufe in SQLite
+- Elternbereich direkt an der Kasse sowie im Browser im Heimnetz
+- SVG-Barcodes und druckfertige A4-PDFs für Karten, Rezepte und Produkte
+- Automatischer Kioskstart, Backups und sichere Updates auf dem Raspberry Pi
+
+Die Kasse läuft vollständig lokal. Für den normalen Spielbetrieb ist kein
+Cloud-Dienst erforderlich.
+
+## Die echte Oberfläche
+
+Das Hauptmenü führt direkt zu Rezept, Einkauf und Rechnen. Alle folgenden
+Bilder sind echte Screenshots der aktuellen pygame-App, lokal mit dem
+Produktions-Rendering in 1024×600 aufgenommen.
+
+![Echter Screenshot des Hauptmenüs](docs/readme/kiosk-menu-screenshot.png)
+
+| Einkauf und Warenkorb | Bezahlen: Kund*innenkarte scannen |
 |---|---|
-| Computer | Raspberry Pi Zero 2 W |
-| Display | Elecrow 7" IPS Touch, 1024x600 |
-| Power | Anker 20K 87W |
-| USB hub under test | SEENGREAT Pi USB HUB Rev1.1 |
-| Scanner | USB barcode scanner |
-| Input | Touch plus optional USB numpad |
-| USB debug kit | Micro-USB OTG adapter, simple USB mouse/keyboard, USB 2.0 stick |
+| ![Echter Screenshot des Einkaufs mit drei Produkten im Warenkorb](docs/readme/kiosk-shopping-cart-screenshot.png) | ![Echter Screenshot der Bezahlansicht mit Kartenscan](docs/readme/kiosk-checkout-screenshot.png) |
 
-USB topology on the Pi Zero 2 W is intentionally strict: when the SEENGREAT
-shield is in Pi Zero hub mode, all USB peripherals must be plugged into the
-shield. Do not use the Pi's micro-USB data port at the same time; it is the
-same single USB bus as the shield pogo-pin upstream.
+| Rezept mit Zutatenfortschritt | Elternbereich am Gerät |
+|---|---|
+| ![Echter Screenshot des Rezeptmodus mit Pfannkuchen und zwei von vier Zutaten](docs/readme/kiosk-recipe-screenshot.png) | ![Echter Screenshot des Elternbereichs mit Serverstatus und QR-Code](docs/readme/kiosk-admin-screenshot.png) |
 
-## Setup
+## So läuft ein Einkauf ab
 
-Local development:
+1. Kinderkarte scannen und das persönliche Kassiererprofil öffnen.
+2. Im Hauptmenü **Einkaufen**, **Rezept** oder **Rechnen** wählen.
+3. Produkte scannen; Produkte ohne eigenes Etikett über die Touch-Auswahl ergänzen.
+4. Mengen im Warenkorb prüfen und die grüne Bezahltaste berühren.
+5. Die Kund*innenkarte scannen. Bei einem Selbsteinkauf kann das dieselbe Karte
+   wie bei der Anmeldung sein; belastet wird das Guthaben der jetzt gescannten
+   Karte.
+6. Die Kasse speichert Einkauf und neuen Kontostand gemeinsam in SQLite und
+   zeigt den Beleg an.
+
+Im Rezeptmodus wird zuerst eine Rezeptkarte gescannt. Danach hakt die Kasse die
+benötigten Zutaten und Mengen beim Scannen ab. Im Rechenmodus werden gelöste
+Aufgaben mit Talern belohnt; schnelle Scanner-Eingaben werden dabei von normalen
+Zahleneingaben getrennt.
+
+## Schnellstart für die lokale Entwicklung
+
+Vorausgesetzt werden [uv](https://docs.astral.sh/uv/) und eine von `uv`
+verwendbare Python-Version ab 3.13.
 
 ```bash
+cd carolins_kasse
 uv sync
 uv run python tools/seed_database.py
 uv run python tools/generate_barcodes.py
 uv run python main.py
 ```
 
-`tools/seed_database.py` is non-destructive by default. It keeps the current
-Carolin/Annelie setup and refuses to overwrite existing balances, sessions,
-earnings, or transactions. Use `--reset` only for an intentional full rebuild.
+Das Kioskfenster verwendet die feste Zielauflösung 1024×600. Beim ersten
+Einrichten legt `tools/seed_database.py` 32 Produkte, die Konten Carolin,
+Annelie, Gast und Admin sowie fünf Rezepte an. Der Befehl ist standardmäßig
+nicht destruktiv und überschreibt keine vorhandenen Laufzeitdaten.
 
-Raspberry Pi first-boot setup is documented in `docs/PI_SETUP.md`. The automated
-path uses Raspberry Pi OS Lite 64-bit, `tools/pi_prepare_boot.py`, and systemd
-services to install and start the kiosk after first boot.
+> `uv run python tools/seed_database.py --reset` verwirft bewusst Kontostände,
+> Sitzungen, Einnahmen und Einkäufe. Nur für einen gewollten Neuaufbau verwenden.
 
-For hardware bring-up, keep local-only notes, secrets, logs, and scripts under
-`dev/local-debug/`. That directory is intentionally ignored by Git.
-
-## Admin
+### Browser-Admin lokal starten
 
 ```bash
-# Local browser
 uv run uvicorn src.admin.server:app --reload --port 8080
-
-# Phone on the home network
-uv run uvicorn src.admin.server:app --host 0.0.0.0 --port 8080
-
-# Printable A4 PDFs
-uv run python tools/generate_printables.py
 ```
 
-At the kiosk, scan the Admin card (`2000000000046`) on the login screen. The
-pygame admin mode can start/stop the remote admin server, show a QR code for
-`http://<pi-ip>:8080`, and adjust existing user balances quickly.
+Danach ist der Admin unter <http://localhost:8080> erreichbar. Für ein Telefon
+im selben Heimnetz bindet der Server an alle lokalen Schnittstellen:
 
-The browser admin also includes a PIN-protected `/debug` page on Raspberry Pi
-installations. It shows service status, logs, backups, SSH details, and can
-start backup/update/restart actions.
+```bash
+uv run uvicorn src.admin.server:app --host 0.0.0.0 --port 8080
+```
 
-## Barcode Prefixes
+Schreibende Browser-Aktionen benötigen eine PIN-geschützte Admin-Sitzung und
+CSRF-Schutz. Der Raspberry-Pi-Installer richtet die lokale PIN automatisch ein;
+der Admin ist für das vertrauenswürdige Heimnetz gedacht und sollte nicht direkt
+ins Internet gestellt werden.
 
-- `100`: products
-- `200`: users
-- `300`: recipes
+### Karten und Etiketten erzeugen
 
-## Project Docs
+![Kinder- und Produktkarten mit den echten PDF-Layouts](docs/readme/printable-card-kit-illustration.png)
 
-- `AGENTS.md`: repository instructions for Codex work.
-- `dev/HANDOVER.md`: current state and next steps.
-- `dev/PLAN.md`: active roadmap.
-- `dev/ARCHITECTURE.md`: system boundaries and runtime flows.
+*Referenzbasierte Illustration. Die vier Karten sind unveränderte Ausschnitte
+aus den tatsächlich erzeugten Kinderkarten- und Produktkarten-PDFs; Tisch und
+Scanner sind illustriert.*
 
-Historical design drafts were removed from the active docs to keep the repo
-lean. Use Git history if an old concept is needed again.
+```bash
+# Alle Standard-Druckbögen
+uv run python tools/generate_printables.py
+
+# Nur ausgewählte Kinderkarten
+uv run python tools/generate_printables.py --users Carolin Annelie
+
+# Ausgewählte oder alle Produktkarten
+uv run python tools/generate_printables.py --products Brot Mehl Zucker
+uv run python tools/generate_printables.py --all-products
+```
+
+Die PDFs werden unter `data/print/` abgelegt, die einzelnen EAN-13-Barcodes
+unter `data/barcodes/`.
+
+Das interne Barcode-Schema verwendet eindeutige Präfixe: `100` für Produkte,
+`200` für Benutzerkarten und `300` für Rezepte. Prüfziffern, Dateipfade und
+Admin-URLs werden zentral in `src/utils/barcodes.py` erzeugt.
+
+## Elternbereich
+
+Die Admin-Karte `2000000000046` öffnet den Elternbereich auf dem Touchdisplay.
+Dort lassen sich der Browser-Admin starten, dessen Adresse als QR-Code anzeigen,
+Kontostände anpassen und Konten überblicken.
+
+Der Browser-Admin ergänzt die Bedienung am Gerät:
+
+- Produkte, Preise und Aktivstatus verwalten
+- Konten, Schwierigkeitsstufen und Guthaben verwalten
+- Rezepte und Zutaten einsehen, Rezepte aktivieren oder deaktivieren
+- Barcodes öffnen und A4-Druckbögen erzeugen
+- auf dem Pi Dienststatus, kurze Logs und Backups prüfen
+- PIN-geschützt Backup, Neustart oder Update anstoßen
+
+## Raspberry Pi
+
+Das Zielsystem ist ein Raspberry Pi Zero 2 W mit Raspberry Pi OS Lite 64-bit.
+Der vorbereitete Erststart installiert das Projekt nach `/opt/carolins-kasse`,
+startet den Kiosk über systemd und hält die Laufzeitdatenbank updatefest unter
+`/var/lib/carolins-kasse/kasse.db`.
+
+Die vollständige Anleitung für SD-Karte, Erststart, Dienste, Updates, Backups
+und Hardware-Smoke-Test steht in [docs/PI_SETUP.md](docs/PI_SETUP.md).
+
+Wichtig für den aktuellen SEENGREAT Pi USB HUB: Im Pi-Zero-Hub-Modus bleibt der
+Micro-USB-Datenport des Pi frei. Touch, Scanner und Nummernblock werden gemeinsam
+am Shield angeschlossen, da beide Anschlusspfade denselben USB-Datenbus nutzen.
+
+## Architektur
+
+```text
+Barcode-Scanner / Touch / Nummernblock
+                  │
+                  ▼
+         pygame-Kiosk (`main.py`)
+        ├─ Szenen und UI-Komponenten
+        ├─ gemeinsamer Rahmen und Zustand
+        └─ öffentliche Datenbank-API
+                  │
+                  ▼
+             lokale SQLite-DB
+                  ▲
+                  │
+         FastAPI-Browser-Admin
+```
+
+| Bereich | Verantwortung |
+|---|---|
+| `src/scenes/` | Anmeldung, Menü, Einkauf, Produktauswahl, Rezepte, Rechnen und Geräte-Admin |
+| `src/components/` | Wiederverwendbare pygame-Bausteine |
+| `src/ui/` | Gemeinsamer 1024×600-Rahmen und Rendering-Hilfen |
+| `src/admin/` | FastAPI-App, Jinja2-Seiten und Admin-CSS |
+| `src/utils/` | Zustand, SQLite, Barcodes, Assets, Netzwerk und Pi-Funktionen |
+| `tools/` | Einrichtung, Barcode-/PDF-Erzeugung und Pi-Betrieb |
+| `systemd/` | Kiosk-, Update-, Backup- und Installationsdienste |
+| `tests/` | Isolierte Regressionstests mit temporären Datenbanken |
+
+`src/utils/database.py` bleibt die öffentliche SQLite-Schnittstelle. Die
+fachlichen SQL-Helfer sind nach Produkten, Rezepten, Konten, Sitzungen,
+Einnahmen, Transaktionen und Checkout getrennt. Checkout und Kontostand werden
+atomar geschrieben, damit kein halber Einkauf zurückbleibt.
+
+Weitere Details: [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md).
+
+## Tests und Qualität
+
+Der vollständige lokale Qualitätslauf ist:
+
+```bash
+uv run poe check
+```
+
+Neben den mit `uv sync` installierten Entwicklungswerkzeugen wird dafür
+[Bun](https://bun.sh/) benötigt, weil die Duplikatprüfung über `bunx` läuft.
+
+Er prüft Formatierung und Linting mit Ruff, Typen mit `ty`, ungenutzten Code,
+Abhängigkeiten, Duplikate und Komplexität und führt die pytest-Suite mit
+Coverage aus. Die Tests verwenden temporäre SQLite-Datenbanken und sollen
+`data/kasse.db` nicht verändern.
+
+Für Änderungen am Kiosk bleiben zusätzlich manuelle Tests auf echter Hardware
+wichtig: Touch, Scanner, Nummernblock, Vollbilddarstellung und Startzeit lassen
+sich lokal nur unvollständig abbilden.
+
+## Projektstatus
+
+Der Funktionsumfang für den Spielbetrieb ist implementiert: Anmeldung,
+Einkaufen, Produktauswahl, Checkout, Rezepte, Rechnen, Konten, Druckbögen und
+beide Elternbereiche sind vorhanden. Die automatisierte Testsuite deckt die
+zentralen Datenbank-, Sicherheits-, Szenen- und Pi-Betriebspfade ab.
+
+Noch ausstehend sind vor allem Abnahmetests am realen Aufbau:
+
+- Scanner-, Touch- und Nummernblock-Abläufe im vollständigen Kiosk
+- Bedienbarkeit mit Kindern auf dem 1024×600-Display
+- Startzeit und Darstellung auf dem Pi Zero 2 W
+- ein weiterer vollständig automatischer Erststart ohne manuelle Nacharbeit
+
+Aktueller Arbeitsstand und nächste Schritte stehen in
+[dev/HANDOVER.md](dev/HANDOVER.md) und [dev/PLAN.md](dev/PLAN.md).

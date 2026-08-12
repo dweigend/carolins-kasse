@@ -4,6 +4,11 @@
 
 ## Current State
 
+- `README.md` now documents the current kiosk with genuine 1024x600 screenshots
+  for menu, shopping, customer-card checkout, recipe mode, and on-device admin.
+  Two clearly labeled reference-based illustrations use the real cart screenshot
+  and exact Poppler crops from the current child/product card PDFs; the checkout
+  steps now explicitly describe the required second customer-card scan.
 - `tools/generate_printables.py --users Carolin Annelie` creates a focused A4
   user-card sheet for the two child accounts, without including the Admin or
   guest cards. The login scanner reads the printed EAN-13 barcodes, not QR
