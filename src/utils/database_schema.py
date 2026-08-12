@@ -19,6 +19,61 @@ def init_schema(conn: sqlite3.Connection) -> None:
         )
     """)
 
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS product_barcode_aliases (
+            alias_barcode TEXT PRIMARY KEY,
+            product_barcode TEXT NOT NULL,
+            FOREIGN KEY (product_barcode) REFERENCES products(barcode)
+                ON DELETE CASCADE
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_product_barcode_aliases_product
+        ON product_barcode_aliases(product_barcode)
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS products_reject_alias_barcode_insert
+        BEFORE INSERT ON products
+        WHEN EXISTS (
+            SELECT 1 FROM product_barcode_aliases
+            WHERE alias_barcode = NEW.barcode
+        )
+        BEGIN
+            SELECT RAISE(ABORT, 'barcode already used as product alias');
+        END
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS products_reject_alias_barcode_update
+        BEFORE UPDATE OF barcode ON products
+        WHEN EXISTS (
+            SELECT 1 FROM product_barcode_aliases
+            WHERE alias_barcode = NEW.barcode
+        )
+        BEGIN
+            SELECT RAISE(ABORT, 'barcode already used as product alias');
+        END
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS product_aliases_reject_product_barcode_insert
+        BEFORE INSERT ON product_barcode_aliases
+        WHEN EXISTS (
+            SELECT 1 FROM products WHERE barcode = NEW.alias_barcode
+        )
+        BEGIN
+            SELECT RAISE(ABORT, 'barcode already used as canonical product barcode');
+        END
+    """)
+    conn.execute("""
+        CREATE TRIGGER IF NOT EXISTS product_aliases_reject_product_barcode_update
+        BEFORE UPDATE OF alias_barcode ON product_barcode_aliases
+        WHEN EXISTS (
+            SELECT 1 FROM products WHERE barcode = NEW.alias_barcode
+        )
+        BEGIN
+            SELECT RAISE(ABORT, 'barcode already used as canonical product barcode');
+        END
+    """)
+
     # Users table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (

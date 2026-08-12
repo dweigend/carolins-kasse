@@ -43,6 +43,7 @@ from src.utils.barcodes import (
 
 SEEDED_TABLES = (
     "products",
+    "product_barcode_aliases",
     "users",
     "recipes",
     "recipe_ingredients",

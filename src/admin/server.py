@@ -10,24 +10,48 @@ For remote admin on the home network:
     uv run uvicorn src.admin.server:app --host 0.0.0.0 --port 8080
 """
 
+import ipaddress
+import os
 from pathlib import Path
+import re
 from secrets import compare_digest, token_urlsafe
+import sqlite3
+from typing import Annotated
 from urllib.parse import parse_qs, quote
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from src.admin.catalog import (
+    ASSET_KEY_PATTERN,
+    CatalogAlias,
+    CatalogPayload,
+    CatalogProduct,
+    CatalogSyncClientError,
+    CatalogSyncResult,
+    InventorySyncRequest,
+    send_catalog,
+)
 from src.admin.printables import PRINT_DIR, generate_all_printables, printable_files
 from src.utils.database import (
+    Product,
+    ProductBarcodeAlias,
+    add_product,
+    add_product_barcode_alias,
+    delete_product_barcode_alias,
     get_all_products,
+    get_product,
+    get_product_barcode_aliases,
     get_all_recipes,
     get_all_users,
     get_recent_balance_adjustments,
     get_recipe_ingredients,
     get_user,
     init_database,
+    next_product_barcode,
+    synchronize_products,
     update_product_admin_fields,
     update_recipe_admin_fields,
     update_user_admin_fields,
@@ -47,11 +71,18 @@ ADMIN_SESSION_MAX_AGE_SECONDS = 3600
 CSRF_TOKEN_BYTES = 32
 UNLOCK_REQUIRED_MESSAGE = "Bitte PIN eingeben"
 CSRF_FAILED_MESSAGE = "Bitte Seite neu laden"
+INVENTORY_MODE_ENV_VAR = "CAROLINS_KASSE_INVENTORY_MODE"
+INVENTORY_MODE = os.environ.get(INVENTORY_MODE_ENV_VAR, "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 
 # Paths
 BASE_DIR = Path(__file__).parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
+PRODUCT_ASSET_DIR = BASE_DIR.parent.parent / "assets" / "340er"
 # FastAPI app
 app = FastAPI(title="Carolin's Kasse - Admin")
 
@@ -70,7 +101,193 @@ app.mount("/print", StaticFiles(directory=PRINT_DIR), name="print")
 @app.get("/")
 async def root() -> RedirectResponse:
     """Redirect to products page."""
-    return RedirectResponse(url="/products")
+    return RedirectResponse(url="/inventory" if INVENTORY_MODE else "/products")
+
+
+@app.get("/inventory")
+async def inventory_page(request: Request, message: str | None = None):
+    """Show the loopback-only inventory workspace."""
+    _require_local_inventory(request)
+    products = get_all_products(include_inactive=True)
+    aliases = get_product_barcode_aliases()
+    aliases_by_product: dict[str, list[ProductBarcodeAlias]] = {}
+    for alias in aliases:
+        aliases_by_product.setdefault(alias.product_barcode, []).append(alias)
+
+    return _template_response(
+        request,
+        "inventory.html",
+        {
+            "active": "inventory",
+            "products": products,
+            "aliases_by_product": aliases_by_product,
+            "missing_assets": {
+                product.barcode
+                for product in products
+                if not _product_asset_exists(product)
+            },
+            "next_barcode": next_product_barcode(),
+            "message": message,
+        },
+    )
+
+
+@app.post("/inventory/products")
+async def create_inventory_product(request: Request):
+    """Create a product only from the explicit local inventory workspace."""
+    form = await _require_inventory_form(request)
+    name = form.get("name", "").strip()
+    name_de = form.get("name_de", "").strip()
+    category = form.get("category", "").strip()
+    if not name or not name_de or not category:
+        return _inventory_redirect("Bitte alle Produktfelder ausfüllen")
+    if len(name_de) > 120 or len(category) > 120:
+        return _inventory_redirect("Name oder Kategorie ist zu lang")
+    if re.fullmatch(ASSET_KEY_PATTERN, name) is None:
+        return _inventory_redirect("Bildname darf nur a-z, 0-9 und _ enthalten")
+
+    product = Product(
+        barcode=next_product_barcode(),
+        name=name,
+        name_de=name_de,
+        price=max(0.0, _parse_float(form.get("price"), default=0.0)),
+        category=category,
+        image_path=name,
+    )
+    try:
+        add_product(product)
+    except (sqlite3.IntegrityError, ValueError):
+        return _inventory_redirect("Produkt konnte nicht angelegt werden")
+    return _inventory_redirect(f"{name_de} wurde angelegt")
+
+
+@app.post("/inventory/aliases")
+async def create_inventory_alias(request: Request):
+    """Assign a scanned packaging barcode to a canonical product."""
+    form = await _require_inventory_form(request)
+    alias_barcode = form.get("alias_barcode", "").strip()
+    product_barcode = form.get("product_barcode", "").strip()
+    if not alias_barcode or not product_barcode:
+        return _inventory_redirect("Barcode und Produkt werden benötigt")
+
+    try:
+        add_product_barcode_alias(
+            ProductBarcodeAlias(
+                alias_barcode=alias_barcode,
+                product_barcode=product_barcode,
+            )
+        )
+    except (sqlite3.IntegrityError, ValueError):
+        return _inventory_redirect("Barcode ist bereits vergeben")
+    return _inventory_redirect("Verpackungscode wurde zugeordnet")
+
+
+@app.post("/inventory/aliases/delete")
+async def remove_inventory_alias(request: Request):
+    """Remove one packaging alias from the local inventory."""
+    form = await _require_inventory_form(request)
+    alias_barcode = form.get("alias_barcode", "").strip()
+    if not alias_barcode:
+        return _inventory_redirect("Verpackungscode fehlt")
+    delete_product_barcode_alias(alias_barcode)
+    return _inventory_redirect("Verpackungscode wurde entfernt")
+
+
+@app.post("/inventory/sync", response_model=CatalogSyncResult)
+async def synchronize_inventory_selection(
+    request: Request,
+    sync_request: InventorySyncRequest,
+    csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
+) -> CatalogSyncResult:
+    """Send only selected local products and their aliases to the Pi."""
+    _require_local_inventory(request)
+    if not _valid_csrf_header(request, csrf_token):
+        raise HTTPException(status_code=403, detail=CSRF_FAILED_MESSAGE)
+
+    selected_barcodes = set(sync_request.product_barcodes)
+    products = [
+        CatalogProduct.from_database(product)
+        for product in get_all_products(include_inactive=True)
+        if product.barcode in selected_barcodes
+    ]
+    if len(products) != len(selected_barcodes):
+        raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
+    missing_assets = [
+        product.name_de
+        for product in products
+        if not _catalog_product_asset_exists(product)
+    ]
+    if missing_assets:
+        missing_names = ", ".join(missing_assets)
+        raise HTTPException(
+            status_code=409,
+            detail=f"Bild fehlt für: {missing_names}",
+        )
+    aliases = [
+        CatalogAlias.from_database(alias)
+        for alias in get_product_barcode_aliases()
+        if alias.product_barcode in selected_barcodes
+    ]
+    try:
+        return send_catalog(
+            sync_request.destination_url,
+            sync_request.pin,
+            CatalogPayload(products=products, aliases=aliases),
+        )
+    except CatalogSyncClientError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+
+@app.get("/api/catalog", response_model=CatalogPayload)
+async def catalog_api() -> CatalogPayload:
+    """Return the product catalog and packaging aliases without modifying it."""
+    return CatalogPayload(
+        products=[
+            CatalogProduct.from_database(product)
+            for product in get_all_products(include_inactive=True)
+        ],
+        aliases=[
+            CatalogAlias.from_database(alias) for alias in get_product_barcode_aliases()
+        ],
+    )
+
+
+@app.get("/api/catalog/resolve/{barcode}", response_model=CatalogProduct)
+async def resolve_catalog_barcode(barcode: str) -> CatalogProduct:
+    """Resolve a canonical product barcode or packaging alias read-only."""
+    product = get_product(barcode)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Produkt nicht gefunden")
+    return CatalogProduct.from_database(product)
+
+
+@app.post("/api/catalog/sync", response_model=CatalogSyncResult)
+async def import_catalog_api(
+    catalog: CatalogPayload,
+    admin_pin: Annotated[str | None, Header(alias="X-Admin-PIN")] = None,
+) -> CatalogSyncResult:
+    """Atomically import selected catalog records after remote PIN validation."""
+    if not verify_admin_pin(admin_pin):
+        raise HTTPException(status_code=401, detail="Admin-PIN fehlt oder ist falsch")
+    missing_assets = [
+        product.name_de
+        for product in catalog.products
+        if not _catalog_product_asset_exists(product)
+    ]
+    if missing_assets:
+        missing_names = ", ".join(missing_assets)
+        raise HTTPException(status_code=409, detail=f"Bild fehlt für: {missing_names}")
+    try:
+        synchronize_products(
+            [product.to_database() for product in catalog.products],
+            [alias.to_database() for alias in catalog.aliases],
+        )
+    except (sqlite3.IntegrityError, ValueError) as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return CatalogSyncResult(
+        product_count=len(catalog.products),
+        alias_count=len(catalog.aliases),
+    )
 
 
 @app.get("/products")
@@ -331,6 +548,24 @@ async def _require_admin_form(
     return form, None
 
 
+async def _require_inventory_form(request: Request) -> dict[str, str]:
+    _require_local_inventory(request)
+    form = await _parse_form(request)
+    if not _valid_csrf_form(request, form):
+        raise HTTPException(status_code=403, detail=CSRF_FAILED_MESSAGE)
+    return form
+
+
+def _require_local_inventory(request: Request) -> None:
+    client_host = request.client.host if request.client else ""
+    try:
+        is_loopback = ipaddress.ip_address(client_host).is_loopback
+    except ValueError:
+        is_loopback = False
+    if not INVENTORY_MODE or not is_loopback:
+        raise HTTPException(status_code=404, detail="Nicht gefunden")
+
+
 async def _parse_form(request: Request) -> dict[str, str]:
     body = (await request.body()).decode()
     parsed = parse_qs(body, keep_blank_values=True)
@@ -342,7 +577,11 @@ def _template_response(request: Request, template_name: str, context: dict):
     response = templates.TemplateResponse(
         request=request,
         name=template_name,
-        context={"csrf_token": csrf_token, **context},
+        context={
+            "csrf_token": csrf_token,
+            "inventory_mode": INVENTORY_MODE,
+            **context,
+        },
     )
     if refresh_cookie:
         _set_csrf_cookie(response, csrf_token)
@@ -367,6 +606,15 @@ def _valid_csrf_form(request: Request, form: dict[str, str]) -> bool:
     return compare_digest(cookie_token, form_token)
 
 
+def _valid_csrf_header(request: Request, header_token: str | None) -> bool:
+    cookie_token = request.cookies.get(CSRF_COOKIE)
+    if not _valid_csrf_token(cookie_token) or not _valid_csrf_token(header_token):
+        return False
+    assert cookie_token is not None
+    assert header_token is not None
+    return compare_digest(cookie_token, header_token)
+
+
 def _valid_csrf_token(token: str | None) -> bool:
     return bool(token and len(token) <= 128)
 
@@ -387,6 +635,27 @@ def _set_csrf_cookie(response, token: str) -> None:
 
 def _security_redirect(message: str) -> RedirectResponse:
     return RedirectResponse(url=f"/debug?message={quote(message)}", status_code=303)
+
+
+def _inventory_redirect(message: str) -> RedirectResponse:
+    return RedirectResponse(
+        url=f"/inventory?message={quote(message)}",
+        status_code=303,
+    )
+
+
+def _product_asset_exists(product: Product) -> bool:
+    return bool(
+        product.image_path
+        and (PRODUCT_ASSET_DIR / f"{product.image_path}.png").is_file()
+    )
+
+
+def _catalog_product_asset_exists(product: CatalogProduct) -> bool:
+    return bool(
+        product.image_path
+        and (PRODUCT_ASSET_DIR / f"{product.image_path}.png").is_file()
+    )
 
 
 def _parse_float(value: str | None, default: float) -> float:

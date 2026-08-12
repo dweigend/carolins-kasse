@@ -1,8 +1,26 @@
 # Session Handover
 
-**Last Updated:** 2026-08-09 CEST
+**Last Updated:** 2026-08-12 CEST
 
 ## Current State
+
+- Product identity keeps the existing internal EAN-13 as the canonical barcode
+  and can attach multiple scanned packaging barcodes through
+  `product_barcode_aliases`. Kiosk and recipe lookup resolve aliases back to
+  the canonical product, so recipe foreign keys stay stable.
+- `tools/run_inventory.py` starts the existing FastAPI admin on Mac loopback
+  for occasional scanner-based inventory. The narrow workflow creates local
+  products, assigns/removes packaging codes, tests scans, remembers label
+  counts in the browser, and synchronizes an explicit selection to the Pi with
+  its existing admin PIN. Assets are intentionally outside this web flow.
+- Product printables use the Avery Zweckform 3490 layout: 24 labels at
+  70 x 36 mm on A4. The CLI supports per-product copies, partly used sheets,
+  X/Y calibration offsets, and a dedicated calibration PDF. Physical
+  calibration and scanner sign-off remain tracked in issue #33.
+- New product illustrations remain a Codex-managed workflow. Source photos are
+  adapted to the existing friendly style, normalized to 340 x 340 RGBA, added
+  under `assets/340er/`, and delivered to the Pi through Git/update before the
+  related catalog records are synchronized.
 
 - `README.md` now documents the current kiosk with genuine 1024x600 screenshots
   for menu, shopping, customer-card checkout, recipe mode, and on-device admin.
@@ -16,13 +34,12 @@
   larger portrait, colored heavy border, clear identity area, and barcode on
   the warm background.
 - `tools/generate_printables.py --products ...` creates a focused A4 label
-  sheet for named barcode products, for example the current basic-food labels.
-  Product cards use the 85.6 x 53.98 mm credit-card format and separate image,
-  product details, and barcode into non-overlapping layout zones.
-- `tools/generate_printables.py --all-products` creates cards for every product
-  record, including picker products without pre-existing physical labels. The
-  product design uses a heavier border, transparent product art, and barcodes
-  directly on the warm card background.
+  sheet for named products, including explicit copy counts. Product labels use
+  the 70 x 36 mm Zweckform 3490 grid and contain the product image, German
+  name, Taler price, and canonical internal EAN-13 barcode.
+- `tools/generate_printables.py --all-products` creates Zweckform 3490 labels
+  for every product record, including picker products without pre-existing
+  physical labels.
 
 - Core kiosk flows are implemented: login, menu, shopping/scan, picker, checkout, recipe mode, math mode, sessions, earnings, transactions, and balances.
 - SceneManager now supports optional `on_enter()` and `reset_user_state()`
@@ -78,7 +95,7 @@
   output, database model import compatibility, legacy schema migration, product,
   recipe, user, session, earning, transaction, and balance-adjustment public API
   compatibility, checkout rollback on transaction-save failure, and local-day
-  earning boundary behavior. The current pipeline suite has 93 passing tests.
+  earning boundary behavior. The current pipeline suite has 112 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
 - `uv run poe check` is now the single local code-quality pipeline. It runs
   Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
@@ -302,6 +319,19 @@
   correct local day.
 
 ## Verification Run Recently
+
+Run on 2026-08-12 CEST for product inventory, barcode aliases, catalog sync,
+and Zweckform 3490 labels:
+
+- `uv run poe check` (112 passed, 59.46% coverage, 0 jscpd duplicates,
+  Radon average A)
+- Local inventory server start via `uv run python tools/run_inventory.py`
+- Browser smoke: all 32 products rendered, canonical Milch scan resolved,
+  scanner focus restored, and no console errors reported
+- Generated and visually inspected the A4 calibration sheet and a sample
+  product-label sheet with a partly used first row
+- Pi reachability gate failed because `carolins-kasse.local` did not resolve;
+  no update, restart, backup, or acceptance command was attempted
 
 - `uv run ruff check src/ tools/`
 - `uv run ruff format src/ tools/`
@@ -579,7 +609,7 @@ Previous Pi deployment validation on 2026-07-04 CEST:
 
 ## Open GitHub Issues
 
-`gh issue list --limit 30` on 2026-07-05 shows these issues as open:
+`gh issue list --limit 20` on 2026-08-12 shows these issues as open:
 
 Acceptance still missing:
 
@@ -595,6 +625,9 @@ Acceptance still missing:
 
 Open follow-up and validation backlog:
 
+- #33 Register product barcodes and print Zweckform 3490 labels; software is
+  implemented locally, while inventory, Pi sync, paper calibration, and real
+  scanner acceptance remain
 - #1 Validate cashier UI with kids on touch display
 - #2 Validate recipe UI with kids on touch display
 - #7 Validate automated Raspberry Pi first-boot setup
@@ -623,19 +656,27 @@ Open follow-up and validation backlog:
 
 ## Next Best Steps
 
-1. Run the remaining physical #27/#29/#30 checks on the live kiosk: SIGMACHIP
+1. Power the Pi or determine its current IP, then rerun the read-only status
+   gate before deploying the #33 inventory and label infrastructure.
+2. Inventory packaging barcodes on the Mac, attach missing product photos in
+   Codex, add the normalized 340 x 340 assets and seed records through Git, and
+   synchronize only approved products to the Pi.
+3. Print the Zweckform 3490 calibration sheet at actual size, determine any
+   X/Y correction, print the final selected labels, and scan every packaging
+   code plus at least one generated label per product.
+4. Run the remaining physical #27/#29/#30 checks on the live kiosk: SIGMACHIP
    keypad Math/Numpad app path, clean power-cycle first visible StartScene
    timing, texture inspection, Admin card/QR, remote admin, and navigation
    smoke.
-2. If that baseline fails, use the detailed helper diagnostics: `status`,
+5. If that baseline fails, use the detailed helper diagnostics: `status`,
    `usb`, `boot`, `logs`, or `keypad`.
-3. Continue #22 only where profiling still shows repeated font, scale, or
+6. Continue #22 only where profiling still shows repeated font, scale, or
    render cost.
-4. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
+7. Run full kiosk smoke on the real Pi: touch start/login, child cards, scanner
    product labels, number pad input, checkout, Admin card, recipe cards, math
    mode, debug PIN, update, and remote admin QR.
-5. Add observations to issues #1, #2, #7, #8, and #9.
-6. Add focused regression coverage with the next risky scene, database, admin,
+8. Add observations to issues #1, #2, #7, #8, #9, and #33.
+9. Add focused regression coverage with the next risky scene, database, admin,
    or Pi-operations change instead of keeping a broad standing coverage issue.
-7. Keep future #26-style complexity findings as focused follow-up passes, not
+10. Keep future #26-style complexity findings as focused follow-up passes, not
    part of the current Pi acceptance loop.

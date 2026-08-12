@@ -378,3 +378,173 @@ button.small,
     font-size: 2rem;
     cursor: pointer;
 }
+
+.page-heading,
+.inventory-product-heading,
+.inventory-sync-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.page-heading {
+    margin-bottom: 1.5rem;
+}
+
+.page-heading h1,
+.inventory-sync-heading h2 {
+    margin-bottom: 0;
+}
+
+.badge-local {
+    background: #dcfce7;
+    color: #166534;
+    white-space: nowrap;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+    white-space: nowrap;
+}
+
+.inventory-top-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.inventory-top-grid label,
+.inventory-sync-fields label,
+.sticker-count-label {
+    color: #515154;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.inventory-scan-card input {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 1.15rem;
+}
+
+.scan-result {
+    margin-top: 0.75rem;
+    min-height: 1.5rem;
+}
+
+.two-field-grid,
+.inventory-sync-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.inventory-sync-card {
+    margin-top: 1rem;
+}
+
+.inventory-sync-heading {
+    margin-bottom: 1rem;
+}
+
+.inventory-sync-fields {
+    grid-template-columns: minmax(15rem, 2fr) minmax(9rem, 1fr) auto;
+    align-items: end;
+}
+
+.print-command-row {
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+
+.print-command-row code {
+    display: block;
+    margin-top: 0.25rem;
+    overflow-wrap: anywhere;
+}
+
+.inventory-products {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.inventory-product-card h3 {
+    font-size: 0.9rem;
+    margin: 0 0 0.5rem;
+}
+
+.inventory-select-label {
+    align-items: flex-start;
+}
+
+.inventory-product-key {
+    display: block;
+}
+
+.inventory-product-details {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.35rem 0.75rem;
+    margin: 1rem 0;
+}
+
+.inventory-product-details dt {
+    color: #86868b;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.sticker-count-label {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.sticker-count {
+    max-width: 7rem;
+}
+
+.alias-list {
+    border-top: 1px solid #e5e5e5;
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+
+.alias-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+    nav {
+        flex-wrap: wrap;
+        padding: 1rem;
+    }
+
+    main {
+        padding: 0 1rem;
+    }
+
+    .inventory-top-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .inventory-sync-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .print-command-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

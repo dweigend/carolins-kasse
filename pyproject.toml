@@ -87,6 +87,9 @@ DEP002 = [
     "pillow", # ReportLab ImageReader uses Pillow for image-backed printables.
     "uvicorn", # Admin server is launched via CLI/process entry points.
 ]
+DEP003 = [
+    "pydantic", # FastAPI's runtime validation backend for catalog API models.
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

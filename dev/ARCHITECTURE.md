@@ -52,7 +52,8 @@ Target display is fixed at `1024x600`.
 
 SQLite tables:
 
-- `products`: barcode, English asset key, German name, price, category, image path, barcode flag, active flag
+- `products`: canonical internal barcode, English asset key, German name, price, category, image path, barcode flag, active flag
+- `product_barcode_aliases`: packaging barcode mapped to one canonical product barcode
 - `users`: card ID, name, balance, color, difficulty, admin flag, active flag
 - `recipes`: barcode, name, image path, active flag
 - `recipe_ingredients`: recipe/product relation with quantity
@@ -129,6 +130,14 @@ stay lightweight for the home network, while mutating browser POST routes requir
 the locally generated debug PIN/admin session cookie plus a CSRF token.
 `/debug/unlock` validates CSRF before accepting a PIN.
 
+For occasional catalog inventory, the same FastAPI app can run explicitly on
+Mac loopback through `tools/run_inventory.py`. The inventory page stores no
+images and introduces no second catalog model: it edits the local SQLite copy,
+resolves scanner input through the normal product lookup, and sends only a
+selected product/alias payload to the Pi. The PIN-authenticated Pi import is
+atomic and idempotent. Product assets still arrive through Git and the normal
+safe Pi update path.
+
 Admin templates should pass dynamic barcode modal data through HTML data
 attributes rather than inline JavaScript string arguments.
 
@@ -143,6 +152,7 @@ should degrade gracefully when running off-Pi or without systemd access.
 tools/seed_database.py       -> initializes missing/empty data/kasse.db
 tools/generate_barcodes.py   -> writes SVG barcodes from DB contents
 tools/generate_printables.py -> writes A4 PDFs under data/print/
+tools/run_inventory.py       -> starts the loopback-only Mac inventory page
 tools/pi_prepare_boot.py     -> prepares Raspberry Pi bootfs for first install
 tools/pi_firstboot.sh        -> bootfs first-boot entrypoint copied by prepare
 tools/pi_bootstrap.sh        -> first Pi install into /opt/carolins-kasse
@@ -181,7 +191,7 @@ Systemd units live under `systemd/`:
 | `src/utils/database.py` | Public SQLite API, connection helpers, `init_database()` commit boundary, checkout, and transaction boundaries |
 | `src/utils/database_schema.py` | Schema DDL and migration helpers that receive an existing connection |
 | `src/utils/database_models.py` | Database row dataclasses, column lists, and checkout result/error types |
-| `src/utils/database_products.py` | Product SQL helpers that receive an existing connection and do not commit |
+| `src/utils/database_products.py` | Product and packaging-barcode-alias SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_recipes.py` | Recipe SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_users.py` | Basic user CRUD SQL helpers that receive an existing connection and do not commit |
 | `src/utils/database_sessions.py` | Session SQL helpers that receive an existing connection and do not commit |

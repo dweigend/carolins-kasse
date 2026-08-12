@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from http.cookies import SimpleCookie
 import asyncio
 import importlib
+import json
 import os
 from pathlib import Path
 import sys
@@ -21,7 +22,10 @@ ADMIN_PIN = "2468"
 USER_CARD_ID = "2000000000015"
 ADMIN_PIN_ENV_VAR = "CAROLINS_KASSE_ADMIN_PIN_PATH"
 BACKUP_DIR_ENV_VAR = "CAROLINS_KASSE_BACKUP_DIR"
+INVENTORY_MODE_ENV_VAR = "CAROLINS_KASSE_INVENTORY_MODE"
+PRODUCT_BARCODE = "1000000000019"
 ADMIN_MODULES = (
+    "src.admin.catalog",
     "src.admin.server",
     "src.admin.printables",
     "src.utils.pi_system",
@@ -62,8 +66,9 @@ class AsgiResponse:
 class AsgiTestClient:
     """Small ASGI test client for the admin safety checks."""
 
-    def __init__(self, app) -> None:
+    def __init__(self, app, client_host: str = "testclient") -> None:
         self.app = app
+        self.client_host = client_host
         self.cookies: dict[str, str] = {}
 
     def get(self, path: str) -> AsgiResponse:
@@ -79,6 +84,27 @@ class AsgiTestClient:
                 extra_headers=[
                     (b"content-type", b"application/x-www-form-urlencoded"),
                 ],
+            )
+        )
+
+    def post_json(
+        self,
+        path: str,
+        data: Mapping[str, object],
+        headers: Mapping[str, str] | None = None,
+    ) -> AsgiResponse:
+        body = json.dumps(data).encode("utf-8")
+        extra_headers = [(b"content-type", b"application/json")]
+        extra_headers.extend(
+            (name.lower().encode("ascii"), value.encode("utf-8"))
+            for name, value in (headers or {}).items()
+        )
+        return asyncio.run(
+            self._request(
+                "POST",
+                path,
+                body=body,
+                extra_headers=extra_headers,
             )
         )
 
@@ -118,7 +144,7 @@ class AsgiTestClient:
             "raw_path": split_url.path.encode("utf-8"),
             "query_string": split_url.query.encode("utf-8"),
             "headers": headers,
-            "client": ("testclient", 50000),
+            "client": (self.client_host, 50000),
             "server": ("testserver", 80),
         }
 
@@ -168,10 +194,16 @@ class AsgiTestClient:
 
 
 @contextmanager
-def isolated_admin_server(pin_path: Path, backup_dir: Path) -> Iterator[ModuleType]:
+def isolated_admin_server(
+    pin_path: Path,
+    backup_dir: Path,
+    *,
+    inventory_mode: bool = False,
+) -> Iterator[ModuleType]:
     previous_env_values = {
         ADMIN_PIN_ENV_VAR: os.environ.get(ADMIN_PIN_ENV_VAR),
         BACKUP_DIR_ENV_VAR: os.environ.get(BACKUP_DIR_ENV_VAR),
+        INVENTORY_MODE_ENV_VAR: os.environ.get(INVENTORY_MODE_ENV_VAR),
     }
     previous_sys_path = sys.path.copy()
     previous_modules = {
@@ -182,6 +214,10 @@ def isolated_admin_server(pin_path: Path, backup_dir: Path) -> Iterator[ModuleTy
 
     os.environ[ADMIN_PIN_ENV_VAR] = str(pin_path)
     os.environ[BACKUP_DIR_ENV_VAR] = str(backup_dir)
+    if inventory_mode:
+        os.environ[INVENTORY_MODE_ENV_VAR] = "1"
+    else:
+        os.environ.pop(INVENTORY_MODE_ENV_VAR, None)
     for module_name in ADMIN_MODULES:
         sys.modules.pop(module_name, None)
 
@@ -336,6 +372,93 @@ class AdminSafetyTests(unittest.TestCase):
             self.assertIn("2 fehlgeschlagene Units.", unlocked_response.text)
             self.assertIn("install log line", unlocked_response.text)
 
+    def test_inventory_workspace_requires_explicit_mode_and_loopback(self) -> None:
+        with admin_test_context() as context:
+            disabled_response = context.client.get("/inventory")
+
+        with admin_test_context(inventory_mode=True) as context:
+            non_loopback_response = context.client.get("/inventory")
+
+        with admin_test_context(
+            inventory_mode=True,
+            client_host="127.0.0.1",
+        ) as context:
+            loopback_response = context.client.get("/inventory")
+
+        self.assertEqual(disabled_response.status_code, 404)
+        self.assertEqual(non_loopback_response.status_code, 404)
+        self.assertEqual(loopback_response.status_code, 200)
+        self.assertIn("Nur auf diesem Mac", loopback_response.text)
+        self.assertIn("Druckbefehl kopieren", loopback_response.text)
+
+    def test_local_inventory_mutation_requires_csrf(self) -> None:
+        with admin_test_context(
+            inventory_mode=True,
+            client_host="127.0.0.1",
+        ) as context:
+            context.client.cookies[context.server.CSRF_COOKIE] = "csrf-token"
+            rejected_response = context.client.post(
+                "/inventory/aliases",
+                data={
+                    "alias_barcode": "4006381333931",
+                    "product_barcode": PRODUCT_BARCODE,
+                },
+            )
+            accepted_response = context.client.post(
+                "/inventory/aliases",
+                data={
+                    context.server.CSRF_FIELD: "csrf-token",
+                    "alias_barcode": "4006381333931",
+                    "product_barcode": PRODUCT_BARCODE,
+                },
+            )
+
+            aliases = context.database.get_product_barcode_aliases(PRODUCT_BARCODE)
+
+        self.assertEqual(rejected_response.status_code, 403)
+        self.assertEqual(accepted_response.status_code, 303)
+        self.assertEqual(len(aliases), 1)
+
+    def test_catalog_sync_api_requires_header_pin_and_imports_atomically(self) -> None:
+        product_payload = {
+            "barcode": PRODUCT_BARCODE,
+            "name": "milk",
+            "name_de": "Milch",
+            "price": 3,
+            "category": "kuehlregal",
+            "image_path": "milk",
+            "has_barcode": True,
+            "active": True,
+        }
+        sync_payload = {
+            "products": [product_payload],
+            "aliases": [
+                {
+                    "alias_barcode": "4006381333931",
+                    "product_barcode": PRODUCT_BARCODE,
+                }
+            ],
+        }
+        with admin_test_context() as context:
+            rejected_response = context.client.post_json(
+                "/api/catalog/sync",
+                sync_payload,
+            )
+            accepted_response = context.client.post_json(
+                "/api/catalog/sync",
+                sync_payload,
+                headers={"X-Admin-PIN": ADMIN_PIN},
+            )
+            synced_product = context.database.get_product(PRODUCT_BARCODE)
+            aliases = context.database.get_product_barcode_aliases(PRODUCT_BARCODE)
+
+        self.assertEqual(rejected_response.status_code, 401)
+        self.assertEqual(accepted_response.status_code, 200)
+        self.assertEqual(json.loads(accepted_response.text)["alias_count"], 1)
+        self.assertIsNotNone(synced_product)
+        self.assertEqual(synced_product.price if synced_product else None, 3)
+        self.assertEqual(len(aliases), 1)
+
     def assertSecurityRedirect(self, response: AsgiResponse) -> None:
         self.assertEqual(response.status_code, 303)
         self.assertIsNotNone(response.location)
@@ -356,7 +479,11 @@ class AdminTestContext:
 
 
 @contextmanager
-def admin_test_context() -> Iterator[AdminTestContext]:
+def admin_test_context(
+    *,
+    inventory_mode: bool = False,
+    client_host: str = "testclient",
+) -> Iterator[AdminTestContext]:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         db_path = temp_path / "kasse.db"
@@ -374,10 +501,24 @@ def admin_test_context() -> Iterator[AdminTestContext]:
                     balance=10.0,
                 )
             )
+            database.add_product(
+                database.Product(
+                    barcode=PRODUCT_BARCODE,
+                    name="milk",
+                    name_de="Milch",
+                    price=1,
+                    category="kuehlregal",
+                    image_path="milk",
+                )
+            )
 
-            with isolated_admin_server(pin_path, backup_dir) as server:
+            with isolated_admin_server(
+                pin_path,
+                backup_dir,
+                inventory_mode=inventory_mode,
+            ) as server:
                 yield AdminTestContext(
-                    client=AsgiTestClient(server.app),
+                    client=AsgiTestClient(server.app, client_host=client_host),
                     database=database,
                     server=server,
                 )

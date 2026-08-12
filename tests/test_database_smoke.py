@@ -21,6 +21,7 @@ from tests.db_isolation import initialized_temporary_database, isolated_database
 EXPECTED_SCHEMA_TABLES = {
     "balance_adjustments",
     "earnings",
+    "product_barcode_aliases",
     "products",
     "recipe_ingredients",
     "recipes",
@@ -84,6 +85,8 @@ class DatabaseSmokeTests(unittest.TestCase):
 
         exported_names = (
             "Product",
+            "ProductBarcodeAlias",
+            "ProductBarcodeConflictError",
             "User",
             "Recipe",
             "RecipeIngredient",
@@ -152,6 +155,166 @@ class DatabaseSmokeTests(unittest.TestCase):
             [picker_product.barcode, scanned_product.barcode],
         )
         self.assertIsNone(deleted_product)
+
+    def test_product_alias_crud_resolves_to_canonical_product(self) -> None:
+        with initialized_temporary_database() as database:
+            product = database.Product(
+                barcode="1000000000016",
+                name="milk",
+                name_de="Milch",
+                price=1.5,
+                category="food",
+            )
+            first_alias = database.ProductBarcodeAlias(
+                alias_barcode="4006381333931",
+                product_barcode=product.barcode,
+            )
+            second_alias = database.ProductBarcodeAlias(
+                alias_barcode="5901234123457",
+                product_barcode=product.barcode,
+            )
+
+            database.add_product(product)
+            database.add_product_barcode_alias(first_alias)
+            database.add_product_barcode_alias(second_alias)
+
+            canonical_lookup = database.get_product(product.barcode)
+            alias_lookup = database.get_product(first_alias.alias_barcode)
+            aliases = database.get_product_barcode_aliases(product.barcode)
+
+            database.delete_product_barcode_alias(first_alias.alias_barcode)
+            deleted_alias_lookup = database.get_product(first_alias.alias_barcode)
+
+        self.assertEqual(canonical_lookup, product)
+        self.assertEqual(alias_lookup, product)
+        self.assertEqual(aliases, [first_alias, second_alias])
+        self.assertIsNone(deleted_alias_lookup)
+
+    def test_product_and_alias_barcodes_cannot_collide(self) -> None:
+        with initialized_temporary_database() as database:
+            first_product = database.Product(
+                barcode="1000000000016",
+                name="milk",
+                name_de="Milch",
+                price=1,
+                category="food",
+            )
+            second_product = database.Product(
+                barcode="1000000000023",
+                name="flour",
+                name_de="Mehl",
+                price=2,
+                category="food",
+            )
+            packaging_barcode = "4006381333931"
+
+            database.add_product(first_product)
+            database.add_product(second_product)
+            database.add_product_barcode_alias(
+                database.ProductBarcodeAlias(packaging_barcode, first_product.barcode)
+            )
+
+            with self.assertRaises(database.ProductBarcodeConflictError):
+                database.add_product(
+                    database.Product(
+                        barcode=packaging_barcode,
+                        name="collision",
+                        name_de="Kollision",
+                        price=1,
+                        category="food",
+                    )
+                )
+
+            with self.assertRaises(database.ProductBarcodeConflictError):
+                database.add_product_barcode_alias(
+                    database.ProductBarcodeAlias(
+                        first_product.barcode, second_product.barcode
+                    )
+                )
+
+            with self.assertRaises(database.ProductBarcodeConflictError):
+                database.add_product_barcode_alias(
+                    database.ProductBarcodeAlias(
+                        packaging_barcode, second_product.barcode
+                    )
+                )
+
+            resolved_product = database.get_product(packaging_barcode)
+
+        self.assertEqual(resolved_product, first_product)
+
+    def test_synchronize_products_replaces_aliases_and_rolls_back_conflicts(
+        self,
+    ) -> None:
+        with initialized_temporary_database() as database:
+            product = database.Product(
+                barcode="1000000000016",
+                name="milk",
+                name_de="Milch",
+                price=1,
+                category="food",
+            )
+            old_alias = database.ProductBarcodeAlias("4006381333931", product.barcode)
+            updated_product = database.Product(
+                barcode=product.barcode,
+                name="milk",
+                name_de="Frische Milch",
+                price=2,
+                category="food",
+            )
+            new_alias = database.ProductBarcodeAlias("5901234123457", product.barcode)
+
+            database.add_product(product)
+            database.add_product_barcode_alias(old_alias)
+            database.synchronize_products([updated_product], [new_alias])
+            database.synchronize_products([updated_product], [new_alias])
+
+            with self.assertRaises(database.ProductBarcodeConflictError):
+                database.synchronize_products(
+                    [
+                        database.Product(
+                            barcode="1000000000023",
+                            name="flour",
+                            name_de="Mehl",
+                            price=3,
+                            category="food",
+                        )
+                    ],
+                    [
+                        database.ProductBarcodeAlias(
+                            new_alias.alias_barcode, "1000000000023"
+                        )
+                    ],
+                )
+
+            synchronized_product = database.get_product(product.barcode)
+            aliases = database.get_product_barcode_aliases(product.barcode)
+            rolled_back_product = database.get_product("1000000000023")
+
+        self.assertEqual(synchronized_product, updated_product)
+        self.assertEqual(aliases, [new_alias])
+        self.assertIsNone(rolled_back_product)
+
+    def test_next_product_barcode_skips_canonical_and_alias_codes(self) -> None:
+        with initialized_temporary_database() as database:
+            product = database.Product(
+                barcode="1000000000016",
+                name="milk",
+                name_de="Milch",
+                price=1,
+                category="food",
+            )
+            database.add_product(product)
+            database.add_product_barcode_alias(
+                database.ProductBarcodeAlias(
+                    alias_barcode="1000000000023",
+                    product_barcode=product.barcode,
+                )
+            )
+
+            barcode = database.next_product_barcode()
+
+        self.assertEqual(barcode, "1000000000030")
 
     def test_recipe_public_api_keeps_query_and_commit_behavior(self) -> None:
         with initialized_temporary_database() as database:

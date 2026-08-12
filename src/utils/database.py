@@ -36,6 +36,8 @@ from src.utils.database_models import (
     Earning,
     InsufficientFundsError as InsufficientFundsError,
     Product,
+    ProductBarcodeAlias,
+    ProductBarcodeConflictError as ProductBarcodeConflictError,
     Recipe,
     RecipeIngredient,
     Session,
@@ -120,8 +122,60 @@ def get_picker_products() -> dict[str, list[Product]]:
 def add_product(product: Product) -> None:
     """Add a new product."""
     with get_db() as conn:
-        database_products.add_product(conn, product)
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            database_products.add_product(conn, product)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def get_product_barcode_aliases(
+    product_barcode: str | None = None,
+) -> list[ProductBarcodeAlias]:
+    """Get packaging barcode aliases, optionally for one canonical product."""
+    with get_db() as conn:
+        return database_products.get_product_barcode_aliases(conn, product_barcode)
+
+
+def add_product_barcode_alias(alias: ProductBarcodeAlias) -> None:
+    """Add a packaging barcode alias atomically."""
+    with get_db() as conn:
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            database_products.add_product_barcode_alias(conn, alias)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def delete_product_barcode_alias(alias_barcode: str) -> None:
+    """Delete a packaging barcode alias."""
+    with get_db() as conn:
+        database_products.delete_product_barcode_alias(conn, alias_barcode)
         conn.commit()
+
+
+def next_product_barcode() -> str:
+    """Return the first free internal EAN-13 product barcode."""
+    with get_db() as conn:
+        return database_products.next_product_barcode(conn)
+
+
+def synchronize_products(
+    products: list[Product], aliases: list[ProductBarcodeAlias]
+) -> None:
+    """Atomically and idempotently import selected products and aliases."""
+    with get_db() as conn:
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            database_products.synchronize_products(conn, products, aliases)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def update_product(product: Product) -> None:

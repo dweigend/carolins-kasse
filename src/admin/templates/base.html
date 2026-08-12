@@ -9,6 +9,9 @@
 <body>
     <nav>
         <span class="logo">Carolin's Kasse</span>
+        {% if inventory_mode %}
+        <a href="/inventory" class="{% if active == 'inventory' %}active{% endif %}">Inventar</a>
+        {% endif %}
         <a href="/products" class="{% if active == 'products' %}active{% endif %}">Produkte</a>
         <a href="/users" class="{% if active == 'users' %}active{% endif %}">Benutzer</a>
         <a href="/recipes" class="{% if active == 'recipes' %}active{% endif %}">Rezepte</a>

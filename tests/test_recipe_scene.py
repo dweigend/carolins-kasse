@@ -78,6 +78,24 @@ class RecipeSceneTests(unittest.TestCase):
             self.assertTrue(scene._complete)
             self.assertEqual(scene._get_checkout_total(), 2)
 
+    def test_product_alias_with_recipe_prefix_is_resolved_before_recipe_card(
+        self,
+    ) -> None:
+        alias_barcode = "3009999999998"
+        with initialized_temporary_database() as database:
+            add_product(database, barcode=PRODUCT_BARCODE, name_de="Milch")
+            database.add_product_barcode_alias(
+                database.ProductBarcodeAlias(alias_barcode, PRODUCT_BARCODE)
+            )
+            add_recipe(database, [(PRODUCT_BARCODE, 1)])
+
+            scene = create_initialized_recipe_scene()
+            scene._load_recipe(RECIPE_BARCODE)
+            scene._handle_barcode(alias_barcode)
+
+            self.assertEqual(scene._scanned_quantities, {PRODUCT_BARCODE: 1})
+            self.assertTrue(scene._complete)
+
     def test_recipe_bonus_is_awarded_after_successful_checkout_once(self) -> None:
         with (
             initialized_temporary_database() as database,

@@ -16,7 +16,7 @@ local data handling.
 | Remote admin | Done | FastAPI pages, secured mutating POSTs, balances, barcode links, print PDFs |
 | Pygame admin | Done | Admin card, QR/status, balance controls, account overview |
 | Pi first-boot setup | Implemented | Automated Lite install path, systemd services, rollback-safe update hook, debug/update/backup observability; still needs one clean first-boot validation |
-| Regression tests | Active | 93-test pipeline suite for database, admin safety, atomic checkout, scene resets, recipe correctness, picker routing, math scanner filtering, Pi update rollback, debug status, Pi update unit installation, cashier feedback components, operation scripts, bootfs prep, Pi debug CLI output, database import compatibility, legacy schema migration, checkout rollback, local-day earnings, and product/recipe/user/session/earning/transaction/balance-adjustment public API compatibility |
+| Regression tests | Active | 112-test pipeline suite including product aliases, atomic catalog sync, inventory security, Zweckform geometry, database safety, kiosk flows, and Pi operations |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Done for current scope | #4 closed after helper modules for models/types, schema, product, recipe, basic user CRUD, session, earning, transaction, balance-adjustment, and checkout details; `database.py` keeps the public init, connection, commit, checkout, and balance transaction boundaries |
 | Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
@@ -42,6 +42,16 @@ local data handling.
   issues.
 
 ## Active Priorities
+
+### Immediate: Product inventory and labels (#33)
+
+- Inventory packaging barcodes on the Mac while keeping internal product
+  EAN-13 identities stable.
+- Add missing product illustrations through the Codex asset workflow, then
+  deliver code/assets through the safe Pi update path.
+- Synchronize selected local product/alias records to the live Pi database.
+- Calibrate and print Avery Zweckform 3490 sheets at actual size, then scan
+  every packaging code and at least one generated label per product.
 
 1. **Number pad reliability**
    - Validate the deployed keypad digit fix with the physical app path (#27).
@@ -104,7 +114,7 @@ local data handling.
      `src/utils/database.py` unless a new focused issue proves a concrete need.
 
 6. **Regression coverage maintenance**
-   - Keep the 93-test pipeline suite green.
+   - Keep the 112-test pipeline suite green.
    - Add focused tests with the next risky scene, database, admin, or
      Pi-operations change instead of keeping a broad standing coverage issue.
    - Expand coverage when the next risky write, scene-state, or Pi operations path changes.

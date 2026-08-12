@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Inventar{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Inventar</h1>
+        <p class="muted">Verpackungscodes lokal erfassen und ausgewählte Produkte zur Kasse senden.</p>
+    </div>
+    <span class="badge badge-local">Nur auf diesem Mac</span>
+</div>
+
+{% if message %}
+<div class="notice">{{ message }}</div>
+{% endif %}
+
+<div class="inventory-top-grid">
+    <section class="admin-card inventory-scan-card">
+        <h2>Code scannen</h2>
+        <form id="scanForm" class="stack-form">
+            <label for="inventoryScanner">Verpackungs- oder Produktcode</label>
+            <div class="compact-form">
+                <input id="inventoryScanner" inputmode="numeric" autocomplete="off" autofocus>
+                <button type="submit">Prüfen</button>
+            </div>
+        </form>
+        <p id="scanResult" class="scan-result muted" aria-live="polite">Bereit zum Scannen.</p>
+    </section>
+
+    <section class="admin-card">
+        <h2>Code zuordnen</h2>
+        <form class="stack-form" method="post" action="/inventory/aliases">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label for="aliasBarcode">Verpackungscode</label>
+            <input id="aliasBarcode" name="alias_barcode" inputmode="numeric" autocomplete="off" required>
+            <label for="aliasProduct">Produkt</label>
+            <select id="aliasProduct" name="product_barcode" required>
+                {% for product in products %}
+                <option value="{{ product.barcode }}">{{ product.name_de }} · {{ product.barcode }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Zuordnen</button>
+        </form>
+    </section>
+
+    <section class="admin-card">
+        <h2>Neues Produkt</h2>
+        <p class="muted">Nächster interner Code: {{ next_barcode }}</p>
+        <form class="stack-form" method="post" action="/inventory/products">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label for="productNameDe">Deutscher Name</label>
+            <input id="productNameDe" name="name_de" required>
+            <label for="productName">Englischer Bildname</label>
+            <input id="productName" name="name" pattern="[a-z0-9_]+" placeholder="apple_juice" required>
+            <div class="two-field-grid">
+                <label>
+                    Preis
+                    <input name="price" type="number" min="0" step="1" value="1" required>
+                </label>
+                <label>
+                    Kategorie
+                    <input name="category" required>
+                </label>
+            </div>
+            <button type="submit">Produkt anlegen</button>
+        </form>
+    </section>
+</div>
+
+<section class="admin-card inventory-sync-card">
+    <div class="inventory-sync-heading">
+        <div>
+            <h2>Auswahl synchronisieren</h2>
+            <p class="muted">Nur markierte Produkte und deren Verpackungscodes werden gesendet.</p>
+        </div>
+        <button id="selectAllProducts" type="button" class="small secondary">Alle auswählen</button>
+    </div>
+    <div class="inventory-sync-fields">
+        <label>
+            Adresse der Kasse
+            <input id="syncDestination" type="url" value="http://carolins-kasse.local:8080" required>
+        </label>
+        <label>
+            Admin-PIN
+            <input id="syncPin" type="password" inputmode="numeric" autocomplete="off" required>
+        </label>
+        <button id="syncProducts" type="button">Synchronisieren</button>
+    </div>
+    <p id="syncResult" class="muted" aria-live="polite"></p>
+    <div class="print-command-row">
+        <div>
+            <strong>Druckbefehl</strong>
+            <code id="printCommand">Noch keine Sticker ausgewählt.</code>
+        </div>
+        <button id="copyPrintCommand" type="button" class="small secondary" disabled>Druckbefehl kopieren</button>
+    </div>
+</section>
+
+<div class="inventory-products">
+    {% for product in products %}
+    <section class="admin-card inventory-product-card" data-product-barcode="{{ product.barcode }}" data-product-name-de="{{ product.name_de }}">
+        <div class="inventory-product-heading">
+            <label class="checkbox-label inventory-select-label">
+                <input class="sync-product" type="checkbox" value="{{ product.barcode }}">
+                <span>
+                    <strong>{{ product.name_de }}</strong>
+                    <span class="muted inventory-product-key">{{ product.name }}</span>
+                </span>
+            </label>
+            {% if product.barcode in missing_assets %}
+            <span class="badge badge-warning">Bild fehlt</span>
+            {% endif %}
+        </div>
+        <dl class="inventory-product-details">
+            <dt>Interner Code</dt>
+            <dd><code>{{ product.barcode }}</code></dd>
+            <dt>Preis</dt>
+            <dd>{{ product.price|int }} Taler</dd>
+            <dt>Kategorie</dt>
+            <dd>{{ product.category }}</dd>
+        </dl>
+        <label class="sticker-count-label">
+            Sticker für diesen Drucklauf
+            <input class="sticker-count" type="number" min="0" step="1" value="0" data-barcode="{{ product.barcode }}">
+        </label>
+        <div class="alias-list">
+            <h3>Verpackungscodes</h3>
+            {% for alias in aliases_by_product.get(product.barcode, []) %}
+            <form class="alias-row" method="post" action="/inventory/aliases/delete">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="alias_barcode" value="{{ alias.alias_barcode }}">
+                <code>{{ alias.alias_barcode }}</code>
+                <button type="submit" class="small secondary">Entfernen</button>
+            </form>
+            {% else %}
+            <p class="muted">Noch keiner erfasst.</p>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
+
+<script>
+    const csrfToken = {{ csrf_token|tojson }};
+    const scanner = document.getElementById('inventoryScanner');
+    const scanForm = document.getElementById('scanForm');
+    const scanResult = document.getElementById('scanResult');
+    const aliasBarcode = document.getElementById('aliasBarcode');
+    const syncResult = document.getElementById('syncResult');
+    const printCommand = document.getElementById('printCommand');
+    const copyPrintCommand = document.getElementById('copyPrintCommand');
+    const stickerStorageKey = 'carolins-kasse-sticker-counts';
+
+    function focusScanner() {
+        scanner.focus();
+        scanner.select();
+    }
+
+    scanForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const barcode = scanner.value.trim();
+        if (!barcode) return;
+
+        const response = await fetch(`/api/catalog/resolve/${encodeURIComponent(barcode)}`);
+        if (response.ok) {
+            const product = await response.json();
+            scanResult.textContent = `${product.name_de} · ${product.price} Taler · interner Code ${product.barcode}`;
+        } else {
+            scanResult.textContent = 'Unbekannter Code – jetzt einem Produkt zuordnen.';
+            aliasBarcode.value = barcode;
+        }
+        scanner.value = '';
+        focusScanner();
+    });
+
+    let stickerCounts = {};
+    try {
+        stickerCounts = JSON.parse(localStorage.getItem(stickerStorageKey) || '{}');
+    } catch {
+        stickerCounts = {};
+    }
+
+    function quotedProductSpec(name, count) {
+        const escapedName = name.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('$', '\\$').replaceAll('`', '\\`');
+        return `"${escapedName}=${count}"`;
+    }
+
+    function updatePrintCommand() {
+        const productSpecs = Array.from(document.querySelectorAll('.inventory-product-card'))
+            .map((card) => {
+                const input = card.querySelector('.sticker-count');
+                const count = Math.max(0, Number.parseInt(input.value, 10) || 0);
+                return count > 0 ? quotedProductSpec(card.dataset.productNameDe, count) : null;
+            })
+            .filter(Boolean);
+        if (!productSpecs.length) {
+            printCommand.textContent = 'Noch keine Sticker ausgewählt.';
+            copyPrintCommand.disabled = true;
+            return;
+        }
+        printCommand.textContent = `uv run python tools/generate_printables.py --products ${productSpecs.join(' ')}`;
+        copyPrintCommand.disabled = false;
+    }
+
+    document.querySelectorAll('.sticker-count').forEach((input) => {
+        input.value = stickerCounts[input.dataset.barcode] || 0;
+        input.addEventListener('change', () => {
+            stickerCounts[input.dataset.barcode] = Math.max(0, Number.parseInt(input.value, 10) || 0);
+            localStorage.setItem(stickerStorageKey, JSON.stringify(stickerCounts));
+            updatePrintCommand();
+        });
+    });
+    updatePrintCommand();
+
+    copyPrintCommand.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(printCommand.textContent);
+        copyPrintCommand.textContent = 'Kopiert';
+        window.setTimeout(() => {
+            copyPrintCommand.textContent = 'Druckbefehl kopieren';
+        }, 1500);
+    });
+
+    document.getElementById('selectAllProducts').addEventListener('click', () => {
+        document.querySelectorAll('.sync-product').forEach((checkbox) => {
+            checkbox.checked = true;
+        });
+    });
+
+    document.getElementById('syncProducts').addEventListener('click', async () => {
+        const productBarcodes = Array.from(document.querySelectorAll('.sync-product:checked'))
+            .map((checkbox) => checkbox.value);
+        if (!productBarcodes.length) {
+            syncResult.textContent = 'Bitte mindestens ein Produkt auswählen.';
+            return;
+        }
+
+        syncResult.textContent = 'Synchronisierung läuft …';
+        const pinInput = document.getElementById('syncPin');
+        const pin = pinInput.value;
+        pinInput.value = '';
+        try {
+            const response = await fetch('/inventory/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({
+                    destination_url: document.getElementById('syncDestination').value,
+                    pin,
+                    product_barcodes: productBarcodes,
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                syncResult.textContent = result.detail || 'Synchronisierung fehlgeschlagen.';
+                return;
+            }
+            syncResult.textContent = `${result.product_count} Produkte und ${result.alias_count} Codes synchronisiert.`;
+        } catch {
+            syncResult.textContent = 'Die Kasse ist nicht erreichbar.';
+        }
+    });
+
+    window.addEventListener('load', focusScanner);
+</script>
+{% endblock %}

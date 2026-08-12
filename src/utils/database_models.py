@@ -33,6 +33,19 @@ class Product:
         )
 
 
+@dataclass(frozen=True)
+class ProductBarcodeAlias:
+    """A packaging barcode that resolves to a canonical product."""
+
+    alias_barcode: str
+    product_barcode: str
+
+    @classmethod
+    def from_row(cls, row: tuple) -> Self:
+        """Create ProductBarcodeAlias from a database row."""
+        return cls(alias_barcode=row[0], product_barcode=row[1])
+
+
 @dataclass
 class User:
     """A user/customer."""
@@ -189,6 +202,10 @@ PRODUCT_COLUMNS = (
 )
 USER_COLUMNS = "card_id, name, balance, color, difficulty, is_admin, active"
 RECIPE_COLUMNS = "barcode, name, image_path, active"
+
+
+class ProductBarcodeConflictError(ValueError):
+    """Raised when a barcode is already assigned to another product identity."""
 
 
 class CheckoutError(RuntimeError):

@@ -10,6 +10,8 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
 from src.utils.database import (
@@ -26,14 +28,22 @@ from src.utils.database import (
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 ASSETS_DIR = PROJECT_ROOT / "assets"
 PRINT_DIR = PROJECT_ROOT / "data" / "print"
+PRODUCT_FONT_NAME = "FredokaPrint"
+PRODUCT_FONT_PATH = (
+    ASSETS_DIR / "fonts" / "Fredoka" / "Fredoka-VariableFont_wdth,wght.ttf"
+)
+pdfmetrics.registerFont(TTFont(PRODUCT_FONT_NAME, str(PRODUCT_FONT_PATH)))
 
 CREDIT_CARD_SIZE = (85.6 * mm, 53.98 * mm)
 USER_CARD_SIZE = CREDIT_CARD_SIZE
 RECIPE_CARD_SIZE = (70 * mm, 45 * mm)
-PRODUCT_LABEL_SIZE = CREDIT_CARD_SIZE
+PRODUCT_LABEL_SIZE = (70 * mm, 36 * mm)
+PRODUCT_LABEL_COLUMNS = 3
+PRODUCT_LABEL_ROWS = 8
+PRODUCT_LABELS_PER_PAGE = PRODUCT_LABEL_COLUMNS * PRODUCT_LABEL_ROWS
+PRODUCT_LABEL_TOP_MARGIN = 4.5 * mm
 PAGE_MARGIN = 12 * mm
 CARD_GAP = 5 * mm
-LABEL_GAP = 6 * mm
 
 BACKGROUND = colors.HexColor("#FDF6EC")
 TEXT = colors.HexColor("#1F2937")
@@ -43,7 +53,6 @@ RED = colors.HexColor("#EF4444")
 LIGHT_BORDER = colors.HexColor("#E5E7EB")
 PRODUCT_BACKGROUND = colors.HexColor("#FFF9F0")
 PRODUCT_PRICE_BACKGROUND = colors.HexColor("#FEE2E2")
-PRODUCT_BORDER = colors.HexColor("#94A3B8")
 USER_ROLE_BACKGROUND = colors.HexColor("#F1F5F9")
 
 
@@ -68,6 +77,7 @@ def generate_all_printables() -> list[Path]:
         generate_user_cards_pdf(),
         generate_recipe_cards_pdf(),
         generate_product_labels_pdf(),
+        generate_product_label_calibration_pdf(),
         generate_combined_printables_pdf(),
     ]
     return generated_paths
@@ -79,6 +89,7 @@ def printable_files() -> list[PrintableFile]:
         ("user_cards.pdf", "Kinder- und Admin-Karten"),
         ("recipe_cards.pdf", "Rezeptkarten"),
         ("product_labels.pdf", "Produktlabels"),
+        ("product_labels_calibration.pdf", "Zweckform-3490-Kalibrierung"),
         ("all_printables.pdf", "Alles zusammen"),
     ]
 
@@ -126,9 +137,17 @@ def generate_recipe_cards_pdf(path: Path | None = None) -> Path:
 
 
 def generate_product_labels_pdf(
-    path: Path | None = None, products: list[Product] | None = None
+    path: Path | None = None,
+    products: list[Product] | None = None,
+    *,
+    start_position: int = 1,
+    x_offset_mm: float = 0,
+    y_offset_mm: float = 0,
 ) -> Path:
-    """Generate labels for all barcode products or an explicitly selected subset."""
+    """Generate a Zweckform 3490 sheet for products, including repeated items.
+
+    Positive X offsets move labels right; positive Y offsets move labels down.
+    """
     output_path = path or PRINT_DIR / "product_labels.pdf"
     selected_products = (
         products
@@ -136,7 +155,31 @@ def generate_product_labels_pdf(
         else [product for product in get_all_products() if product.has_barcode]
     )
     pdf = _new_pdf(output_path, "Carolin's Kasse - Produkte")
-    _draw_product_labels(pdf, selected_products)
+    _draw_product_labels(
+        pdf,
+        selected_products,
+        start_position=start_position,
+        x_offset_mm=x_offset_mm,
+        y_offset_mm=y_offset_mm,
+    )
+    pdf.save()
+    return output_path
+
+
+def generate_product_label_calibration_pdf(
+    path: Path | None = None,
+    *,
+    x_offset_mm: float = 0,
+    y_offset_mm: float = 0,
+) -> Path:
+    """Generate an outlined Zweckform 3490 calibration sheet."""
+    output_path = path or PRINT_DIR / "product_labels_calibration.pdf"
+    pdf = _new_pdf(output_path, "Carolin's Kasse - Zweckform 3490 Kalibrierung")
+    _draw_product_label_calibration(
+        pdf,
+        x_offset_mm=x_offset_mm,
+        y_offset_mm=y_offset_mm,
+    )
     pdf.save()
     return output_path
 
@@ -179,13 +222,47 @@ def _draw_recipe_cards(pdf: canvas.Canvas, recipes: list[Recipe]) -> None:
         _draw_recipe_card(pdf, x, y, recipe)
 
 
-def _draw_product_labels(pdf: canvas.Canvas, products: list[Product]) -> None:
+def _draw_product_labels(
+    pdf: canvas.Canvas,
+    products: list[Product],
+    *,
+    start_position: int = 1,
+    x_offset_mm: float = 0,
+    y_offset_mm: float = 0,
+) -> None:
+    _validate_product_label_position(start_position)
     for index, product in enumerate(products):
-        x, y = _grid_position(index, PRODUCT_LABEL_SIZE, LABEL_GAP)
-        if index and _starts_new_page(index, PRODUCT_LABEL_SIZE, LABEL_GAP):
+        sheet_index = start_position - 1 + index
+        position = sheet_index % PRODUCT_LABELS_PER_PAGE + 1
+        if index and position == 1:
             pdf.showPage()
-            x, y = _grid_position(0, PRODUCT_LABEL_SIZE, LABEL_GAP)
+        x, y = _product_label_position(position, x_offset_mm, y_offset_mm)
         _draw_product_label(pdf, x, y, product)
+
+
+def _draw_product_label_calibration(
+    pdf: canvas.Canvas,
+    *,
+    x_offset_mm: float,
+    y_offset_mm: float,
+) -> None:
+    width, height = PRODUCT_LABEL_SIZE
+    pdf.setLineWidth(0.25)
+    pdf.setStrokeColor(colors.HexColor("#64748B"))
+    pdf.setFillColor(TEXT)
+    pdf.setFont(PRODUCT_FONT_NAME, 7)
+
+    for position in range(1, PRODUCT_LABELS_PER_PAGE + 1):
+        x, y = _product_label_position(position, x_offset_mm, y_offset_mm)
+        pdf.rect(x, y, width, height, stroke=1, fill=0)
+        pdf.drawString(x + 2 * mm, y + height - 4 * mm, str(position))
+        _draw_calibration_cross(pdf, x + width / 2, y + height / 2)
+
+
+def _draw_calibration_cross(pdf: canvas.Canvas, x: float, y: float) -> None:
+    arm = 2 * mm
+    pdf.line(x - arm, y, x + arm, y)
+    pdf.line(x, y - arm, x, y + arm)
 
 
 def _draw_user_card(pdf: canvas.Canvas, x: float, y: float, user: User) -> None:
@@ -249,37 +326,36 @@ def _draw_recipe_card(pdf: canvas.Canvas, x: float, y: float, recipe: Recipe) ->
 def _draw_product_label(
     pdf: canvas.Canvas, x: float, y: float, product: Product
 ) -> None:
-    width, height = PRODUCT_LABEL_SIZE
-    _draw_credit_card_background(pdf, x, y, width, height, PRODUCT_BORDER)
-
     _draw_image(
         pdf,
         _asset_path("340er", product.image_path),
-        x + 5 * mm,
-        y + 28 * mm,
-        24 * mm,
-        20 * mm,
+        x + 4 * mm,
+        y + 17.5 * mm,
+        17 * mm,
+        15 * mm,
     )
 
     _draw_title(
         pdf,
         product.name_de,
-        x + 33 * mm,
-        y + 41 * mm,
-        max_width=47 * mm,
-        font_size=15,
-        min_font_size=10,
+        x + 24 * mm,
+        y + 28 * mm,
+        max_width=42 * mm,
+        font_size=12,
+        min_font_size=7,
+        font_name=PRODUCT_FONT_NAME,
     )
 
-    _draw_product_price(pdf, product.price, x + 33 * mm, y + 30 * mm)
+    _draw_product_price(pdf, product.price, x + 24 * mm, y + 18.5 * mm)
 
     _draw_barcode(
         pdf,
         product.barcode,
-        x + 10 * mm,
-        y + 6 * mm,
-        width - 20 * mm,
-        15 * mm,
+        x + 5 * mm,
+        y + 2 * mm,
+        60 * mm,
+        13.5 * mm,
+        font_name=PRODUCT_FONT_NAME,
     )
 
 
@@ -318,14 +394,14 @@ def _draw_product_price(pdf: canvas.Canvas, price: float, x: float, y: float) ->
     price_text = f"{int(price)} Taler"
     badge_width = max(
         25 * mm,
-        pdf.stringWidth(price_text, "Helvetica-Bold", 10) + 8 * mm,
+        pdf.stringWidth(price_text, PRODUCT_FONT_NAME, 10) + 8 * mm,
     )
     badge_height = 7.5 * mm
 
     pdf.setFillColor(PRODUCT_PRICE_BACKGROUND)
     pdf.roundRect(x, y, badge_width, badge_height, 3.75 * mm, stroke=0, fill=1)
     pdf.setFillColor(RED)
-    pdf.setFont("Helvetica-Bold", 10)
+    pdf.setFont(PRODUCT_FONT_NAME, 10)
     pdf.drawCentredString(
         x + badge_width / 2,
         y + 2.35 * mm,
@@ -369,14 +445,15 @@ def _draw_title(
     max_width: float,
     font_size: int = 11,
     min_font_size: int = 7,
+    font_name: str = "Helvetica-Bold",
 ) -> None:
     while (
         font_size > min_font_size
-        and pdf.stringWidth(text, "Helvetica-Bold", font_size) > max_width
+        and pdf.stringWidth(text, font_name, font_size) > max_width
     ):
         font_size -= 1
     pdf.setFillColor(TEXT)
-    pdf.setFont("Helvetica-Bold", font_size)
+    pdf.setFont(font_name, font_size)
     pdf.drawString(x, y, text)
 
 
@@ -404,14 +481,24 @@ def _draw_image(
 
 
 def _draw_barcode(
-    pdf: canvas.Canvas, code: str, x: float, y: float, width: float, height: float
+    pdf: canvas.Canvas,
+    code: str,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    *,
+    font_name: str | None = None,
 ) -> None:
-    drawing = createBarcodeDrawing(
-        "EAN13",
-        value=code,
-        barHeight=height,
-        humanReadable=True,
-    )
+    barcode_options = {
+        "value": code,
+        "barHeight": height,
+        "humanReadable": True,
+        "quiet": True,
+    }
+    if font_name:
+        barcode_options["fontName"] = font_name
+    drawing = createBarcodeDrawing("EAN13", **barcode_options)
     scale = min(width / drawing.width, height / drawing.height)
     pdf.saveState()
     pdf.translate(x + (width - drawing.width * scale) / 2, y)
@@ -441,6 +528,29 @@ def _starts_new_page(index: int, item_size: tuple[float, float], gap: float) -> 
     columns = max(1, int((page_width - PAGE_MARGIN * 2 + gap) // (item_width + gap)))
     rows = max(1, int((page_height - PAGE_MARGIN * 2 + gap) // (item_height + gap)))
     return index % (columns * rows) == 0
+
+
+def _product_label_position(
+    position: int,
+    x_offset_mm: float = 0,
+    y_offset_mm: float = 0,
+) -> tuple[float, float]:
+    """Return the lower-left point for a 1-based Zweckform 3490 position."""
+    _validate_product_label_position(position)
+    width, height = PRODUCT_LABEL_SIZE
+    zero_based_position = position - 1
+    column = zero_based_position % PRODUCT_LABEL_COLUMNS
+    row = zero_based_position // PRODUCT_LABEL_COLUMNS
+    x = column * width + x_offset_mm * mm
+    y = A4[1] - PRODUCT_LABEL_TOP_MARGIN - (row + 1) * height - y_offset_mm * mm
+    return x, y
+
+
+def _validate_product_label_position(position: int) -> None:
+    if not 1 <= position <= PRODUCT_LABELS_PER_PAGE:
+        raise ValueError(
+            f"Product label position must be between 1 and {PRODUCT_LABELS_PER_PAGE}."
+        )
 
 
 def _user_asset_path(user: User) -> Path | None:

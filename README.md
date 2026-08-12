@@ -97,13 +97,20 @@ CSRF-Schutz. Der Raspberry-Pi-Installer richtet die lokale PIN automatisch ein;
 der Admin ist für das vertrauenswürdige Heimnetz gedacht und sollte nicht direkt
 ins Internet gestellt werden.
 
+Für die einmalige Produktinventur mit einem am Mac angeschlossenen Scanner gibt
+es einen ausdrücklich lokalen Modus:
+
+```bash
+uv run python tools/run_inventory.py
+```
+
+Die Inventarseite läuft nur auf `127.0.0.1`. Dort lassen sich vorhandene
+Verpackungscodes als zusätzliche Produktcodes erfassen, neue Produkte vormerken
+und ausgewählte Einträge PIN-geschützt zur Kasse synchronisieren. Bilder werden
+nicht über diese Seite übertragen: neue Produktbilder gehören als
+`assets/340er/<english_slug>.png` in den normalen Git-/Update-Ablauf.
+
 ### Karten und Etiketten erzeugen
-
-![Kinder- und Produktkarten mit den echten PDF-Layouts](docs/readme/printable-card-kit-illustration.png)
-
-*Referenzbasierte Illustration. Die vier Karten sind unveränderte Ausschnitte
-aus den tatsächlich erzeugten Kinderkarten- und Produktkarten-PDFs; Tisch und
-Scanner sind illustriert.*
 
 ```bash
 # Alle Standard-Druckbögen
@@ -112,17 +119,29 @@ uv run python tools/generate_printables.py
 # Nur ausgewählte Kinderkarten
 uv run python tools/generate_printables.py --users Carolin Annelie
 
-# Ausgewählte oder alle Produktkarten
+# Ausgewählte oder alle Zweckform-3490-Produktetiketten
 uv run python tools/generate_printables.py --products Brot Mehl Zucker
+uv run python tools/generate_printables.py --products Brot=3 Mehl=2
 uv run python tools/generate_printables.py --all-products
+
+# 3490-Kalibrierbogen und ein angebrochener Bogen ab Position 7
+uv run python tools/generate_printables.py --calibration
+uv run python tools/generate_printables.py --products Brot=3 --start-position 7
 ```
 
 Die PDFs werden unter `data/print/` abgelegt, die einzelnen EAN-13-Barcodes
 unter `data/barcodes/`.
 
+Produktetiketten verwenden das Avery-Zweckform-3490-Raster mit 24 Etiketten à
+70 × 36 mm. Bei Bedarf verschieben `--x-offset-mm` und `--y-offset-mm` den
+Ausdruck. Im macOS-Druckmenü immer `100 %` beziehungsweise „Tatsächliche Größe“
+verwenden und zunächst den Kalibrierbogen auf Normalpapier prüfen.
+
 Das interne Barcode-Schema verwendet eindeutige Präfixe: `100` für Produkte,
 `200` für Benutzerkarten und `300` für Rezepte. Prüfziffern, Dateipfade und
-Admin-URLs werden zentral in `src/utils/barcodes.py` erzeugt.
+Admin-URLs werden zentral in `src/utils/barcodes.py` erzeugt. Bereits auf
+Verpackungen vorhandene Codes bleiben unverändert und werden als zusätzliche
+Aliase einem stabilen internen Produktcode zugeordnet.
 
 ## Elternbereich
 

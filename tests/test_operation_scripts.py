@@ -6,12 +6,13 @@ from dataclasses import dataclass
 import importlib
 import io
 from pathlib import Path
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 import sys
 import tempfile
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from tests.db_isolation import isolated_database_module
 
@@ -90,13 +91,97 @@ class OperationScriptTests(unittest.TestCase):
             )
             self.assertEqual(b"%PDF", output_path.read_bytes()[:4])
 
-    def test_product_labels_use_credit_card_dimensions(self) -> None:
+    def test_product_labels_use_zweckform_3490_dimensions(self) -> None:
         printables = importlib.import_module("src.admin.printables")
 
         width, height = printables.PRODUCT_LABEL_SIZE
 
-        self.assertAlmostEqual(85.6, width / mm)
-        self.assertAlmostEqual(53.98, height / mm)
+        self.assertAlmostEqual(70, width / mm)
+        self.assertAlmostEqual(36, height / mm)
+        self.assertEqual(24, printables.PRODUCT_LABELS_PER_PAGE)
+
+    def test_product_label_grid_fills_a4_without_gaps(self) -> None:
+        printables = importlib.import_module("src.admin.printables")
+
+        first_x, first_y = printables._product_label_position(1)
+        third_x, third_y = printables._product_label_position(3)
+        last_x, last_y = printables._product_label_position(24)
+
+        self.assertAlmostEqual(0, first_x / mm)
+        self.assertAlmostEqual(256.5, first_y / mm)
+        self.assertAlmostEqual(140, third_x / mm)
+        self.assertAlmostEqual(first_y, third_y)
+        self.assertAlmostEqual(140, last_x / mm)
+        self.assertAlmostEqual(4.5, last_y / mm)
+        self.assertAlmostEqual(A4[0], third_x + 70 * mm)
+
+    def test_product_label_offsets_move_right_and_down(self) -> None:
+        printables = importlib.import_module("src.admin.printables")
+
+        base_x, base_y = printables._product_label_position(1)
+        offset_x, offset_y = printables._product_label_position(1, 1.5, 2.5)
+
+        self.assertAlmostEqual(1.5, (offset_x - base_x) / mm)
+        self.assertAlmostEqual(-2.5, (offset_y - base_y) / mm)
+
+    def test_product_labels_continue_on_new_page_after_start_position(self) -> None:
+        printables = importlib.import_module("src.admin.printables")
+        product = printables.Product(
+            barcode=PRODUCT_BARCODE,
+            name="milk",
+            name_de="Milch",
+            price=1,
+            category="kuehlregal",
+        )
+        pdf = MagicMock()
+
+        with patch.object(printables, "_draw_product_label") as draw_product_label:
+            printables._draw_product_labels(
+                pdf,
+                [product, product],
+                start_position=24,
+            )
+
+        self.assertEqual(1, pdf.showPage.call_count)
+        first_call, second_call = draw_product_label.call_args_list
+        self.assertIs(pdf, first_call.args[0])
+        self.assertAlmostEqual(140, first_call.args[1] / mm)
+        self.assertAlmostEqual(4.5, first_call.args[2] / mm)
+        self.assertIs(product, first_call.args[3])
+        self.assertIs(pdf, second_call.args[0])
+        self.assertAlmostEqual(0, second_call.args[1] / mm)
+        self.assertAlmostEqual(256.5, second_call.args[2] / mm)
+        self.assertIs(product, second_call.args[3])
+
+    def test_product_label_barcode_requests_quiet_zones(self) -> None:
+        printables = importlib.import_module("src.admin.printables")
+        pdf = MagicMock()
+        drawing = SimpleNamespace(width=37.29 * mm, height=13.5 * mm)
+
+        with (
+            patch.object(
+                printables, "createBarcodeDrawing", return_value=drawing
+            ) as create_barcode,
+            patch.object(printables.renderPDF, "draw"),
+        ):
+            printables._draw_barcode(
+                pdf,
+                PRODUCT_BARCODE,
+                0,
+                0,
+                60 * mm,
+                13.5 * mm,
+                font_name=printables.PRODUCT_FONT_NAME,
+            )
+
+        create_barcode.assert_called_once_with(
+            "EAN13",
+            value=PRODUCT_BARCODE,
+            barHeight=13.5 * mm,
+            humanReadable=True,
+            quiet=True,
+            fontName=printables.PRODUCT_FONT_NAME,
+        )
 
     def test_user_cards_use_credit_card_dimensions(self) -> None:
         printables = importlib.import_module("src.admin.printables")
@@ -126,6 +211,34 @@ class OperationScriptTests(unittest.TestCase):
             )
             self.assertEqual(b"%PDF", output_path.read_bytes()[:4])
 
+    def test_generate_product_copies_expands_selected_product(self) -> None:
+        with operation_script_context() as context:
+            generate_printables = importlib.import_module("tools.generate_printables")
+
+            with (
+                patch.object(
+                    importlib.import_module("src.admin.printables"),
+                    "PRINT_DIR",
+                    context.print_dir,
+                ),
+                patch.object(generate_printables, "PRINT_DIR", context.print_dir),
+            ):
+                output_path = generate_printables.generate_selected_product_labels(
+                    ["Milch=3"], start_position=23
+                )
+
+            self.assertEqual(
+                context.print_dir / "product_labels_Milch_3x.pdf",
+                output_path,
+            )
+            self.assertEqual(b"%PDF", output_path.read_bytes()[:4])
+
+    def test_product_copy_syntax_rejects_invalid_count(self) -> None:
+        generate_printables = importlib.import_module("tools.generate_printables")
+
+        with self.assertRaisesRegex(ValueError, "NAME=COUNT"):
+            generate_printables._parse_product_spec("Milch=0")
+
     def assert_expected_barcodes(self, barcode_dir: Path) -> None:
         for svg_path in expected_barcode_paths(barcode_dir):
             self.assertTrue(svg_path.exists(), svg_path)
@@ -151,6 +264,7 @@ EXPECTED_PRINTABLE_NAMES = {
     "user_cards.pdf",
     "recipe_cards.pdf",
     "product_labels.pdf",
+    "product_labels_calibration.pdf",
     "all_printables.pdf",
 }
 

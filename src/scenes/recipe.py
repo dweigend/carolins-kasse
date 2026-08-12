@@ -268,6 +268,11 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
             self._handle_checkout_scan(barcode)
             return
 
+        product = get_product(barcode)
+        if product:
+            self._handle_product_scan(product)
+            return
+
         if barcode.startswith(RECIPE_PREFIX):
             self._handle_recipe_card_scan(barcode)
             return
@@ -280,7 +285,7 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
             self._handle_completed_recipe_scan()
             return
 
-        self._handle_ingredient_scan(barcode)
+        self._handle_unknown_product_scan()
 
     def _handle_checkout_scan(self, barcode: str) -> None:
         """Forward scans to checkout while payment mode is active."""
@@ -304,25 +309,30 @@ class RecipeScene(CheckoutMixin, MessageMixin, Scene):
         """Reject ingredient scans after the recipe checklist is complete."""
         self._show_message("Jetzt bezahlen!")
 
-    def _handle_ingredient_scan(self, barcode: str) -> None:
-        """Process a product barcode for the loaded recipe."""
-        product = get_product(barcode)
-        if not product:
-            self._handle_unknown_product_scan()
+    def _handle_product_scan(self, product: Product) -> None:
+        """Process a resolved canonical product for the loaded recipe."""
+        if not self._recipe:
+            self._handle_missing_recipe_scan()
             return
 
-        ingredient = self._find_ingredient(barcode)
+        if self._complete:
+            self._handle_completed_recipe_scan()
+            return
+
+        ingredient = self._find_ingredient(product.barcode)
         if not ingredient:
             self._handle_product_not_in_recipe_scan(product)
             return
 
         ingredient_product, required_quantity = ingredient
-        scanned_quantity = self._scanned_quantities.get(barcode, 0)
+        scanned_quantity = self._scanned_quantities.get(product.barcode, 0)
         if scanned_quantity >= required_quantity:
             self._handle_duplicate_ingredient_scan(product)
             return
 
-        self._record_ingredient_scan(barcode, ingredient_product, required_quantity)
+        self._record_ingredient_scan(
+            product.barcode, ingredient_product, required_quantity
+        )
 
     def _handle_unknown_product_scan(self) -> None:
         """Reject barcodes that do not match an active product."""
