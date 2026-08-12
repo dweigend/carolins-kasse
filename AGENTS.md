@@ -8,11 +8,11 @@
 
 ## Session Start
 
-1. Read `dev/HANDOVER.md`.
-2. Read `dev/PLAN.md`.
-3. Read `dev/ARCHITECTURE.md` when structure or responsibilities matter.
-4. Run `gh issue list --limit 20`.
-5. Run `git status --short --branch` before editing files.
+1. Read the local `dev/HANDOVER.md` and `dev/PLAN.md` files when present.
+2. Read the local `dev/ARCHITECTURE.md` when present and structure or
+   responsibilities matter.
+3. Run `gh issue list --limit 20`.
+4. Run `git status --short --branch` before editing files.
 
 ## Operating Mode
 
@@ -35,8 +35,9 @@
 ## Before Ending
 
 1. Run relevant checks.
-2. Update `dev/HANDOVER.md`.
-3. Update `dev/PLAN.md` or `dev/ARCHITECTURE.md` only when priorities or structure changed.
+2. Update the local `dev/HANDOVER.md` when present.
+3. Update the local `dev/PLAN.md` or `dev/ARCHITECTURE.md` only when present
+   and priorities or structure changed.
 4. Create GitHub issues for newly discovered bugs, ideas, decisions, or hardware/kid tests.
 
 ## Project Context
@@ -58,7 +59,7 @@ src/
 └── utils/         # State, database, assets, fonts, layout helpers
 assets/            # Product, scene, UI, font assets
 data/              # Local SQLite DB and generated barcodes
-dev/               # Active docs only: handover, plan, architecture
+dev/               # Ignored local planning and debug files
 tools/             # Seed, barcode, print helper scripts
 ```
 

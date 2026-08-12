@@ -196,13 +196,11 @@ and startup performance.
 
 ## Project Status
 
-The main play experience is implemented. Remaining work is primarily physical
-validation with the final hardware and children, including scanner and touch
-flows, number-pad input, display ergonomics, startup performance, and a clean
-first-boot installation without manual recovery.
+The final physical checkout is built and operational. The project has moved
+from core construction into fine-tuning: adding more products, replacing the
+remaining missing or temporary graphics, and polishing individual interactions.
 
-Project documentation:
-
-- [dev/HANDOVER.md](dev/HANDOVER.md) — current state and recent work
-- [dev/PLAN.md](dev/PLAN.md) — active priorities and acceptance criteria
-- [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md) — system boundaries and runtime flow
+The next iterations will be guided by children using the checkout in practice.
+Their behavior and feedback will show which functions are intuitive and fun,
+which ones need adjustment, and where the experience can be simplified or
+improved.
