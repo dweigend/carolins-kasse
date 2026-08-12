@@ -33,6 +33,8 @@
   Two clearly labeled reference-based illustrations use the real cart screenshot
   and exact Poppler crops from the current child/product card PDFs; the checkout
   steps now explicitly describe the required second customer-card scan.
+- The README hero now uses an optimized 320x180 GIF of the physical checkout
+  concept. Its reduced frame rate and palette keep the animation around 1.3 MiB.
 - `tools/generate_printables.py --users Carolin Annelie` creates a focused A4
   user-card sheet for the two child accounts, without including the Admin or
   guest cards. The login scanner reads the printed EAN-13 barcodes, not QR

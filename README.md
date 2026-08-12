@@ -5,10 +5,10 @@ Rezepte erfüllen und mit Rechenaufgaben Taler verdienen. Die Anwendung verbinde
 einen echten Barcode-Scanner und ein 1024×600-Touchdisplay mit einer bewusst
 einfachen, deutschsprachigen Oberfläche für Carolin und Annelie.
 
-![Carolin's Kasse mit dem echten Einkaufsbildschirm und Barcode-Scanner](docs/readme/kiosk-hero-illustration.png)
+![Animation von Carolin's Kasse mit Touchscreen, Tastenfeld und Barcode-Scanner](docs/readme/carolins-kasse-animation.gif)
 
-*Referenzbasierte Illustration. Der Bildschirm zeigt einen echten Screenshot
-der aktuellen 1024×600-App; Gerät und Umgebung sind illustriert.*
+*Animation des selbstgebauten Kassenterminals mit Touchscreen, Tastenfeld und
+Barcode-Scanner.*
 
 ## Was die Kasse kann
 
