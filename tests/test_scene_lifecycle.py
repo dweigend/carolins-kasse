@@ -2,8 +2,8 @@
 
 import importlib
 import os
-from types import ModuleType
 import unittest
+from types import ModuleType
 
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")

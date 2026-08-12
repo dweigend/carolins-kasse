@@ -1,8 +1,7 @@
 """Static checks for systemd unit configuration."""
 
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 KIOSK_SERVICE_PATH = REPO_ROOT / "systemd" / "carolins-kasse.service"

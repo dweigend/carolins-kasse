@@ -5,7 +5,7 @@ Draws rounded progress bars with system colors.
 
 import pygame
 
-from src.constants import ORANGE, DANGER
+from src.constants import DANGER, ORANGE
 
 
 def draw_progress_bar(

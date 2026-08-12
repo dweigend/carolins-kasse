@@ -1,16 +1,15 @@
 """Temp-bootfs coverage for the Raspberry Pi first-boot preparation tool."""
 
-from argparse import Namespace
-from contextlib import redirect_stdout
 import io
-from pathlib import Path
 import stat
 import tempfile
 import unittest
+from argparse import Namespace
+from contextlib import redirect_stdout
+from pathlib import Path
 from unittest.mock import patch
 
 from tools import pi_prepare_boot
-
 
 BASE_CMDLINE = "console=serial0,115200 root=PARTUUID=abc rootwait quiet"
 CONFIG_TEXT = "# Raspberry Pi config fixture\n"

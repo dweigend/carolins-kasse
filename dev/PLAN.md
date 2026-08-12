@@ -19,9 +19,9 @@ local data handling.
 | Regression tests | Active | 112-test pipeline suite including product aliases, atomic catalog sync, inventory security, Zweckform geometry, database safety, kiosk flows, and Pi operations |
 | Hardware validation | Open | Pi, SEENGREAT USB hub, scanner, touch, children |
 | Data module split | Done for current scope | #4 closed after helper modules for models/types, schema, product, recipe, basic user CRUD, session, earning, transaction, balance-adjustment, and checkout details; `database.py` keeps the public init, connection, commit, checkout, and balance transaction boundaries |
-| Quality gate | Active | `uv run poe check` runs Ruff, `ty`, Vulture, Deptry, jscpd, Radon, and pytest-cov |
-| Test coverage | Covered for current refactor safety | Issue #25 is closed; add focused tests with the next risky change |
-| UI handler complexity | Done for current Radon baseline | Focused #26 pass removed current C/D findings |
+| Quality gate | Active | `uv run --locked tools/check.py` runs Ruff, `ty`, and the unittest suite |
+| Test strategy | Focused | Keep behavior and safety coverage; do not add tests only to raise a metric |
+| UI handler complexity | Maintained | Prefer small readable functions and review concrete hotspots |
 
 ## Open Issue Snapshot
 
@@ -113,15 +113,14 @@ local data handling.
    - Do not move public connection or transaction boundaries out of
      `src/utils/database.py` unless a new focused issue proves a concrete need.
 
-6. **Regression coverage maintenance**
+6. **Regression test maintenance**
    - Keep the 112-test pipeline suite green.
    - Add focused tests with the next risky scene, database, admin, or
-     Pi-operations change instead of keeping a broad standing coverage issue.
-   - Expand coverage when the next risky write, scene-state, or Pi operations path changes.
+     Pi-operations change instead of targeting a global coverage percentage.
    - Use the local `carolins-kasse-debug` skill for repeatable SSH diagnostics,
      local checks, and safe Pi update/restart/backup actions. Start Pi work
      with `status`.
-   - Run `uv run poe check` as the single local quality command before review.
+   - Run `uv run --locked tools/check.py` as the single local quality command before review.
 
 7. **UI handler complexity**
    - `Numpad.handle_event` has been reduced from Radon D to A with direct
@@ -129,7 +128,7 @@ local data handling.
    - `ScrollableCart.handle_event` has been reduced out of the Radon C list
      with direct component tests.
    - `RecipeScene._handle_barcode` has been split into branch-specific scan
-     helpers; the current Radon pipeline reports no C/D findings.
+     helpers.
    - Keep refactors behavior-preserving and covered by targeted smoke tests.
 
 8. **Later CRUD**
@@ -167,9 +166,9 @@ local data handling.
 - The PIN-protected debug page is the lightweight Pi operations dashboard for
   service state, install/update/backup state, backup timer, failed units, and
   short logs.
-- `uv run poe check` is the code-quality pipeline. Ruff format/lint, `ty`,
-  Vulture, Deptry, jscpd, and pytest-cov are strict gates; Radon reports
-  future complexity findings.
+- `uv run --locked tools/check.py` is the complete quality pipeline. Keep it to
+  Ruff format/lint, `ty`, and focused standard-library tests unless a concrete
+  recurring problem justifies another tool.
 - The Pi stays on the home WiFi; no hotspot in v1.
 - Hardware debugging uses SSH over WiFi so the Pi USB data bus can be isolated for OTG and hub tests.
 - When the SEENGREAT shield is in Pi Zero hub mode, the Pi micro-USB data port must stay unused; downstream USB devices should connect through the shield.

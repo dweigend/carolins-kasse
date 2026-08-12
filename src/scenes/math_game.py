@@ -19,7 +19,7 @@ from src.scenes.base import Scene
 from src.scenes.mixins import MessageMixin
 from src.utils import assets as asset_loader
 from src.utils import state
-from src.utils.fonts import bold_custom, body, heading
+from src.utils.fonts import body, bold_custom, heading
 from src.utils.input import digit_from_key_event, is_enter_key_event
 from src.utils.math_generator import MathProblem, generate_problem
 

@@ -213,16 +213,13 @@ Weitere Details: [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md).
 Der vollständige lokale Qualitätslauf ist:
 
 ```bash
-uv run poe check
+uv run --locked tools/check.py
 ```
 
-Neben den mit `uv sync` installierten Entwicklungswerkzeugen wird dafür
-[Bun](https://bun.sh/) benötigt, weil die Duplikatprüfung über `bunx` läuft.
-
-Er prüft Formatierung und Linting mit Ruff, Typen mit `ty`, ungenutzten Code,
-Abhängigkeiten, Duplikate und Komplexität und führt die pytest-Suite mit
-Coverage aus. Die Tests verwenden temporäre SQLite-Datenbanken und sollen
-`data/kasse.db` nicht verändern.
+`uv` prüft dabei das Lockfile und stellt die Projektumgebung bereit. Das lokale
+Python-Skript führt Ruff-Formatierung und -Linting, die Typprüfung mit `ty` und
+die 112 bestehenden `unittest`-Tests aus. Die Tests verwenden temporäre
+SQLite-Datenbanken und sollen `data/kasse.db` nicht verändern.
 
 Für Änderungen am Kiosk bleiben zusätzlich manuelle Tests auf echter Hardware
 wichtig: Touch, Scanner, Nummernblock, Vollbilddarstellung und Startzeit lassen

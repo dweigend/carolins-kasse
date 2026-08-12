@@ -2,9 +2,9 @@
 
 import importlib
 import os
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -14,7 +14,6 @@ import pygame
 from src.components.numpad import Numpad
 from src.utils.input import InputManager, InputType
 from tests.db_isolation import isolated_database_module
-
 
 SCANNED_PRODUCT_BARCODE = "1000000000016"
 PICKER_PRODUCT_BARCODE = "1000000000023"

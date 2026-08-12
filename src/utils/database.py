@@ -27,24 +27,37 @@ from src.utils import (
 )
 from src.utils.database_models import (
     PRODUCT_COLUMNS as PRODUCT_COLUMNS,
+)
+from src.utils.database_models import (
     RECIPE_COLUMNS as RECIPE_COLUMNS,
+)
+from src.utils.database_models import (
     USER_COLUMNS as USER_COLUMNS,
+)
+from src.utils.database_models import (
     BalanceAdjustment,
-    CheckoutError as CheckoutError,
     CheckoutResult,
-    CheckoutUserNotFoundError as CheckoutUserNotFoundError,
     Earning,
-    InsufficientFundsError as InsufficientFundsError,
     Product,
     ProductBarcodeAlias,
-    ProductBarcodeConflictError as ProductBarcodeConflictError,
     Recipe,
     RecipeIngredient,
     Session,
     Transaction,
     User,
 )
-
+from src.utils.database_models import (
+    CheckoutError as CheckoutError,
+)
+from src.utils.database_models import (
+    CheckoutUserNotFoundError as CheckoutUserNotFoundError,
+)
+from src.utils.database_models import (
+    InsufficientFundsError as InsufficientFundsError,
+)
+from src.utils.database_models import (
+    ProductBarcodeConflictError as ProductBarcodeConflictError,
+)
 
 # Database path. The Pi installer sets this to /var/lib/carolins-kasse/kasse.db
 # so runtime balances are kept outside the Git checkout.

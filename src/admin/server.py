@@ -12,10 +12,10 @@ For remote admin on the home network:
 
 import ipaddress
 import os
-from pathlib import Path
 import re
-from secrets import compare_digest, token_urlsafe
 import sqlite3
+from pathlib import Path
+from secrets import compare_digest, token_urlsafe
 from typing import Annotated
 from urllib.parse import parse_qs, quote
 
@@ -35,6 +35,7 @@ from src.admin.catalog import (
     send_catalog,
 )
 from src.admin.printables import PRINT_DIR, generate_all_printables, printable_files
+from src.utils.barcodes import BARCODE_DIR, barcode_path, barcode_url, write_ean13_svg
 from src.utils.database import (
     Product,
     ProductBarcodeAlias,
@@ -42,10 +43,10 @@ from src.utils.database import (
     add_product_barcode_alias,
     delete_product_barcode_alias,
     get_all_products,
-    get_product,
-    get_product_barcode_aliases,
     get_all_recipes,
     get_all_users,
+    get_product,
+    get_product_barcode_aliases,
     get_recent_balance_adjustments,
     get_recipe_ingredients,
     get_user,
@@ -57,7 +58,6 @@ from src.utils.database import (
     update_user_admin_fields,
     update_user_balance,
 )
-from src.utils.barcodes import BARCODE_DIR, barcode_path, barcode_url, write_ean13_svg
 from src.utils.pi_system import (
     collect_debug_snapshot,
     run_admin_action,

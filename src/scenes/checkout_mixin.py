@@ -13,17 +13,17 @@ from src.constants import (
     SUCCESS,
     TEXT_PRIMARY,
 )
+from src.utils import state
 from src.utils.assets import get as get_asset
 from src.utils.assets import get_raw as get_raw_asset
 from src.utils.barcodes import USER_PREFIX
-from src.utils import state
 from src.utils.database import (
     CheckoutUserNotFoundError,
     InsufficientFundsError,
     process_checkout,
 )
 from src.utils.earnings import award_cashier_salary
-from src.utils.fonts import bold_custom, body, caption
+from src.utils.fonts import body, bold_custom, caption
 
 
 class CheckoutMixin:

@@ -153,6 +153,7 @@ tools/seed_database.py       -> initializes missing/empty data/kasse.db
 tools/generate_barcodes.py   -> writes SVG barcodes from DB contents
 tools/generate_printables.py -> writes A4 PDFs under data/print/
 tools/run_inventory.py       -> starts the loopback-only Mac inventory page
+tools/check.py               -> runs Ruff, ty, and unittest checks
 tools/pi_prepare_boot.py     -> prepares Raspberry Pi bootfs for first install
 tools/pi_firstboot.sh        -> bootfs first-boot entrypoint copied by prepare
 tools/pi_bootstrap.sh        -> first Pi install into /opt/carolins-kasse
@@ -203,14 +204,14 @@ Systemd units live under `systemd/`:
 | `src/utils/admin_runtime.py` | Managed FastAPI server start/stop for pygame admin |
 | `src/utils/network.py` | Local IP and admin URL helpers |
 | `src/utils/pi_system.py` | Pi diagnostics, admin PIN validation, system actions |
-| `tools/` | Operational scripts for setup, barcodes, printables |
+| `tools/` | Operational scripts for quality checks, setup, barcodes, and printables |
 | `tests/` | unittest temp-DB smoke and safety coverage |
 
 ## Test Structure
 
 Tests use the Python standard library `unittest` stack and temporary SQLite
 databases. They should not touch `data/kasse.db` and should avoid new test
-dependencies unless there is a clear payoff. Current coverage focuses on
+dependencies unless there is a clear payoff. Current tests focus on
 database smoke behavior, atomic checkout safety, checkout rollback on
 transaction-save failure, self-checkout balance refresh, local-day earning
 queries, legacy schema migration, admin POST/session/CSRF safety, Pi update

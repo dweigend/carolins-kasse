@@ -1,21 +1,21 @@
 """Direct temp-state coverage for operation scripts."""
 
+import importlib
+import io
+import sys
+import tempfile
+import unittest
 from collections.abc import Iterator
 from contextlib import contextmanager, redirect_stdout
 from dataclasses import dataclass
-import importlib
-import io
 from pathlib import Path
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-import sys
-import tempfile
 from types import ModuleType, SimpleNamespace
-import unittest
 from unittest.mock import MagicMock, patch
 
-from tests.db_isolation import isolated_database_module
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
 
+from tests.db_isolation import isolated_database_module
 
 PRODUCT_BARCODE = "1000000000016"
 NO_LABEL_BARCODE = "1000000000023"

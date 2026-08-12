@@ -1,13 +1,12 @@
 """Checkout scene behavior tests with isolated temp state."""
 
 import importlib
-from pathlib import Path
 import tempfile
-from types import ModuleType
 import unittest
+from pathlib import Path
+from types import ModuleType
 
 from tests.db_isolation import isolated_database_module
-
 
 USER_CARD_ID = "2000000000015"
 

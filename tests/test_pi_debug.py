@@ -1,9 +1,9 @@
 """Direct CLI coverage for the Raspberry Pi debug script."""
 
-from contextlib import redirect_stdout
-from dataclasses import dataclass
 import io
 import unittest
+from contextlib import redirect_stdout
+from dataclasses import dataclass
 from unittest.mock import patch
 
 from tools import pi_debug

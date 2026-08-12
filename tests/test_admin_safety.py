@@ -1,22 +1,22 @@
 """Admin write-route safety tests with isolated temp state."""
 
-from collections.abc import Iterator, Mapping
-from contextlib import contextmanager
-from dataclasses import dataclass
-from http.cookies import SimpleCookie
 import asyncio
 import importlib
 import json
 import os
-from pathlib import Path
 import sys
 import tempfile
-from types import ModuleType, SimpleNamespace
-from urllib.parse import urlencode, urlsplit
 import unittest
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass
+from http.cookies import SimpleCookie
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import patch
+from urllib.parse import urlencode, urlsplit
 
 from tests.db_isolation import isolated_database_module
-
 
 ADMIN_PIN = "2468"
 USER_CARD_ID = "2000000000015"
@@ -348,29 +348,28 @@ class AdminSafetyTests(unittest.TestCase):
                 collected = True
                 return fake_debug_snapshot()
 
-            setattr(
+            with patch.object(
                 context.server,
                 "collect_debug_snapshot",
                 fake_collect_debug_snapshot,
-            )
+            ):
+                locked_response = context.client.get("/debug")
 
-            locked_response = context.client.get("/debug")
+                self.assertEqual(locked_response.status_code, 200)
+                self.assertFalse(collected)
+                self.assertNotIn("Pi-Ops", locked_response.text)
 
-            self.assertEqual(locked_response.status_code, 200)
-            self.assertFalse(collected)
-            self.assertNotIn("Pi-Ops", locked_response.text)
+                context.client.cookies[context.server.DEBUG_COOKIE] = ADMIN_PIN
+                unlocked_response = context.client.get("/debug")
 
-            context.client.cookies[context.server.DEBUG_COOKIE] = ADMIN_PIN
-            unlocked_response = context.client.get("/debug")
-
-            self.assertEqual(unlocked_response.status_code, 200)
-            self.assertTrue(collected)
-            self.assertIn("Pi-Ops", unlocked_response.text)
-            self.assertIn("Install-Log", unlocked_response.text)
-            self.assertIn("Update-Log", unlocked_response.text)
-            self.assertIn("Backup-Timer-Log", unlocked_response.text)
-            self.assertIn("2 fehlgeschlagene Units.", unlocked_response.text)
-            self.assertIn("install log line", unlocked_response.text)
+                self.assertEqual(unlocked_response.status_code, 200)
+                self.assertTrue(collected)
+                self.assertIn("Pi-Ops", unlocked_response.text)
+                self.assertIn("Install-Log", unlocked_response.text)
+                self.assertIn("Update-Log", unlocked_response.text)
+                self.assertIn("Backup-Timer-Log", unlocked_response.text)
+                self.assertIn("2 fehlgeschlagene Units.", unlocked_response.text)
+                self.assertIn("install log line", unlocked_response.text)
 
     def test_inventory_workspace_requires_explicit_mode_and_loopback(self) -> None:
         with admin_test_context() as context:

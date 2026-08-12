@@ -1,18 +1,17 @@
 """Recipe scene regression tests with isolated temp databases."""
 
-from collections.abc import Iterator
-from contextlib import contextmanager
 import importlib
 import os
-from types import ModuleType
 import unittest
+from collections.abc import Iterator
+from contextlib import contextmanager
+from types import ModuleType
 
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 from src.constants import EARNING_RECIPE
 from tests.db_isolation import initialized_temporary_database
-
 
 RECIPE_BARCODE = "3000000000014"
 PRODUCT_BARCODE = "1000000000016"

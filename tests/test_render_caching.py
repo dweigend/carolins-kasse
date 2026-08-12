@@ -3,8 +3,8 @@
 import importlib
 import os
 import sys
-from unittest import mock
 import unittest
+from unittest import mock
 
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")

@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from src.utils.database import Product, ProductBarcodeAlias
 
-
 SYNC_PATH = "/api/catalog/sync"
 SYNC_TIMEOUT_SECONDS = 15.0
 ASSET_KEY_PATTERN = r"^[a-z0-9_]+$"

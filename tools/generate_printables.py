@@ -18,10 +18,9 @@ Creates:
 """
 
 import argparse
-from collections.abc import Callable
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -38,8 +37,6 @@ from src.utils.database import (
     get_all_users,
     init_database,
 )
-
-Record = TypeVar("Record")
 
 
 def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
@@ -103,7 +100,7 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     return parsed_args
 
 
-def select_records_by_name(
+def select_records_by_name[Record](
     records: list[Record],
     requested_names: list[str],
     get_name: Callable[[Record], str],

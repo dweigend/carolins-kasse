@@ -1,7 +1,5 @@
 """Temporary database regression smoke tests."""
 
-from collections.abc import Iterator
-from contextlib import closing, contextmanager, redirect_stdout
 import importlib
 import io
 import json
@@ -10,13 +8,14 @@ import sqlite3
 import sys
 import tempfile
 import time
+import unittest
+from collections.abc import Iterator
+from contextlib import closing, contextmanager, redirect_stdout
 from pathlib import Path
 from types import ModuleType
-import unittest
 from unittest.mock import patch
 
 from tests.db_isolation import initialized_temporary_database, isolated_database_module
-
 
 EXPECTED_SCHEMA_TABLES = {
     "balance_adjustments",

@@ -3,8 +3,8 @@
 Initialize pygame fonts and provide semantic font sizes.
 """
 
-from functools import lru_cache
 import os
+from functools import cache
 
 import pygame
 
@@ -72,7 +72,7 @@ def clear_cache() -> None:
     _get_font.cache_clear()
 
 
-@lru_cache(maxsize=None)
+@cache
 def _get_font(font_path: str, size: int) -> pygame.font.Font:
     """Load each immutable font size once per process."""
     return pygame.font.Font(font_path, size)

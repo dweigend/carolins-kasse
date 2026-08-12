@@ -1,6 +1,6 @@
 """Touch-friendly numpad component for number input."""
 
-from typing import Callable
+from collections.abc import Callable
 
 import pygame
 

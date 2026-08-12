@@ -78,7 +78,7 @@ tools/             # Seed, barcode, print helper scripts
 - Run scripts with `uv run`.
 - Use type hints where they improve readability or correctness.
 - Add short English docstrings for shared or non-obvious public APIs.
-- `ty` runs inside `uv run poe check`; prefer the full pipeline over separate
+- `ty` runs inside `uv run --locked tools/check.py`; prefer the full pipeline over separate
   `ty` runs unless narrowing a type-check failure.
 
 ## Verification
@@ -86,7 +86,7 @@ tools/             # Seed, barcode, print helper scripts
 For code changes, run at least:
 
 ```bash
-uv run poe check
+uv run --locked tools/check.py
 ```
 
 When relevant, also run targeted smoke tests for pygame scenes, barcode flows,

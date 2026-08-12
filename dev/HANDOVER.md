@@ -105,11 +105,10 @@
   compatibility, checkout rollback on transaction-save failure, and local-day
   earning boundary behavior. The current pipeline suite has 112 passing tests.
 - `data/kasse.db` may contain local runtime changes and should not be committed accidentally.
-- `uv run poe check` is now the single local code-quality pipeline. It runs
-  Ruff format/lint, `ty`, Vulture, Deptry, jscpd via `bunx`, Radon, and pytest
-  with coverage. Ruff format/lint, `ty`, Vulture, Deptry, jscpd, and
-  pytest-cov are strict gates; Radon remains reporting-only for the #26
-  complexity cleanup.
+- `uv run --locked tools/check.py` is the single local quality command. `uv`
+  verifies the lockfile and environment; the standard-library script runs Ruff
+  format/lint, `ty`, and all 112 `unittest` tests. Bun, Poe, pytest/coverage,
+  Vulture, Deptry, jscpd, and Radon are no longer part of the toolchain.
 - USB hub bring-up is active: Raspberry Pi Zero 2 W plus SEENGREAT Pi USB HUB Rev1.1 must be tested with SSH over WiFi so the single Pi USB data bus can be isolated.
 - Local-only debug memory lives under ignored `dev/local-debug/` for reports, scripts, logs, keys, secrets, and downloaded OS images.
 - Fresh Raspberry Pi OS Lite 64-bit was flashed successfully on 2026-04-29; that
@@ -340,6 +339,12 @@ and Zweckform 3490 labels:
   product-label sheet with a partly used first row
 - Pi reachability gate failed because `carolins-kasse.local` did not resolve;
   no update, restart, backup, or acceptance command was attempted
+
+Run on 2026-08-12 CEST for the simplified Astral quality pipeline:
+
+- `uv run --locked tools/check.py` (Ruff format/lint, `ty`, 112 unittest tests)
+- Development dependencies reduced to Ruff and `ty`; orchestration uses only
+  `uv` and the Python standard library
 
 - `uv run ruff check src/ tools/`
 - `uv run ruff format src/ tools/`
@@ -648,9 +653,9 @@ Open follow-up and validation backlog:
 - `src/utils/database.py` intentionally remains the public SQLite boundary after
   the #4 helper splits. Avoid further database indirection unless a new focused
   issue identifies a concrete query family or transaction-boundary problem.
-- The new quality pipeline is intentionally a practical baseline: Ruff,
-  `ty`, Vulture, Deptry, jscpd, and pytest-cov are strict, while Radon remains
-  reporting-only. The focused #26 pass removed the current Radon C/D findings.
+- The quality pipeline intentionally stays small: Ruff handles formatting and
+  linting, `ty` checks types, and focused standard-library tests protect risky
+  behavior. Add another gate only after a recurring problem justifies it.
 - Hardware behavior is not fully validated: scanner timing, touch target precision, fullscreen rendering, Pi performance, and child comprehension still need real tests.
 - Remote admin is still intended for the home WiFi. Mutating POST routes require
   the debug PIN/admin session cookie plus CSRF, while the read surface remains

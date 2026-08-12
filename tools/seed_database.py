@@ -22,6 +22,11 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.utils.barcodes import (
+    generate_product_barcode,
+    generate_recipe_barcode,
+    generate_user_barcode,
+)
 from src.utils.database import (
     DB_PATH,
     Product,
@@ -34,11 +39,6 @@ from src.utils.database import (
     add_user,
     get_db,
     init_database,
-)
-from src.utils.barcodes import (
-    generate_product_barcode,
-    generate_recipe_barcode,
-    generate_user_barcode,
 )
 
 SEEDED_TABLES = (

@@ -16,7 +16,7 @@ from src.constants import (
     WHITE,
 )
 from src.utils.assets import get as get_asset
-from src.utils.fonts import bold_custom, body, caption
+from src.utils.fonts import body, bold_custom, caption
 
 
 class InsufficientFundsPopup:
