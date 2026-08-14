@@ -44,6 +44,9 @@ PRODUCT_LABELS_PER_PAGE = PRODUCT_LABEL_COLUMNS * PRODUCT_LABEL_ROWS
 PRODUCT_LABEL_TOP_MARGIN = 4.5 * mm
 PRODUCT_BARCODE_ONLY_INSET_X = 8 * mm
 PRODUCT_BARCODE_ONLY_INSET_Y = 8 * mm
+PRODUCT_BARCODE_CAPTION_FONT_NAME = "Courier"
+PRODUCT_BARCODE_CAPTION_FONT_SIZE = 8
+PRODUCT_BARCODE_CAPTION_BASELINE = 30.5 * mm
 PAGE_MARGIN = 12 * mm
 CARD_GAP = 5 * mm
 
@@ -367,8 +370,19 @@ def _draw_product_label(
 def _draw_product_barcode_label(
     pdf: canvas.Canvas, x: float, y: float, product: Product
 ) -> None:
-    """Draw a centered barcode with extra white space for trimming."""
+    """Draw a compact product caption and barcode with trimming space."""
     label_width, label_height = PRODUCT_LABEL_SIZE
+    caption = f"{product.name_de} - {int(product.price)} Taler"
+    pdf.setFillColor(TEXT)
+    pdf.setFont(
+        PRODUCT_BARCODE_CAPTION_FONT_NAME,
+        PRODUCT_BARCODE_CAPTION_FONT_SIZE,
+    )
+    pdf.drawCentredString(
+        x + label_width / 2,
+        y + PRODUCT_BARCODE_CAPTION_BASELINE,
+        caption,
+    )
     _draw_barcode(
         pdf,
         product.barcode,

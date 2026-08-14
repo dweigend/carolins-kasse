@@ -159,8 +159,9 @@ sheet on plain paper first.
 
 `--products-without-packaging-barcode` selects active products that do not have
 a packaging alias in the local inventory database. `--barcode-only` can be
-combined with any product selection and reserves 8 mm of trimming space around
-the canonical EAN-13 barcode in addition to its quiet zone.
+combined with any product selection and creates a compact typewriter caption
+with the product name and Taler price above the canonical EAN-13 barcode. The
+barcode keeps 8 mm of trimming space in addition to its quiet zone.
 
 ## Barcode Model
 

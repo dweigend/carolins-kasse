@@ -76,7 +76,7 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--barcode-only",
         action="store_true",
-        help="Print only the canonical barcode on product labels.",
+        help="Print a compact product caption and canonical barcode.",
     )
     parser.add_argument(
         "--start-position",

@@ -209,6 +209,12 @@ class OperationScriptTests(unittest.TestCase):
             printables.PRODUCT_FONT_NAME,
             draw_barcode.call_args.kwargs["font_name"],
         )
+        pdf.setFont.assert_called_once_with("Courier", 8)
+        pdf.drawCentredString.assert_called_once_with(
+            35 * mm,
+            30.5 * mm,
+            "Milch - 1 Taler",
+        )
 
     def test_user_cards_use_credit_card_dimensions(self) -> None:
         printables = importlib.import_module("src.admin.printables")
