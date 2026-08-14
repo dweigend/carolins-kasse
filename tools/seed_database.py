@@ -6,7 +6,7 @@ Usage:
     uv run python tools/seed_database.py --reset
 
 Creates data/kasse.db with:
-- 40 products
+- 44 products
 - 18 packaging barcode aliases
 - 4 users (Carolin, Annelie, Gast, Admin)
 - 5 recipes with ingredients
@@ -117,6 +117,11 @@ def seed_products() -> dict[str, str]:
             True,
         ),
         ("vanilla_pudding", "Vanillepudding", 1, "suessigkeiten", True),
+        # Additional catalog products (append-only to preserve existing barcodes)
+        ("chocolate_ice_cream", "Schokoladeneis", 2, "tiefkuehl", True),
+        ("strawberry_ice_cream", "Erdbeereis", 2, "tiefkuehl", True),
+        ("orange_juice", "Orangensaft", 2, "getraenke", True),
+        ("peas", "Erbsen", 1, "tiefkuehl", True),
     ]
 
     barcode_map = {}

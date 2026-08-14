@@ -81,7 +81,7 @@ uv run python main.py
 ```
 
 The kiosk uses a fixed 1024x600 resolution. On an empty installation,
-`tools/seed_database.py` creates 40 products, 18 inventoried packaging barcode
+`tools/seed_database.py` creates 44 products, 18 inventoried packaging barcode
 aliases, the Carolin, Annelie, Gast, and Admin accounts, and five recipes. The
 command is non-destructive by default and refuses to overwrite existing runtime
 records.
