@@ -684,6 +684,34 @@ class DatabaseSmokeTests(unittest.TestCase):
             self.assertIsNotNone(user)
             self.assertEqual(user.balance, 42.0)
 
+    def test_seed_database_includes_inventoried_products_and_aliases(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "kasse.db"
+
+            with isolated_database_module(db_path) as database:
+                seed_database = importlib.import_module("tools.seed_database")
+                previous_argv = sys.argv
+                sys.argv = ["seed_database.py"]
+                try:
+                    with redirect_stdout(io.StringIO()):
+                        exit_code = seed_database.main()
+                finally:
+                    sys.argv = previous_argv
+
+                products = database.get_all_products(include_inactive=True)
+                aliases = database.get_product_barcode_aliases()
+                vanilla_pudding = database.get_product("20150686")
+                sausage = database.get_product("20210229")
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(len(products), 40)
+            self.assertEqual(len(aliases), 18)
+            self.assertIsNotNone(vanilla_pudding)
+            self.assertEqual(vanilla_pudding.barcode, "1000000000405")
+            self.assertEqual(vanilla_pudding.name_de, "Vanillepudding")
+            self.assertIsNotNone(sausage)
+            self.assertEqual(sausage.name_de, "Wurst")
+
     def test_process_checkout_updates_balance_and_records_transaction(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "kasse.db"

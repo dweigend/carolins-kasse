@@ -6,7 +6,8 @@ Usage:
     uv run python tools/seed_database.py --reset
 
 Creates data/kasse.db with:
-- 32 products
+- 40 products
+- 18 packaging barcode aliases
 - 4 users (Carolin, Annelie, Gast, Admin)
 - 5 recipes with ingredients
 
@@ -30,10 +31,12 @@ from src.utils.barcodes import (
 from src.utils.database import (
     DB_PATH,
     Product,
+    ProductBarcodeAlias,
     Recipe,
     RecipeIngredient,
     User,
     add_product,
+    add_product_barcode_alias,
     add_recipe,
     add_recipe_ingredient,
     add_user,
@@ -99,6 +102,21 @@ def seed_products() -> dict[str, str]:
         ("lettuce", "Salat", 1, "gemuese", False),
         ("onion", "Zwiebel", 1, "gemuese", False),
         ("leek", "Lauch", 1, "gemuese", False),
+        # Inventoried packaged products (has_barcode=True)
+        ("glucose_tablets", "Traubenzucker", 1, "suessigkeiten", True),
+        ("fish_sticks", "Fischstäbchen", 2, "tiefkuehl", True),
+        ("chocolate", "Schokolade", 1, "suessigkeiten", True),
+        ("marble_cake", "Marmorkuchen", 2, "backwaren", True),
+        ("creamed_spinach", "Rahmspinat", 1, "tiefkuehl", True),
+        ("food_coloring", "Lebensmittelfarbe", 1, "backzutaten", True),
+        (
+            "meatballs_caper_sauce",
+            "Königsberger Klopse",
+            2,
+            "fertiggerichte",
+            True,
+        ),
+        ("vanilla_pudding", "Vanillepudding", 1, "suessigkeiten", True),
     ]
 
     barcode_map = {}
@@ -121,6 +139,38 @@ def seed_products() -> dict[str, str]:
         print(f"  ✓ {name_de} ({barcode})")
 
     return barcode_map
+
+
+def seed_product_aliases(product_barcodes: dict[str, str]) -> None:
+    """Seed packaging barcodes captured during the product inventory."""
+    aliases = [
+        ("20210151", "milk"),
+        ("20210410", "cheese"),
+        ("20210175", "sausage"),
+        ("20210212", "sausage"),
+        ("20210229", "sausage"),
+        ("20210014", "pasta"),
+        ("20151027", "tomatoes_canned"),
+        ("20150389", "juice"),
+        ("20210045", "juice"),
+        ("20150365", "muffin"),
+        ("20150341", "glucose_tablets"),
+        ("20210427", "fish_sticks"),
+        ("42227328", "chocolate"),
+        ("20150662", "marble_cake"),
+        ("20210465", "creamed_spinach"),
+        ("20150709", "food_coloring"),
+        ("20151058", "meatballs_caper_sauce"),
+        ("20150686", "vanilla_pudding"),
+    ]
+    for alias_barcode, product_name in aliases:
+        add_product_barcode_alias(
+            ProductBarcodeAlias(
+                alias_barcode=alias_barcode,
+                product_barcode=product_barcodes[product_name],
+            )
+        )
+        print(f"  ✓ {alias_barcode} → {product_name}")
 
 
 def seed_users() -> None:
@@ -254,6 +304,9 @@ def main() -> int:
 
     print("\n📦 Füge Produkte hinzu...")
     product_barcodes = seed_products()
+
+    print("\n🏷️  Füge Verpackungscodes hinzu...")
+    seed_product_aliases(product_barcodes)
 
     print("\n👤 Füge Benutzer hinzu...")
     seed_users()
