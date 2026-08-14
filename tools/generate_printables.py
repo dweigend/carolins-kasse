@@ -7,6 +7,8 @@ Usage:
     uv run python tools/generate_printables.py --products Brot Mehl Zucker
     uv run python tools/generate_printables.py --products Brot=3 Mehl=2
     uv run python tools/generate_printables.py --all-products
+    uv run python tools/generate_printables.py \
+        --products-without-packaging-barcode --barcode-only
     uv run python tools/generate_printables.py --calibration
 
 Creates:
@@ -35,6 +37,7 @@ from src.admin.printables import (
 from src.utils.database import (
     get_all_products,
     get_all_users,
+    get_product_barcode_aliases,
     init_database,
 )
 
@@ -61,9 +64,19 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
         help="Generate labels for every product in the database.",
     )
     selection_group.add_argument(
+        "--products-without-packaging-barcode",
+        action="store_true",
+        help="Generate labels for active products without packaging aliases.",
+    )
+    selection_group.add_argument(
         "--calibration",
         action="store_true",
         help="Generate an outlined Zweckform 3490 calibration sheet.",
+    )
+    parser.add_argument(
+        "--barcode-only",
+        action="store_true",
+        help="Print only the canonical barcode on product labels.",
     )
     parser.add_argument(
         "--start-position",
@@ -86,9 +99,15 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
         help="Vertical correction in mm; positive values move down.",
     )
     parsed_args = parser.parse_args(arguments)
-    has_product_selection = bool(parsed_args.products or parsed_args.all_products)
+    has_product_selection = bool(
+        parsed_args.products
+        or parsed_args.all_products
+        or parsed_args.products_without_packaging_barcode
+    )
     if parsed_args.start_position != 1 and not has_product_selection:
-        parser.error("--start-position requires --products or --all-products")
+        parser.error("--start-position requires a product selection")
+    if parsed_args.barcode_only and not has_product_selection:
+        parser.error("--barcode-only requires a product selection")
     if (
         (parsed_args.x_offset_mm or parsed_args.y_offset_mm)
         and not has_product_selection
@@ -140,6 +159,7 @@ def generate_selected_product_labels(
     start_position: int = 1,
     x_offset_mm: float = 0,
     y_offset_mm: float = 0,
+    barcode_only: bool = False,
 ) -> Path:
     """Generate one label sheet for the requested products."""
     init_database()
@@ -161,7 +181,9 @@ def generate_selected_product_labels(
     ]
 
     filename = (
-        "product_labels_"
+        "product_labels"
+        + ("_barcode_only" if barcode_only else "")
+        + "_"
         + "_".join(
             product.name_de if copies == 1 else f"{product.name_de}_{copies}x"
             for product, (_, copies) in zip(
@@ -176,6 +198,7 @@ def generate_selected_product_labels(
         start_position=start_position,
         x_offset_mm=x_offset_mm,
         y_offset_mm=y_offset_mm,
+        barcode_only=barcode_only,
     )
 
 
@@ -184,16 +207,55 @@ def generate_all_product_labels(
     start_position: int = 1,
     x_offset_mm: float = 0,
     y_offset_mm: float = 0,
+    barcode_only: bool = False,
 ) -> Path:
     """Generate one label sheet for every product in the database."""
     init_database()
     products = get_all_products(include_inactive=True)
+    filename = (
+        "product_labels_all_products_barcode_only.pdf"
+        if barcode_only
+        else "product_labels_all_products.pdf"
+    )
     return generate_product_labels_pdf(
-        PRINT_DIR / "product_labels_all_products.pdf",
+        PRINT_DIR / filename,
         products,
         start_position=start_position,
         x_offset_mm=x_offset_mm,
         y_offset_mm=y_offset_mm,
+        barcode_only=barcode_only,
+    )
+
+
+def generate_labels_for_products_without_packaging_barcode(
+    *,
+    start_position: int = 1,
+    x_offset_mm: float = 0,
+    y_offset_mm: float = 0,
+    barcode_only: bool = False,
+) -> Path:
+    """Generate labels for active products without packaging codes."""
+    init_database()
+    products_with_packaging_barcodes = {
+        alias.product_barcode for alias in get_product_barcode_aliases()
+    }
+    products = [
+        product
+        for product in get_all_products()
+        if product.barcode not in products_with_packaging_barcodes
+    ]
+    filename = (
+        "product_labels_without_packaging_barcodes_barcode_only.pdf"
+        if barcode_only
+        else "product_labels_without_packaging_barcodes.pdf"
+    )
+    return generate_product_labels_pdf(
+        PRINT_DIR / filename,
+        products,
+        start_position=start_position,
+        x_offset_mm=x_offset_mm,
+        y_offset_mm=y_offset_mm,
+        barcode_only=barcode_only,
     )
 
 
@@ -221,6 +283,7 @@ def main(arguments: list[str] | None = None) -> None:
             start_position=args.start_position,
             x_offset_mm=args.x_offset_mm,
             y_offset_mm=args.y_offset_mm,
+            barcode_only=args.barcode_only,
         )
         print(f"✓ Produktetiketten erstellt: {output_path}")
         return
@@ -229,8 +292,18 @@ def main(arguments: list[str] | None = None) -> None:
             start_position=args.start_position,
             x_offset_mm=args.x_offset_mm,
             y_offset_mm=args.y_offset_mm,
+            barcode_only=args.barcode_only,
         )
         print(f"✓ Alle Produktetiketten erstellt: {output_path}")
+        return
+    if args.products_without_packaging_barcode:
+        output_path = generate_labels_for_products_without_packaging_barcode(
+            start_position=args.start_position,
+            x_offset_mm=args.x_offset_mm,
+            y_offset_mm=args.y_offset_mm,
+            barcode_only=args.barcode_only,
+        )
+        print(f"✓ Produktetiketten erstellt: {output_path}")
         return
     if args.calibration:
         output_path = generate_product_label_calibration_pdf(

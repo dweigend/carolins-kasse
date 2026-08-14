@@ -142,6 +142,7 @@ uv run python tools/generate_printables.py --users Carolin Annelie
 uv run python tools/generate_printables.py --products Brot Mehl Zucker
 uv run python tools/generate_printables.py --products Brot=3 Mehl=2
 uv run python tools/generate_printables.py --all-products
+uv run python tools/generate_printables.py --products-without-packaging-barcode --barcode-only
 
 # Generate a calibration sheet or continue a partly used sheet at position 7
 uv run python tools/generate_printables.py --calibration
@@ -155,6 +156,11 @@ Product labels use the Avery Zweckform 3490 layout with 24 labels measuring
 70 x 36 mm on A4. `--x-offset-mm` and `--y-offset-mm` provide printer alignment
 corrections. Print at 100 percent or "Actual Size" and verify the calibration
 sheet on plain paper first.
+
+`--products-without-packaging-barcode` selects active products that do not have
+a packaging alias in the local inventory database. `--barcode-only` can be
+combined with any product selection and reserves 8 mm of trimming space around
+the canonical EAN-13 barcode in addition to its quiet zone.
 
 ## Barcode Model
 

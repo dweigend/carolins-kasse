@@ -42,6 +42,8 @@ PRODUCT_LABEL_COLUMNS = 3
 PRODUCT_LABEL_ROWS = 8
 PRODUCT_LABELS_PER_PAGE = PRODUCT_LABEL_COLUMNS * PRODUCT_LABEL_ROWS
 PRODUCT_LABEL_TOP_MARGIN = 4.5 * mm
+PRODUCT_BARCODE_ONLY_INSET_X = 8 * mm
+PRODUCT_BARCODE_ONLY_INSET_Y = 8 * mm
 PAGE_MARGIN = 12 * mm
 CARD_GAP = 5 * mm
 
@@ -143,6 +145,7 @@ def generate_product_labels_pdf(
     start_position: int = 1,
     x_offset_mm: float = 0,
     y_offset_mm: float = 0,
+    barcode_only: bool = False,
 ) -> Path:
     """Generate a Zweckform 3490 sheet for products, including repeated items.
 
@@ -161,6 +164,7 @@ def generate_product_labels_pdf(
         start_position=start_position,
         x_offset_mm=x_offset_mm,
         y_offset_mm=y_offset_mm,
+        barcode_only=barcode_only,
     )
     pdf.save()
     return output_path
@@ -229,15 +233,17 @@ def _draw_product_labels(
     start_position: int = 1,
     x_offset_mm: float = 0,
     y_offset_mm: float = 0,
+    barcode_only: bool = False,
 ) -> None:
     _validate_product_label_position(start_position)
+    draw_label = _draw_product_barcode_label if barcode_only else _draw_product_label
     for index, product in enumerate(products):
         sheet_index = start_position - 1 + index
         position = sheet_index % PRODUCT_LABELS_PER_PAGE + 1
         if index and position == 1:
             pdf.showPage()
         x, y = _product_label_position(position, x_offset_mm, y_offset_mm)
-        _draw_product_label(pdf, x, y, product)
+        draw_label(pdf, x, y, product)
 
 
 def _draw_product_label_calibration(
@@ -334,7 +340,6 @@ def _draw_product_label(
         17 * mm,
         15 * mm,
     )
-
     _draw_title(
         pdf,
         product.name_de,
@@ -355,6 +360,22 @@ def _draw_product_label(
         y + 2 * mm,
         60 * mm,
         13.5 * mm,
+        font_name=PRODUCT_FONT_NAME,
+    )
+
+
+def _draw_product_barcode_label(
+    pdf: canvas.Canvas, x: float, y: float, product: Product
+) -> None:
+    """Draw a centered barcode with extra white space for trimming."""
+    label_width, label_height = PRODUCT_LABEL_SIZE
+    _draw_barcode(
+        pdf,
+        product.barcode,
+        x + PRODUCT_BARCODE_ONLY_INSET_X,
+        y + PRODUCT_BARCODE_ONLY_INSET_Y,
+        label_width - 2 * PRODUCT_BARCODE_ONLY_INSET_X,
+        label_height - 2 * PRODUCT_BARCODE_ONLY_INSET_Y,
         font_name=PRODUCT_FONT_NAME,
     )
 

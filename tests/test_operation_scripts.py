@@ -183,6 +183,33 @@ class OperationScriptTests(unittest.TestCase):
             fontName=printables.PRODUCT_FONT_NAME,
         )
 
+    def test_barcode_only_label_keeps_eight_millimetres_of_trim_space(self) -> None:
+        printables = importlib.import_module("src.admin.printables")
+        product = printables.Product(
+            barcode=PRODUCT_BARCODE,
+            name="milk",
+            name_de="Milch",
+            price=1,
+            category="kuehlregal",
+        )
+        pdf = MagicMock()
+
+        with patch.object(printables, "_draw_barcode") as draw_barcode:
+            printables._draw_product_barcode_label(pdf, 0, 0, product)
+
+        draw_barcode.assert_called_once()
+        args = draw_barcode.call_args.args
+        self.assertIs(pdf, args[0])
+        self.assertEqual(PRODUCT_BARCODE, args[1])
+        self.assertAlmostEqual(8, args[2] / mm)
+        self.assertAlmostEqual(8, args[3] / mm)
+        self.assertAlmostEqual(54, args[4] / mm)
+        self.assertAlmostEqual(20, args[5] / mm)
+        self.assertEqual(
+            printables.PRODUCT_FONT_NAME,
+            draw_barcode.call_args.kwargs["font_name"],
+        )
+
     def test_user_cards_use_credit_card_dimensions(self) -> None:
         printables = importlib.import_module("src.admin.printables")
 
@@ -210,6 +237,51 @@ class OperationScriptTests(unittest.TestCase):
                 output_path,
             )
             self.assertEqual(b"%PDF", output_path.read_bytes()[:4])
+
+    def test_generate_barcode_only_labels_excludes_packaging_alias_targets(
+        self,
+    ) -> None:
+        with operation_script_context() as context:
+            database = importlib.import_module("src.utils.database")
+            generate_printables = importlib.import_module("tools.generate_printables")
+            database.add_product_barcode_alias(
+                database.ProductBarcodeAlias("4006381333931", PRODUCT_BARCODE)
+            )
+
+            with (
+                patch.object(generate_printables, "PRINT_DIR", context.print_dir),
+                patch.object(
+                    generate_printables, "generate_product_labels_pdf"
+                ) as generate_pdf,
+            ):
+                output_path = context.print_dir / (
+                    "product_labels_without_packaging_barcodes_barcode_only.pdf"
+                )
+                generate_pdf.return_value = output_path
+
+                result = generate_printables.generate_labels_for_products_without_packaging_barcode(
+                    barcode_only=True
+                )
+
+            self.assertEqual(output_path, result)
+            generated_products = generate_pdf.call_args.args[1]
+            self.assertEqual(
+                [NO_LABEL_BARCODE], [p.barcode for p in generated_products]
+            )
+            self.assertTrue(generate_pdf.call_args.kwargs["barcode_only"])
+
+    def test_barcode_only_layout_is_independent_of_product_selection(self) -> None:
+        generate_printables = importlib.import_module("tools.generate_printables")
+
+        selected_args = generate_printables.parse_args(
+            ["--products", "Milch", "--barcode-only"]
+        )
+        missing_args = generate_printables.parse_args(
+            ["--products-without-packaging-barcode", "--barcode-only"]
+        )
+
+        self.assertTrue(selected_args.barcode_only)
+        self.assertTrue(missing_args.barcode_only)
 
     def test_generate_product_copies_expands_selected_product(self) -> None:
         with operation_script_context() as context:
