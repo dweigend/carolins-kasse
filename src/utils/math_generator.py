@@ -10,7 +10,29 @@ class Operation(Enum):
 
     ADD = "+"
     SUBTRACT = "-"
-    MULTIPLY = "×"
+
+
+@dataclass(frozen=True)
+class DifficultySettings:
+    """Allowed operations and number range for one difficulty level."""
+
+    operations: tuple[Operation, ...]
+    max_number: int
+
+
+DIFFICULTY_SETTINGS = {
+    1: DifficultySettings((Operation.ADD,), max_number=10),
+    2: DifficultySettings(
+        (Operation.ADD, Operation.SUBTRACT),
+        max_number=10,
+    ),
+    3: DifficultySettings(
+        (Operation.ADD, Operation.SUBTRACT),
+        max_number=20,
+    ),
+}
+MIN_DIFFICULTY = min(DIFFICULTY_SETTINGS)
+MAX_DIFFICULTY = max(DIFFICULTY_SETTINGS)
 
 
 @dataclass
@@ -26,10 +48,7 @@ class MathProblem:
         """Calculate the correct answer."""
         if self.operation == Operation.ADD:
             return self.a + self.b
-        elif self.operation == Operation.SUBTRACT:
-            return self.a - self.b
-        else:  # MULTIPLY
-            return self.a * self.b
+        return self.a - self.b
 
     @property
     def display(self) -> str:
@@ -41,43 +60,32 @@ class MathProblem:
         return answer == self.answer
 
 
+def normalize_difficulty(difficulty: int) -> int:
+    """Clamp a difficulty value to the configured math levels."""
+    return max(MIN_DIFFICULTY, min(difficulty, MAX_DIFFICULTY))
+
+
 def generate_problem(difficulty: int) -> MathProblem:
     """Generate a math problem based on difficulty level.
 
     Args:
         difficulty: 1-3 difficulty level
             1: Addition up to 10
-            2: Addition/Subtraction up to 20
-            3: Multiplication with max answer 99
+            2: Addition/Subtraction up to 10
+            3: Addition/Subtraction up to 20
 
     Returns:
         A MathProblem instance
     """
-    if difficulty == 1:
-        # Addition up to 10
-        a = random.randint(1, 9)
-        b = random.randint(1, 10 - a)
-        return MathProblem(a, b, Operation.ADD)
+    normalized_difficulty = normalize_difficulty(difficulty)
+    settings = DIFFICULTY_SETTINGS[normalized_difficulty]
+    operation = random.choice(settings.operations)
 
-    elif difficulty == 2:
-        # Addition or Subtraction up to 20
-        operation = random.choice([Operation.ADD, Operation.SUBTRACT])
+    if operation == Operation.ADD:
+        first_operand = random.randint(1, settings.max_number - 1)
+        second_operand = random.randint(1, settings.max_number - first_operand)
+        return MathProblem(first_operand, second_operand, operation)
 
-        if operation == Operation.ADD:
-            a = random.randint(1, 15)
-            b = random.randint(1, 20 - a)
-        else:
-            # Subtraction - ensure positive result
-            a = random.randint(5, 20)
-            b = random.randint(1, a - 1)
-
-        return MathProblem(a, b, operation)
-
-    else:  # difficulty >= 3
-        # Multiplication with at most two-digit results
-        while True:
-            a = random.randint(2, 10)
-            b = random.randint(2, 10)
-            problem = MathProblem(a, b, Operation.MULTIPLY)
-            if problem.answer <= 99:
-                return problem
+    first_operand = random.randint(2, settings.max_number)
+    second_operand = random.randint(1, first_operand - 1)
+    return MathProblem(first_operand, second_operand, operation)

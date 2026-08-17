@@ -303,9 +303,9 @@ class KioskFlowInputTests(unittest.TestCase):
         math_generator = importlib.import_module("src.utils.math_generator")
         scene = math_module.MathGameScene()
         scene._current_problem = math_generator.MathProblem(
-            10,
-            10,
-            math_generator.Operation.MULTIPLY,
+            50,
+            50,
+            math_generator.Operation.ADD,
         )
         scene._initialized = True
 

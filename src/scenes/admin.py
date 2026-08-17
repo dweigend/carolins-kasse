@@ -34,6 +34,7 @@ from src.utils.database import (
     update_user_balance,
 )
 from src.utils.fonts import bold_custom, custom
+from src.utils.math_generator import normalize_difficulty
 from src.utils.network import admin_url, get_local_ip
 from src.utils.text_utils import truncate_text, wrap_text
 
@@ -422,7 +423,7 @@ class AdminScene(MessageMixin, Scene):
         self._refresh_data()
 
     def _change_difficulty(self, user: User, delta: int) -> None:
-        difficulty = max(1, min(3, user.difficulty + delta))
+        difficulty = normalize_difficulty(user.difficulty + delta)
         update_user_admin_fields(user.card_id, user.name, difficulty, user.active)
         self._refresh_data()
 

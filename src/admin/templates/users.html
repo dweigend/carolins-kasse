@@ -33,9 +33,9 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input name="name" value="{{ user.name }}" aria-label="Name">
                     <select name="difficulty" aria-label="Schwierigkeit">
-                        <option value="1" {% if user.difficulty == 1 %}selected{% endif %}>Stufe 1</option>
-                        <option value="2" {% if user.difficulty == 2 %}selected{% endif %}>Stufe 2</option>
-                        <option value="3" {% if user.difficulty == 3 %}selected{% endif %}>Stufe 3</option>
+                        {% for difficulty in difficulty_levels %}
+                        <option value="{{ difficulty }}" {% if user.difficulty == difficulty %}selected{% endif %}>Stufe {{ difficulty }}</option>
+                        {% endfor %}
                     </select>
                     <label class="checkbox-label">
                         <input type="checkbox" name="active" {% if user.active %}checked{% endif %}>

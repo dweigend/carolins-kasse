@@ -58,6 +58,10 @@ from src.utils.database import (
     update_user_admin_fields,
     update_user_balance,
 )
+from src.utils.math_generator import (
+    DIFFICULTY_SETTINGS,
+    normalize_difficulty,
+)
 from src.utils.pi_system import (
     collect_debug_snapshot,
     run_admin_action,
@@ -348,6 +352,7 @@ async def users_page(request: Request):
         "users.html",
         {
             "users": user_data,
+            "difficulty_levels": tuple(DIFFICULTY_SETTINGS),
             "adjustments": get_recent_balance_adjustments(),
             "active": "users",
         },
@@ -504,7 +509,12 @@ async def update_user_settings(card_id: str, request: Request):
     difficulty = _parse_int(form.get("difficulty"), default=1)
     active = form.get("active") == "on"
     if name:
-        update_user_admin_fields(card_id, name, max(1, min(difficulty, 3)), active)
+        update_user_admin_fields(
+            card_id,
+            name,
+            normalize_difficulty(difficulty),
+            active,
+        )
     return RedirectResponse(url="/users", status_code=303)
 
 
